@@ -21,13 +21,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CodeHub - Learning Tracker Platform",
-  description: "Track your learning progress across five comprehensive programming platforms. Submit task summaries, receive feedback, and advance your skills systematically.",
-  keywords: ["programming", "learning", "algorithms", "javascript", "oop", "solid principles", "design patterns"],
-  authors: [{ name: "CodeHub Team" }],
+  title: "كود هاب - منصة تتبع التعلم",
+  description: "تتبع تقدمك في التعلم عبر خمس منصات برمجة شاملة. قدم ملخصات المهام، احصل على التغذية الراجعة، وطور مهاراتك بشكل منهجي.",
+  keywords: ["البرمجة", "التعلم", "الخوارزميات", "جافاسكريبت", "البرمجة الكائنية", "مبادئ SOLID", "أنماط التصميم"],
+  authors: [{ name: "فريق كود هاب" }],
   openGraph: {
-    title: "CodeHub - Learning Tracker Platform",
-    description: "Master programming step by step with structured learning and progress tracking",
+    title: "كود هاب - منصة تتبع التعلم",
+    description: "أتقن البرمجة خطوة بخطوة مع التعلم المنظم وتتبع التقدم",
     type: "website",
   },
 };
@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ar" dir="rtl">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

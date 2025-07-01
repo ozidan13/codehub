@@ -678,7 +678,7 @@ export default function AdminPage() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-3">
                         <h3 className="text-sm font-medium text-gray-900">
-                          {submission.task.title}
+                          {submission.task?.title}
                         </h3>
                         <span className={getStatusBadge(submission.status)}>
                           {submission.status}
@@ -691,7 +691,7 @@ export default function AdminPage() {
                         )}
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
-                        {submission.task.platform.name} • {submission.user.name}
+                        {submission.task?.platform?.name} • {submission.user?.name}
                       </p>
                       <p className="text-sm text-gray-800 mt-2">{submission.summary}</p>
                       {submission.feedback && (
@@ -699,20 +699,7 @@ export default function AdminPage() {
                           <strong>Feedback:</strong> {submission.feedback}
                         </div>
                       )}
-                      <div className="flex items-center space-x-4 mt-3 text-xs text-gray-500">
-                        <span>Submitted: {new Date(submission.createdAt).toLocaleString()}</span>
-                        {submission.fileUrl && (
-                          <a
-                            href={submission.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-800"
-                          >
-                            <Download className="h-3 w-3" />
-                            <span>Download File</span>
-                          </a>
-                        )}
-                      </div>
+                     
                     </div>
                     <div className="ml-4">
                       <button
@@ -1355,15 +1342,15 @@ function ReviewModal({ submission, onClose, onUpdate }: ReviewModalProps) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Review Submission: {submission.task.title}
+          Review Submission: {submission.task?.title}
         </h3>
         
         <div className="mb-4 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600 mb-2">
-            <strong>Student:</strong> {submission.user.name} ({submission.user.email})
+            <strong>Student:</strong> {submission.user?.name} ({submission.user?.email})
           </p>
           <p className="text-sm text-gray-600 mb-2">
-            <strong>Platform:</strong> {submission.task.platform.name}
+            <strong>Platform:</strong> {submission.task?.platform?.name}
           </p>
           <p className="text-sm text-gray-600 mb-2">
             <strong>Submitted:</strong> {new Date(submission.createdAt).toLocaleString()}
@@ -1372,19 +1359,7 @@ function ReviewModal({ submission, onClose, onUpdate }: ReviewModalProps) {
             <strong className="text-sm text-gray-600">Summary:</strong>
             <p className="text-sm text-gray-800 mt-1">{submission.summary}</p>
           </div>
-          {submission.fileUrl && (
-            <div className="mt-3">
-              <a
-                href={submission.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800"
-              >
-                <Download className="h-4 w-4" />
-                <span>Download Attached File</span>
-              </a>
-            </div>
-          )}
+          {/* File download removed as fileUrl functionality has been removed */}
         </div>
         
         {error && (
