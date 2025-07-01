@@ -49,29 +49,114 @@ async function main() {
   console.log('📝 Creating sample tasks...')
   const createdPlatforms = await prisma.platform.findMany()
   
-  for (const platform of createdPlatforms) {
-    const sampleTasks = [
+  // Define platform-specific tasks with links
+  const platformTasks = {
+    'Algorithms & Data Structures': [
       {
-        title: `${platform.name} - Task 1`,
-        description: `Complete the first task in ${platform.name}`,
-        platformId: platform.id,
+        title: 'Array Algorithms',
+        description: 'Learn and implement basic array algorithms',
+        link: 'https://ozidan13.github.io/algorithms/#arrays',
         order: 1
       },
       {
-        title: `${platform.name} - Task 2`,
-        description: `Complete the second task in ${platform.name}`,
-        platformId: platform.id,
+        title: 'Sorting Algorithms',
+        description: 'Understand and implement various sorting algorithms',
+        link: 'https://ozidan13.github.io/algorithms/#sorting',
         order: 2
       },
       {
-        title: `${platform.name} - Task 3`,
-        description: `Complete the third task in ${platform.name}`,
-        platformId: platform.id,
+        title: 'Binary Search Trees',
+        description: 'Master binary search tree operations',
+        link: 'https://ozidan13.github.io/algorithms/#trees',
+        order: 3
+      }
+    ],
+    'Object-Oriented Programming (OOP)': [
+      {
+        title: 'Classes and Objects',
+        description: 'Learn the fundamentals of classes and objects',
+        link: 'https://oop-pi.vercel.app/#classes',
+        order: 1
+      },
+      {
+        title: 'Inheritance and Polymorphism',
+        description: 'Master inheritance and polymorphism concepts',
+        link: 'https://oop-pi.vercel.app/#inheritance',
+        order: 2
+      },
+      {
+        title: 'Encapsulation and Abstraction',
+        description: 'Understand encapsulation and abstraction principles',
+        link: 'https://oop-pi.vercel.app/#encapsulation',
+        order: 3
+      }
+    ],
+    'SOLID & Design Patterns': [
+      {
+        title: 'Single Responsibility Principle',
+        description: 'Learn and apply the Single Responsibility Principle',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/#srp',
+        order: 1
+      },
+      {
+        title: 'Open/Closed Principle',
+        description: 'Understand the Open/Closed Principle',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/#ocp',
+        order: 2
+      },
+      {
+        title: 'Design Patterns',
+        description: 'Implement common design patterns',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/#patterns',
+        order: 3
+      }
+    ],
+    'JavaScript Interview Questions': [
+      {
+        title: 'JavaScript Fundamentals',
+        description: 'Master JavaScript fundamental concepts for interviews',
+        link: 'https://javascriptinterview-kappa.vercel.app/#fundamentals',
+        order: 1
+      },
+      {
+        title: 'Async JavaScript',
+        description: 'Understand promises, async/await, and callbacks',
+        link: 'https://javascriptinterview-kappa.vercel.app/#async',
+        order: 2
+      },
+      {
+        title: 'Advanced JavaScript',
+        description: 'Learn advanced JavaScript concepts and patterns',
+        link: 'https://javascriptinterview-kappa.vercel.app/#advanced',
+        order: 3
+      }
+    ],
+    'JavaScript Tasks': [
+      {
+        title: 'Basic JavaScript Exercises',
+        description: 'Complete basic JavaScript programming exercises',
+        link: 'https://ozidan13.github.io/js-tasks/#basic',
+        order: 1
+      },
+      {
+        title: 'DOM Manipulation Tasks',
+        description: 'Practice DOM manipulation and event handling',
+        link: 'https://ozidan13.github.io/js-tasks/#dom',
+        order: 2
+      },
+      {
+        title: 'Advanced JavaScript Challenges',
+        description: 'Solve advanced JavaScript programming challenges',
+        link: 'https://ozidan13.github.io/js-tasks/#advanced',
         order: 3
       }
     ]
-
-    for (const task of sampleTasks) {
+  }
+  
+  for (const platform of createdPlatforms) {
+    const tasks = platformTasks[platform.name] || []
+    
+    for (const task of tasks) {
       await prisma.task.upsert({
         where: { 
           id: `${platform.id}-task-${task.order}`
@@ -79,6 +164,7 @@ async function main() {
         update: {},
         create: {
           ...task,
+          platformId: platform.id,
           id: `${platform.id}-task-${task.order}`
         }
       })

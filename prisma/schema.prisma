@@ -8,7 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -85,6 +84,7 @@ model Task {
   id          String   @id @default(cuid())
   title       String
   description String?
+  link        String?  // URL link to the specific task content
   platformId  String
   order       Int      @default(0)
   createdAt   DateTime @default(now())
@@ -101,7 +101,7 @@ model Submission {
   id        String           @id @default(cuid())
   summary   String           @db.Text
   status    SubmissionStatus @default(PENDING)
-  score     Int?             // 0-10, only set when status is COMPLETED
+  score     Int?             // 0-100, only set when status is APPROVED
   feedback  String?          @db.Text
   userId    String
   taskId    String
@@ -123,6 +123,6 @@ enum Role {
 
 enum SubmissionStatus {
   PENDING
-  COMPLETED
+  APPROVED
   REJECTED
 }

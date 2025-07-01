@@ -1,0 +1,653 @@
+{
+  "info": {
+    "_postman_id": "codehub-api-collection",
+    "name": "CodeHub Learning Tracker API",
+    "description": "Complete API collection for CodeHub Learning Tracker Platform\n\n## Overview\nCodeHub is a comprehensive learning management platform that allows students to track their progress across multiple programming platforms and submit assignments for review.\n\n## Authentication\nThe API uses NextAuth.js for authentication with JWT tokens. Most endpoints require authentication.\n\n## Base URL\n`http://localhost:3000`\n\n## Demo Accounts\n- **Admin**: admin@codehub.com / admin123\n- **Student**: student@codehub.com / student123\n\n## Response Format\nAll responses follow a consistent JSON format:\n```json\n{\n  \"success\": true,\n  \"data\": {},\n  \"message\": \"Success message\"\n}\n```\n\nFor errors:\n```json\n{\n  \"success\": false,\n  \"error\": \"Error message\",\n  \"details\": {}\n}\n```",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Authentication endpoints for user registration and login",
+      "item": [
+        {
+          "name": "Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Register a new user account\n\n**Request Body:**\n- `name` (string, required): User's full name\n- `email` (string, required): Valid email address\n- `password` (string, required): Password (minimum 6 characters)\n\n**Response:**\n- `201`: User created successfully\n- `400`: Validation error or user already exists\n- `500`: Server error"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/signup",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "signup"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User created successfully\",\n  \"user\": {\n    \"id\": \"user-id\",\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"role\": \"STUDENT\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Sign In (NextAuth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"student@codehub.com\",\n  \"password\": \"student123\",\n  \"callbackUrl\": \"/dashboard\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signin"]
+            },
+            "description": "Authenticate user and create session\n\n**Request Body:**\n- `email` (string, required): User's email\n- `password` (string, required): User's password\n- `callbackUrl` (string, optional): Redirect URL after login\n\n**Response:**\n- `200`: Authentication successful\n- `401`: Invalid credentials\n- `500`: Server error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "Dashboard statistics and overview data",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard"]
+            },
+            "description": "Get dashboard statistics based on user role\n\n**Authentication:** Required\n\n**Student Response:**\n- Total tasks assigned\n- Completed tasks count\n- Pending submissions\n- Completion rate\n- Recent activities\n\n**Admin Response:**\n- Total users and students\n- Total submissions\n- Platform-wise statistics\n- Pending submissions count\n\n**Response Codes:**\n- `200`: Success\n- `401`: Unauthorized\n- `500`: Server error"
+          },
+          "response": [
+            {
+              "name": "Student Dashboard",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/dashboard",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "dashboard"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"totalTasks\": 25,\n  \"completedTasks\": 18,\n  \"pendingTasks\": 7,\n  \"completionRate\": 72,\n  \"averageScore\": 85.5,\n  \"recentActivities\": [\n    {\n      \"id\": \"activity-1\",\n      \"type\": \"submission\",\n      \"taskTitle\": \"Binary Search Implementation\",\n      \"status\": \"APPROVED\",\n      \"score\": 95,\n      \"createdAt\": \"2025-01-01T10:00:00Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "Admin Dashboard",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/dashboard",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "dashboard"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"totalUsers\": 150,\n  \"totalStudents\": 145,\n  \"totalSubmissions\": 1250,\n  \"pendingSubmissions\": 25,\n  \"platformStats\": [\n    {\n      \"platformId\": \"platform-1\",\n      \"platformName\": \"Algorithms & Data Structures\",\n      \"totalTasks\": 15,\n      \"totalSubmissions\": 450\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Platforms",
+      "description": "Learning platforms management",
+      "item": [
+        {
+          "name": "Get All Platforms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/platforms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "platforms"]
+            },
+            "description": "Retrieve all learning platforms with their tasks\n\n**Authentication:** Required\n\n**Query Parameters:**\n- `includeTasks` (boolean, optional): Include tasks in response\n\n**Response:**\n- Array of platforms with tasks\n- Each platform includes: id, name, description, tasks\n\n**Response Codes:**\n- `200`: Success\n- `401`: Unauthorized\n- `500`: Server error"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/platforms",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "platforms"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"platforms\": [\n    {\n      \"id\": \"platform-1\",\n      \"name\": \"Algorithms & Data Structures\",\n      \"description\": \"Master fundamental algorithms and data structures\",\n      \"tasks\": [\n        {\n          \"id\": \"task-1\",\n          \"title\": \"Binary Search Implementation\",\n          \"description\": \"Implement binary search algorithm\",\n          \"link\": \"https://ozidan13.github.io/algorithms/searching/binary-search\",\n          \"difficulty\": \"MEDIUM\",\n          \"points\": 100\n        }\n      ]\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Platform (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"React Development\",\n  \"description\": \"Learn modern React development practices\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/platforms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "platforms"]
+            },
+            "description": "Create a new learning platform (Admin only)\n\n**Authentication:** Required (Admin role)\n\n**Request Body:**\n- `name` (string, required): Platform name\n- `description` (string, required): Platform description\n\n**Response:**\n- `201`: Platform created successfully\n- `401`: Unauthorized\n- `403`: Forbidden (not admin)\n- `400`: Validation error\n- `500`: Server error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "description": "Task management endpoints",
+      "item": [
+        {
+          "name": "Get All Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks?platformId={{platformId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"],
+              "query": [
+                {
+                  "key": "platformId",
+                  "value": "{{platformId}}",
+                  "description": "Filter tasks by platform ID"
+                }
+              ]
+            },
+            "description": "Get all tasks, optionally filtered by platform\n\n**Authentication:** Required\n\n**Query Parameters:**\n- `platformId` (string, optional): Filter by platform ID\n- `difficulty` (string, optional): Filter by difficulty (EASY, MEDIUM, HARD)\n\n**Response:**\n- Array of tasks with submission status for current user\n\n**Response Codes:**\n- `200`: Success\n- `401`: Unauthorized\n- `500`: Server error"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/tasks",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "tasks"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"tasks\": [\n    {\n      \"id\": \"task-1\",\n      \"title\": \"Binary Search Implementation\",\n      \"description\": \"Implement binary search algorithm in your preferred language\",\n      \"link\": \"https://ozidan13.github.io/algorithms/searching/binary-search\",\n      \"difficulty\": \"MEDIUM\",\n      \"points\": 100,\n      \"platformId\": \"platform-1\",\n      \"platform\": {\n        \"name\": \"Algorithms & Data Structures\"\n      },\n      \"userSubmission\": {\n        \"id\": \"submission-1\",\n        \"status\": \"APPROVED\",\n        \"score\": 95\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Task (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Quick Sort Implementation\",\n  \"description\": \"Implement the quick sort algorithm with time complexity analysis\",\n  \"link\": \"https://ozidan13.github.io/algorithms/sorting/quick-sort\",\n  \"difficulty\": \"HARD\",\n  \"points\": 150,\n  \"platformId\": \"platform-1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"]
+            },
+            "description": "Create a new task (Admin only)\n\n**Authentication:** Required (Admin role)\n\n**Request Body:**\n- `title` (string, required): Task title\n- `description` (string, optional): Task description\n- `link` (string, optional): URL link to task content\n- `difficulty` (string, required): EASY, MEDIUM, or HARD\n- `points` (number, required): Points for completion\n- `platformId` (string, required): Associated platform ID\n\n**Response:**\n- `201`: Task created successfully\n- `401`: Unauthorized\n- `403`: Forbidden (not admin)\n- `400`: Validation error\n- `500`: Server error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Submissions",
+      "description": "Task submission management",
+      "item": [
+        {
+          "name": "Get All Submissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/submissions?status=PENDING&userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "submissions"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "Filter by status (PENDING, APPROVED, REJECTED)"
+                },
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "Filter by user ID"
+                }
+              ]
+            },
+            "description": "Get submissions with optional filtering\n\n**Authentication:** Required\n\n**Query Parameters:**\n- `status` (string, optional): Filter by status\n- `userId` (string, optional): Filter by user (admin only)\n- `taskId` (string, optional): Filter by task\n\n**Response:**\n- Array of submissions with user and task details\n\n**Response Codes:**\n- `200`: Success\n- `401`: Unauthorized\n- `500`: Server error"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/submissions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "submissions"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"submissions\": [\n    {\n      \"id\": \"submission-1\",\n      \"taskId\": \"task-1\",\n      \"userId\": \"user-1\",\n      \"content\": \"My solution implementation...\",\n      \"fileUrl\": \"https://storage.url/file.zip\",\n      \"status\": \"PENDING\",\n      \"score\": null,\n      \"feedback\": null,\n      \"createdAt\": \"2025-01-01T10:00:00Z\",\n      \"updatedAt\": \"2025-01-01T10:00:00Z\",\n      \"user\": {\n        \"name\": \"John Doe\",\n        \"email\": \"john@example.com\"\n      },\n      \"task\": {\n        \"title\": \"Binary Search Implementation\",\n        \"platform\": {\n          \"name\": \"Algorithms & Data Structures\"\n        }\n      }\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Submission",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taskId\": \"task-1\",\n  \"content\": \"Here is my implementation of binary search algorithm...\",\n  \"fileUrl\": \"https://storage.url/my-solution.zip\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/submissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "submissions"]
+            },
+            "description": "Submit a solution for a task\n\n**Authentication:** Required\n\n**Request Body:**\n- `taskId` (string, required): Task ID to submit for\n- `content` (string, optional): Text content of submission\n- `fileUrl` (string, optional): URL to uploaded file\n\n**Note:** Either content or fileUrl must be provided\n\n**Response:**\n- `201`: Submission created successfully\n- `400`: Validation error or duplicate submission\n- `401`: Unauthorized\n- `404`: Task not found\n- `500`: Server error"
+          }
+        },
+        {
+          "name": "Update Submission (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\",\n  \"score\": 95,\n  \"feedback\": \"Excellent implementation! Good use of binary search principles.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/submissions/{{submissionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "submissions", "{{submissionId}}"]
+            },
+            "description": "Update submission status, score, and feedback (Admin only)\n\n**Authentication:** Required (Admin role)\n\n**Path Parameters:**\n- `submissionId` (string, required): Submission ID to update\n\n**Request Body:**\n- `status` (string, optional): PENDING, APPROVED, or REJECTED\n- `score` (number, optional): Score (0-100)\n- `feedback` (string, optional): Feedback text\n\n**Response:**\n- `200`: Submission updated successfully\n- `401`: Unauthorized\n- `403`: Forbidden (not admin)\n- `404`: Submission not found\n- `400`: Validation error\n- `500`: Server error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User management endpoints",
+      "item": [
+        {
+          "name": "Get All Users (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?role=STUDENT&includeProgress=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "STUDENT",
+                  "description": "Filter by role (STUDENT, ADMIN)"
+                },
+                {
+                  "key": "includeProgress",
+                  "value": "true",
+                  "description": "Include progress statistics"
+                }
+              ]
+            },
+            "description": "Get all users with optional filtering (Admin only)\n\n**Authentication:** Required (Admin role)\n\n**Query Parameters:**\n- `role` (string, optional): Filter by role\n- `includeProgress` (boolean, optional): Include task progress\n\n**Response:**\n- Array of users with optional progress data\n\n**Response Codes:**\n- `200`: Success\n- `401`: Unauthorized\n- `403`: Forbidden (not admin)\n- `500`: Server error"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users?includeProgress=true",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "users"],
+                  "query": [
+                    {
+                      "key": "includeProgress",
+                      "value": "true"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"users\": [\n    {\n      \"id\": \"user-1\",\n      \"name\": \"John Doe\",\n      \"email\": \"john@example.com\",\n      \"role\": \"STUDENT\",\n      \"createdAt\": \"2025-01-01T00:00:00Z\",\n      \"totalTasks\": 25,\n      \"completedTasks\": 18,\n      \"pendingTasks\": 7,\n      \"averageScore\": 85.5\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "me"]
+            },
+            "description": "Get current authenticated user's profile\n\n**Authentication:** Required\n\n**Response:**\n- User profile with progress statistics\n\n**Response Codes:**\n- `200`: Success\n- `401`: Unauthorized\n- `500`: Server error"
+          }
+        },
+        {
+          "name": "Update User Role (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            },
+            "description": "Update user role (Admin only)\n\n**Authentication:** Required (Admin role)\n\n**Path Parameters:**\n- `userId` (string, required): User ID to update\n\n**Request Body:**\n- `role` (string, required): STUDENT or ADMIN\n\n**Response:**\n- `200`: User updated successfully\n- `401`: Unauthorized\n- `403`: Forbidden (not admin)\n- `404`: User not found\n- `400`: Validation error\n- `500`: Server error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "File Upload",
+      "description": "File upload endpoints for submissions",
+      "item": [
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/your/file.zip"
+                },
+                {
+                  "key": "taskId",
+                  "value": "task-1",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "upload"]
+            },
+            "description": "Upload a file for task submission\n\n**Authentication:** Required\n\n**Request Body (multipart/form-data):**\n- `file` (file, required): File to upload\n- `taskId` (string, required): Associated task ID\n\n**Supported file types:**\n- .zip, .rar, .7z (archives)\n- .pdf, .doc, .docx (documents)\n- .txt, .md (text files)\n- .js, .py, .java, .cpp, .c (code files)\n\n**File size limit:** 10MB\n\n**Response:**\n- `200`: File uploaded successfully\n- `400`: Invalid file or validation error\n- `401`: Unauthorized\n- `413`: File too large\n- `500`: Server error"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "/path/to/file.zip"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/upload",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "upload"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"fileUrl\": \"https://storage.supabase.co/object/public/learning-tracker-files/submissions/user-1/task-1/file.zip\",\n  \"fileName\": \"file.zip\",\n  \"fileSize\": 1024000\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set base URL if not already set",
+          "if (!pm.environment.get('baseUrl')) {",
+          "    pm.environment.set('baseUrl', 'http://localhost:3000');",
+          "}",
+          "",
+          "// Auto-set auth token from login response",
+          "if (pm.request.url.path.includes('signin') && pm.request.method === 'POST') {",
+          "    // This will be handled in the test script",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-extract and save auth token from login response",
+          "if (pm.request.url.path.includes('signin') && pm.response.code === 200) {",
+          "    try {",
+          "        const responseJson = pm.response.json();",
+          "        if (responseJson.token) {",
+          "            pm.environment.set('authToken', responseJson.token);",
+          "            console.log('Auth token saved to environment');",
+          "        }",
+          "    } catch (e) {",
+          "        console.log('Could not extract auth token from response');",
+          "    }",
+          "}",
+          "",
+          "// Log response for debugging",
+          "if (pm.response.code >= 400) {",
+          "    console.log('Error Response:', pm.response.text());",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "platformId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "submissionId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
