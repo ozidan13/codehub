@@ -26,19 +26,19 @@ function LoginForm() {
       const result = await signIn('credentials', {
         email,
         password,
+        callbackUrl,
         redirect: false,
       })
 
       if (result?.error) {
         setError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-      } else {
+      } else if (result?.ok) {
         // Get the updated session to check user role
         const session = await getSession()
-        if (session?.user?.role === 'ADMIN') {
-          router.push('/admin')
-        } else {
-          router.push(callbackUrl)
-        }
+        const redirectUrl = session?.user?.role === 'ADMIN' ? '/admin' : callbackUrl
+        
+        // Use window.location for more reliable redirect in production
+        window.location.href = redirectUrl
       }
     } catch (error) {
       setError('حدث خطأ. يرجى المحاولة مرة أخرى.')
