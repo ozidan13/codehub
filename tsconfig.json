@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "es5", // Changed to es5 for broader compatibility
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true, // Changed to true as Next.js handles compilation
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node", // Kept as node, 'bundler' or 'nodenext' are also options for newer setups
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "baseUrl": ".", // Kept
+    // "outDir": "./dist", // Removed, Next.js handles output
+    // "rootDir": "src", // Removed, Next.js handles source structure
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@prisma/*": ["./prisma/*"], // Kept
+      "@utils/*": ["./src/utils/*"], // Kept
+      "@middleware/*": ["./src/middleware/*"] // Kept
+    }
+  },
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
