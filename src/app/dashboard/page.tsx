@@ -30,12 +30,12 @@ interface Submission {
   createdAt: string
 }
 
-interface DashboardStats {
-  totalTasks: number
-  completedTasks: number
-  pendingSubmissions: number
-  averageScore: number
-  recentActivities: any[]
+interface StudentStats {
+  totalSubmissions: number;
+  pendingSubmissions: number;
+  approvedSubmissions: number;
+  rejectedSubmissions: number;
+  averageScore: number;
 }
 
 // Cache implementation
@@ -73,7 +73,7 @@ export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [platforms, setPlatforms] = useState<Platform[]>([])
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [stats, setStats] = useState<StudentStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmissionModal, setShowSubmissionModal] = useState(false)
@@ -98,7 +98,7 @@ export default function DashboardPage() {
     try {
       // Check cache first
       const cachedPlatforms = dataCache.get('platforms')
-      const cachedStats = dataCache.get('dashboard-stats')
+      const cachedStats = dataCache.get('student-stats')
       
       if (cachedPlatforms && cachedStats) {
         setPlatforms(cachedPlatforms)
@@ -109,7 +109,7 @@ export default function DashboardPage() {
       
       const [platformsRes, statsRes] = await Promise.all([
         fetch('/api/platforms'),
-        fetch('/api/dashboard')
+        fetch('/api/dashboard/student-stats')
       ])
       
       if (platformsRes.ok) {
@@ -121,7 +121,7 @@ export default function DashboardPage() {
       if (statsRes.ok) {
         const statsData = await statsRes.json()
         setStats(statsData)
-        dataCache.set('dashboard-stats', statsData)
+        dataCache.set('student-stats', statsData)
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -244,55 +244,63 @@ export default function DashboardPage() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center">
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Target className="h-6 w-6 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">إجمالي التسليمات</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalSubmissions}</p>
+                  </div>
                 </div>
-                <div className="mr-4">
-                  <p className="text-sm font-medium text-gray-600">إجمالي المهام</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTasks}</p>
+              </div>
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <CheckCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">المقبولة</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.approvedSubmissions}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <Clock className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">قيد المراجعة</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pendingSubmissions}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <X className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">المرفوضة</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.rejectedSubmissions}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div className="flex items-center">
+                  <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <Trophy className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="mr-4">
+                    <p className="text-sm font-medium text-gray-600">متوسط النقاط</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.averageScore ? stats.averageScore.toFixed(1) : 'N/A'}</p>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center">
-                <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <CheckCircle className="h-6 w-6 text-white" />
-                </div>
-                <div className="mr-4">
-                  <p className="text-sm font-medium text-gray-600">المكتملة</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.completedTasks}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center">
-                <div className="h-12 w-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Clock className="h-6 w-6 text-white" />
-                </div>
-                <div className="mr-4">
-                  <p className="text-sm font-medium text-gray-600">قيد المراجعة</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.pendingSubmissions}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
-              <div className="flex items-center">
-                <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Trophy className="h-6 w-6 text-white" />
-                </div>
-                <div className="mr-4">
-                  <p className="text-sm font-medium text-gray-600">متوسط النقاط</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.averageScore ? stats.averageScore.toFixed(1) : '0.0'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
         )}
 
         {/* Platforms and Tasks */}
