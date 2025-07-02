@@ -152,7 +152,9 @@ export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users'>('overview')
-  const [stats, setStats] = useState<AdminStats | null>(null)
+  
+  const [overviewStats, setOverviewStats] = useState<any>(null)
+  const [isOverviewLoading, setIsOverviewLoading] = useState(true)
   const [students, setStudents] = useState<Student[]>([])
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
@@ -190,15 +192,13 @@ export default function AdminPage() {
   const fetchData = useCallback(async () => {
     try {
       // Check cache first
-      const cachedStats = dataCache.get('admin-stats')
       const cachedStudents = dataCache.get('admin-students')
       const cachedSubmissions = dataCache.get('admin-submissions')
       const cachedPlatforms = dataCache.get('admin-platforms')
       const cachedTasks = dataCache.get('admin-tasks')
       const cachedUsers = dataCache.get('admin-users')
       
-      if (cachedStats && cachedStudents && cachedSubmissions && cachedPlatforms && cachedTasks && cachedUsers) {
-        setStats(cachedStats)
+      if (cachedStudents && cachedSubmissions && cachedPlatforms && cachedTasks && cachedUsers) {
         setStudents(cachedStudents)
         setSubmissions(cachedSubmissions)
         setPlatforms(cachedPlatforms)
@@ -211,8 +211,7 @@ export default function AdminPage() {
       setLoading(true)
       
       // Fetch all data in parallel
-      const [statsResponse, studentsResponse, submissionsResponse, platformsResponse, tasksResponse, usersResponse] = await Promise.all([
-        fetch('/api/dashboard'),
+      const [studentsResponse, submissionsResponse, platformsResponse, tasksResponse, usersResponse] = await Promise.all([
         fetch('/api/users?role=STUDENT&includeProgress=true'),
         fetch('/api/submissions'),
         fetch('/api/platforms'),
@@ -220,11 +219,7 @@ export default function AdminPage() {
         fetch('/api/users?includeProgress=false')
       ])
       
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        setStats(statsData)
-        dataCache.set('admin-stats', statsData)
-      }
+      
       
       if (studentsResponse.ok) {
         const studentsData = await studentsResponse.json()
@@ -278,6 +273,29 @@ export default function AdminPage() {
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    const fetchOverviewStats = async () => {
+      setIsOverviewLoading(true);
+      try {
+        const response = await fetch('/api/dashboard/stats');
+        if (!response.ok) {
+          throw new Error('Failed to fetch overview stats');
+        }
+        const data = await response.json();
+        setOverviewStats(data);
+      } catch (error) {
+        console.error(error);
+        setOverviewStats(null);
+      } finally {
+        setIsOverviewLoading(false);
+      }
+    };
+
+    if (activeTab === 'overview') {
+      fetchOverviewStats();
+    }
+  }, [activeTab]);
 
   const handleSubmissionClick = (submission: Submission) => {
     setSelectedSubmission(submission)
@@ -545,15 +563,18 @@ export default function AdminPage() {
         </div>
 
         {/* Overview Tab */}
-        {activeTab === 'overview' && stats && (
+        {activeTab === 'overview' && isOverviewLoading && (
+          <div className="flex justify-center items-center p-8"><p>Loading statistics...</p></div>
+        )}
+        {activeTab === 'overview' && !isOverviewLoading && overviewStats && (
           <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex items-center">
                   <Users className="h-8 w-8 text-blue-500" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Students</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
+                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalStudents}</p>
                   </div>
                 </div>
               </div>
@@ -562,7 +583,7 @@ export default function AdminPage() {
                   <FileText className="h-8 w-8 text-green-500" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Submissions</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalSubmissions}</p>
+                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalSubmissions}</p>
                   </div>
                 </div>
               </div>
@@ -570,26 +591,53 @@ export default function AdminPage() {
                 <div className="flex items-center">
                   <Clock className="h-8 w-8 text-yellow-500" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Pending Review</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.pendingSubmissions}</p>
+                    <p className="text-sm font-medium text-gray-600">Pending Submissions</p>
+                    <p className="text-2xl font-bold text-gray-900">{overviewStats.pendingSubmissions}</p>
                   </div>
                 </div>
               </div>
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex items-center">
-                  <BookOpen className="h-8 w-8 text-purple-500" />
+                  <CheckCircle className="h-8 w-8 text-cyan-500" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Platforms</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalPlatforms}</p>
+                    <p className="text-sm font-medium text-gray-600">Approved Submissions</p>
+                    <p className="text-2xl font-bold text-gray-900">{overviewStats.approvedSubmissions}</p>
                   </div>
                 </div>
               </div>
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex items-center">
-                  <BarChart3 className="h-8 w-8 text-indigo-500" />
+                  <XCircle className="h-8 w-8 text-red-500" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Rejected Submissions</p>
+                    <p className="text-2xl font-bold text-gray-900">{overviewStats.rejectedSubmissions}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center">
+                  <Star className="h-8 w-8 text-purple-500" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Average Score</p>
+                    <p className="text-2xl font-bold text-gray-900">{typeof overviewStats.averageScore === 'number' ? overviewStats.averageScore.toFixed(2) : 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center">
+                  <BookOpen className="h-8 w-8 text-indigo-500" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Total Platforms</p>
+                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalPlatforms}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="flex items-center">
+                  <Users className="h-8 w-8 text-gray-500" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Users</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalUsers}</p>
                   </div>
                 </div>
               </div>
