@@ -41,31 +41,48 @@ export async function GET(request: NextRequest) {
       whereClause.taskId = taskId
     }
 
-    const submissions = await prisma.submission.findMany({
-      where: whereClause,
-      include: {
-        task: {
-          include: {
-            platform: {
-              select: {
-                id: true,
-                name: true
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '10', 10)
+    const skip = (page - 1) * limit
+
+    const [submissions, total] = await prisma.$transaction([
+      prisma.submission.findMany({
+        where: whereClause,
+        include: {
+          task: {
+            include: {
+              platform: {
+                select: {
+                  id: true,
+                  name: true
+                }
               }
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
             }
           }
         },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    })
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.submission.count({ where: whereClause })
+    ])
 
-    return NextResponse.json({ submissions })
+    return NextResponse.json({
+      submissions,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    })
 
   } catch (error) {
     console.error('Submissions fetch error:', error)
@@ -106,17 +123,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already has a submission for this task
-    const existingSubmission = await prisma.submission.findFirst({
+    // Check if user has an active (pending or approved) submission for this task
+    const activeSubmission = await prisma.submission.findFirst({
       where: {
         taskId,
-        userId: session.user.id
+        userId: session.user.id,
+        status: {
+          in: ['PENDING', 'APPROVED']
+        }
       }
     })
 
-    if (existingSubmission) {
+    if (activeSubmission) {
       return NextResponse.json(
-        { error: 'You have already submitted for this task' },
+        { error: 'You already have an active submission for this task. You can submit again if it is rejected.' },
         { status: 400 }
       )
     }

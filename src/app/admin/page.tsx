@@ -19,7 +19,9 @@ import {
   Briefcase,
   Clipboard,
   X,
-  Plus
+  Plus,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 interface Student {
@@ -30,6 +32,7 @@ interface Student {
   completedTasks: number
   pendingTasks: number
   averageScore: number | null
+  createdAt: string
   stats?: {
     totalSubmissions: number
     approvedSubmissions: number
@@ -60,20 +63,7 @@ interface FormData {
   order?: number
 }
 
-interface Student {
-  id: string
-  name: string
-  email: string
-  role: string
-  createdAt: string
-  stats?: {
-    totalSubmissions: number
-    approvedSubmissions: number
-    pendingSubmissions: number
-    rejectedSubmissions: number
-    averageScore: number | null
-  }
-}
+
 
 interface Submission {
   id: string
@@ -175,108 +165,116 @@ export default function AdminPage() {
   const [entityType, setEntityType] = useState<'platform' | 'task' | 'user'>('platform')
   const [formData, setFormData] = useState<FormData>({})
 
+
+  const [pagination, setPagination] = useState<Record<string, { page: number; limit: number; total: number; totalPages: number; }>>({
+    submissions: { page: 1, limit: 10, total: 0, totalPages: 1 },
+  });
+
+  const fetchDataForTab = useCallback(async (tab: string, page: number = 1) => {
+    setLoading(true);
+    try {
+      // For submissions, we always fetch, bypassing cache for simplicity with pagination
+      if (tab === 'submissions') {
+        const limit = 10;
+        const response = await fetch(`/api/submissions?page=${page}&limit=${limit}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSubmissions(data.submissions || []);
+          setPagination(prev => ({ ...prev, submissions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+        }
+        return;
+      }
+
+      // Handle caching for other tabs
+      const cacheKey = `admin-${tab}`;
+      const cachedData = dataCache.get(cacheKey);
+      if (cachedData) {
+        switch (tab) {
+          case 'students': setStudents(cachedData); break;
+          case 'platforms': setPlatforms(cachedData); break;
+          case 'tasks': setTasks(cachedData); break;
+          case 'users': setUsers(cachedData); break;
+        }
+        setLoading(false);
+        return;
+      }
+
+      let response;
+      switch (tab) {
+        case 'students':
+          response = await fetch('/api/users?role=STUDENT&includeProgress=true');
+          if (response.ok) {
+            const data = await response.json();
+            const formattedStudents = data.users.map((user: any) => ({
+              id: user.id,
+              name: user.name || 'Unknown',
+              email: user.email,
+              totalTasks: user.stats?.totalSubmissions || 0,
+              completedTasks: user.stats?.approvedSubmissions || 0,
+              pendingTasks: user.stats?.pendingSubmissions || 0,
+              averageScore: user.stats?.averageScore,
+              createdAt: user.createdAt,
+              stats: user.stats ? {
+                totalSubmissions: user.stats.totalSubmissions || 0,
+                approvedSubmissions: user.stats.approvedSubmissions || 0,
+                pendingSubmissions: user.stats.pendingSubmissions || 0,
+                rejectedSubmissions: user.stats.rejectedSubmissions || 0,
+                averageScore: user.stats.averageScore
+              } : undefined
+            }));
+            setStudents(formattedStudents);
+            dataCache.set(cacheKey, formattedStudents);
+          }
+          break;
+        case 'platforms':
+          response = await fetch('/api/platforms');
+          if (response.ok) {
+            const data = await response.json();
+            setPlatforms(data.platforms || []);
+            dataCache.set(cacheKey, data.platforms || []);
+          }
+          break;
+        case 'tasks':
+          response = await fetch('/api/tasks');
+          if (response.ok) {
+            const data = await response.json();
+            setTasks(data.tasks || []);
+            dataCache.set(cacheKey, data.tasks || []);
+          }
+          break;
+        case 'users':
+          response = await fetch('/api/users?includeProgress=false');
+          if (response.ok) {
+            const data = await response.json();
+            setUsers(data.users || []);
+            dataCache.set(cacheKey, data.users || []);
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`Error fetching ${tab} data:`, error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (status === 'loading') return
+    if (status === 'loading') {
+      setLoading(true);
+      return;
+    }
     if (!session) {
-      router.push('/login')
-      return
+      router.push('/login');
+      return;
     }
     if (session.user.role !== 'ADMIN') {
-      router.push('/dashboard')
-      return
+      router.push('/dashboard');
+      return;
     }
-    
-    fetchData()
-  }, [session, status, router])
 
-  const fetchData = useCallback(async () => {
-    try {
-      // Check cache first
-      const cachedStudents = dataCache.get('admin-students')
-      const cachedSubmissions = dataCache.get('admin-submissions')
-      const cachedPlatforms = dataCache.get('admin-platforms')
-      const cachedTasks = dataCache.get('admin-tasks')
-      const cachedUsers = dataCache.get('admin-users')
-      
-      if (cachedStudents && cachedSubmissions && cachedPlatforms && cachedTasks && cachedUsers) {
-        setStudents(cachedStudents)
-        setSubmissions(cachedSubmissions)
-        setPlatforms(cachedPlatforms)
-        setTasks(cachedTasks)
-        setUsers(cachedUsers)
-        setLoading(false)
-        return
-      }
-      
-      setLoading(true)
-      
-      // Fetch all data in parallel
-      const [studentsResponse, submissionsResponse, platformsResponse, tasksResponse, usersResponse] = await Promise.all([
-        fetch('/api/users?role=STUDENT&includeProgress=true'),
-        fetch('/api/submissions'),
-        fetch('/api/platforms'),
-        fetch('/api/tasks'),
-        fetch('/api/users?includeProgress=false')
-      ])
-      
-      
-      
-      if (studentsResponse.ok) {
-        const studentsData = await studentsResponse.json()
-        const formattedStudents = studentsData.users.map((user: any) => ({
-          id: user.id,
-          name: user.name || 'Unknown',
-          email: user.email,
-          totalTasks: user.stats?.totalSubmissions || 0,
-          completedTasks: user.stats?.approvedSubmissions || 0,
-          pendingTasks: user.stats?.pendingSubmissions || 0,
-          averageScore: user.stats?.averageScore,
-          stats: user.stats ? {
-            totalSubmissions: user.stats.totalSubmissions || 0,
-            approvedSubmissions: user.stats.approvedSubmissions || 0,
-            pendingSubmissions: user.stats.pendingSubmissions || 0,
-            rejectedSubmissions: user.stats.rejectedSubmissions || 0,
-            averageScore: user.stats.averageScore
-          } : undefined
-        }))
-        setStudents(formattedStudents)
-        dataCache.set('admin-students', formattedStudents)
-      }
-      
-      if (submissionsResponse.ok) {
-        const submissionsData = await submissionsResponse.json()
-        setSubmissions(submissionsData.submissions || [])
-        dataCache.set('admin-submissions', submissionsData.submissions || [])
-      }
-      
-      if (platformsResponse.ok) {
-        const platformsData = await platformsResponse.json()
-        setPlatforms(platformsData.platforms || [])
-        dataCache.set('admin-platforms', platformsData.platforms || [])
-      }
-      
-      if (tasksResponse.ok) {
-        const tasksData = await tasksResponse.json()
-        setTasks(tasksData.tasks || [])
-        dataCache.set('admin-tasks', tasksData.tasks || [])
-      }
-      
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json()
-        setUsers(usersData.users || [])
-        dataCache.set('admin-users', usersData.users || [])
-      }
-      
-    } catch (error) {
-      console.error('Error fetching admin data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
     const fetchOverviewStats = async () => {
       setIsOverviewLoading(true);
+      setLoading(true);
       try {
         const response = await fetch('/api/dashboard/stats');
         if (!response.ok) {
@@ -289,13 +287,24 @@ export default function AdminPage() {
         setOverviewStats(null);
       } finally {
         setIsOverviewLoading(false);
+        setLoading(false);
       }
     };
 
     if (activeTab === 'overview') {
       fetchOverviewStats();
+    } else {
+      const page = activeTab === 'submissions' ? pagination.submissions.page : 1;
+      fetchDataForTab(activeTab, page);
     }
-  }, [activeTab]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, status, router, activeTab, pagination.submissions.page]);
+
+  const handlePageChange = (tab: string, newPage: number) => {
+    if (newPage > 0 && newPage <= pagination[tab].totalPages) {
+      setPagination(prev => ({ ...prev, [tab]: { ...prev[tab], page: newPage } }));
+    }
+  };
 
   const handleSubmissionClick = (submission: Submission) => {
     setSelectedSubmission(submission)
@@ -311,8 +320,29 @@ export default function AdminPage() {
   }
 
   const fetchAdminData = () => {
-    dataCache.clear()
-    fetchData()
+    dataCache.clear();
+    if (activeTab === 'overview') {
+      const fetchOverviewStats = async () => {
+        setIsOverviewLoading(true);
+        try {
+          const response = await fetch('/api/dashboard/stats');
+          if (!response.ok) {
+            throw new Error('Failed to fetch overview stats');
+          }
+          const data = await response.json();
+          setOverviewStats(data);
+        } catch (error) {
+          console.error(error);
+          setOverviewStats(null);
+        } finally {
+          setIsOverviewLoading(false);
+        }
+      };
+      fetchOverviewStats();
+    } else {
+      const page = pagination[activeTab]?.page || 1;
+      fetchDataForTab(activeTab, page);
+    }
   }
 
   // CRUD Operations
@@ -462,7 +492,7 @@ export default function AdminPage() {
         setShowSubmissionModal(false)
         // Clear cache and refresh data
         dataCache.clear()
-        fetchData()
+        fetchAdminData()
       }
     } catch (error) {
       console.error('Error updating submission:', error)
@@ -709,7 +739,33 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Submissions Tab */}
+        {/* Submissions Tab Content */}
+        {activeTab === 'submissions' && (
+          <div className="mt-4 flex justify-between items-center">
+            <div>
+              <span className="text-sm text-gray-700">
+                Page <span className="font-medium">{pagination.submissions.page}</span> of <span className="font-medium">{pagination.submissions.totalPages}</span> ({pagination.submissions.total} total submissions)
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange('submissions', pagination.submissions.page - 1)}
+                disabled={pagination.submissions.page <= 1}
+                className="p-2 text-gray-500 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => handlePageChange('submissions', pagination.submissions.page + 1)}
+                disabled={pagination.submissions.page >= pagination.submissions.totalPages}
+                className="p-2 text-gray-500 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'submissions' && (
           <div className="bg-white rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">

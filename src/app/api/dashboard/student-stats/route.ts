@@ -14,28 +14,22 @@ export async function GET() {
   const userId = session.user.id;
 
   try {
-    const totalSubmissions = await prisma.submission.count({
-      where: { userId },
-    });
-
-    const pendingSubmissions = await prisma.submission.count({
-      where: { userId, status: SubmissionStatus.PENDING },
-    });
-
-    const approvedSubmissions = await prisma.submission.count({
-      where: { userId, status: SubmissionStatus.APPROVED },
-    });
-
-    const rejectedSubmissions = await prisma.submission.count({
-      where: { userId, status: SubmissionStatus.REJECTED },
-    });
-
-    const averageScoreResult = await prisma.submission.aggregate({
-      _avg: {
-        score: true,
-      },
-      where: { userId, status: SubmissionStatus.APPROVED, score: { not: null } },
-    });
+    const [
+      totalSubmissions,
+      pendingSubmissions,
+      approvedSubmissions,
+      rejectedSubmissions,
+      averageScoreResult,
+    ] = await prisma.$transaction([
+      prisma.submission.count({ where: { userId } }),
+      prisma.submission.count({ where: { userId, status: SubmissionStatus.PENDING } }),
+      prisma.submission.count({ where: { userId, status: SubmissionStatus.APPROVED } }),
+      prisma.submission.count({ where: { userId, status: SubmissionStatus.REJECTED } }),
+      prisma.submission.aggregate({
+        _avg: { score: true },
+        where: { userId, status: SubmissionStatus.APPROVED, score: { not: null } },
+      }),
+    ]);
 
     const averageScore = averageScoreResult._avg.score || 0;
 

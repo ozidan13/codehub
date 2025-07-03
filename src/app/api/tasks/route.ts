@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
 
     const whereClause = platformId ? { platformId } : {}
 
+    const includeSubmissions = searchParams.get('include_submissions') === 'true'
+
     const tasks = await prisma.task.findMany({
       where: whereClause,
       include: {
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
             url: true
           }
         },
-        submissions: {
+        submissions: includeSubmissions ? {
           where: { userId: session.user.id },
           select: {
             id: true,
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             updatedAt: true
           }
-        }
+        } : undefined
       },
       orderBy: [{ platformId: 'asc' }, { order: 'asc' }]
     })

@@ -153,21 +153,6 @@ function LoginForm() {
                 </Link>
               </p>
             </div>
-            
-            {/* Demo Accounts */}
-            <div className="bg-gray-50/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-200">
-              <div className="text-center text-sm text-gray-600 mb-2">
-                حسابات تجريبية:
-              </div>
-              <div className="space-y-1 text-xs text-gray-500">
-                <div className="bg-white/60 rounded-lg p-2">
-                  <strong>مدير:</strong> admin@codehub.com / admin123
-                </div>
-                <div className="bg-white/60 rounded-lg p-2">
-                  <strong>طالب:</strong> student@codehub.com / student123
-                </div>
-              </div>
-            </div>
           </form>
         </div>
       </div>

@@ -25,9 +25,12 @@ export async function GET(
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const includeTasks = searchParams.get('include_tasks') === 'true'
+
     const platform = await prisma.platform.findUnique({
       where: { id: params.id },
-      include: {
+      include: includeTasks ? {
         tasks: {
           orderBy: { order: 'asc' },
           include: {
@@ -44,7 +47,7 @@ export async function GET(
             }
           }
         }
-      }
+      } : undefined
     })
 
     if (!platform) {
@@ -111,12 +114,7 @@ export async function PUT(
 
     const platform = await prisma.platform.update({
       where: { id: params.id },
-      data: updateData,
-      include: {
-        tasks: {
-          orderBy: { order: 'asc' }
-        }
-      }
+      data: updateData
     })
 
     return NextResponse.json({ platform })
@@ -152,31 +150,31 @@ export async function DELETE(
       )
     }
 
-    // Check if platform exists
-    const platform = await prisma.platform.findUnique({
+    // Check if platform exists before checking for submissions
+    const platformExists = await prisma.platform.findUnique({
       where: { id: params.id },
-      include: {
-        tasks: {
-          include: {
-            submissions: true
-          }
-        }
-      }
+      select: { id: true }
     })
 
-    if (!platform) {
+    if (!platformExists) {
       return NextResponse.json(
         { error: 'Platform not found' },
         { status: 404 }
       )
     }
 
-    // Check if platform has submissions
-    const hasSubmissions = platform.tasks.some(task => task.submissions.length > 0)
-    
-    if (hasSubmissions) {
+    // More efficient check for submissions
+    const submissionCount = await prisma.submission.count({
+      where: {
+        task: {
+          platformId: params.id
+        }
+      }
+    })
+
+    if (submissionCount > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete platform with existing submissions' },
+        { error: 'Cannot delete platform with existing submissions. Please delete them first.' },
         { status: 400 }
       )
     }

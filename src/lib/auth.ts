@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          // name field removed as it doesn't exist in User type
+          name: user.name,
           role: user.role,
         }
       }
@@ -55,13 +55,15 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role
+        token.name = user.name
       }
       return token
     },
     async session({ session, token }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.sub!
         session.user.role = token.role as string
+        session.user.name = token.name as string
       }
       return session
     },

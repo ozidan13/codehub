@@ -49,17 +49,9 @@ export async function GET(request: NextRequest) {
         updatedAt: true,
         ...(includeProgress && {
           submissions: {
-            include: {
-              task: {
-                include: {
-                  platform: {
-                    select: {
-                      id: true,
-                      name: true
-                    }
-                  }
-                }
-              }
+            select: {
+              status: true,
+              score: true
             },
             orderBy: { createdAt: 'desc' }
           }

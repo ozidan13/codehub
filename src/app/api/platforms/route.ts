@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/platforms - Get all platforms with their tasks
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -15,13 +15,21 @@ export async function GET() {
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const includeTasks = searchParams.get('include_tasks') === 'true'
+
     const platforms = await prisma.platform.findMany({
-      include: {
+      include: includeTasks ? {
         tasks: {
           orderBy: { order: 'asc' },
           include: {
+            _count: {
+              select: { submissions: { where: { userId: session.user.id } } }
+            },
             submissions: {
               where: { userId: session.user.id },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
               select: {
                 id: true,
                 status: true,
@@ -33,7 +41,7 @@ export async function GET() {
             }
           }
         }
-      },
+      } : undefined,
       orderBy: { createdAt: 'asc' }
     })
 

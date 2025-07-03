@@ -20,6 +20,9 @@ interface Task {
   difficulty: 'EASY' | 'MEDIUM' | 'HARD'
   platformId: string
   submissions?: Submission[]
+  _count?: {
+    submissions: number
+  }
 }
 
 interface Submission {
@@ -108,7 +111,7 @@ export default function DashboardPage() {
       }
       
       const [platformsRes, statsRes] = await Promise.all([
-        fetch('/api/platforms'),
+        fetch('/api/platforms?include_tasks=true'),
         fetch('/api/dashboard/student-stats')
       ])
       
@@ -131,23 +134,27 @@ export default function DashboardPage() {
   }, [])
 
   const getTaskStatus = (task: Task) => {
-    if (!task.submissions || task.submissions.length === 0) {
-      return { status: 'not_started', color: 'gray', icon: Clock, text: 'لم يبدأ' }
+    const submissionCount = task._count?.submissions || 0;
+    if (submissionCount === 0) {
+      return { status: 'not_started', color: 'gray', icon: Clock, text: 'لم يبدأ' };
     }
-    
-    const latestSubmission = task.submissions[task.submissions.length - 1]
-    
+
+    const latestSubmission = task.submissions?.[0];
+    if (!latestSubmission) {
+      return { status: 'in_progress', color: 'blue', icon: Clock, text: 'بدأت' };
+    }
+
     switch (latestSubmission.status) {
       case 'APPROVED':
-        return { status: 'completed', color: 'green', icon: CheckCircle, text: 'مكتمل' }
+        return { status: 'completed', color: 'green', icon: CheckCircle, text: 'مكتمل' };
       case 'PENDING':
-        return { status: 'pending', color: 'yellow', icon: Clock, text: 'قيد المراجعة' }
+        return { status: 'pending', color: 'yellow', icon: Clock, text: 'قيد المراجعة' };
       case 'REJECTED':
-        return { status: 'rejected', color: 'red', icon: X, text: 'مرفوض' }
+        return { status: 'rejected', color: 'red', icon: X, text: 'مرفوض' };
       default:
-        return { status: 'not_started', color: 'gray', icon: Clock, text: 'لم يبدأ' }
+        return { status: 'not_started', color: 'gray', icon: Clock, text: 'لم يبدأ' };
     }
-  }
+  };
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task)
@@ -209,14 +216,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100" dir="rtl">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/10 to-purple-600/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-indigo-400/10 to-pink-600/10 rounded-full blur-3xl"></div>
-      </div>
-
       {/* Header */}
-      <div className="relative bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-lg">
+      <div className="relative bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4 space-x-reverse">
@@ -245,7 +246,7 @@ export default function DashboardPage() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+              <div className="bg-white rounded-lg shadow p-6 transition-shadow duration-300 hover:shadow-md">
                 <div className="flex items-center">
                   <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
                     <FileText className="h-6 w-6 text-white" />
@@ -256,7 +257,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+              <div className="bg-white rounded-lg shadow p-6 transition-shadow duration-300 hover:shadow-md">
                 <div className="flex items-center">
                   <div className="h-12 w-12 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
                     <CheckCircle className="h-6 w-6 text-white" />
@@ -267,7 +268,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+              <div className="bg-white rounded-lg shadow p-6 transition-shadow duration-300 hover:shadow-md">
                 <div className="flex items-center">
                   <div className="h-12 w-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center shadow-lg">
                     <Clock className="h-6 w-6 text-white" />
@@ -278,7 +279,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+              <div className="bg-white rounded-lg shadow p-6 transition-shadow duration-300 hover:shadow-md">
                 <div className="flex items-center">
                   <div className="h-12 w-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
                     <X className="h-6 w-6 text-white" />
@@ -289,7 +290,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+              <div className="bg-white rounded-lg shadow p-6 transition-shadow duration-300 hover:shadow-md">
                 <div className="flex items-center">
                   <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                     <Trophy className="h-6 w-6 text-white" />
@@ -306,7 +307,7 @@ export default function DashboardPage() {
         {/* Platforms and Tasks */}
         <div className="space-y-8">
           {platforms.map((platform) => (
-            <div key={platform.id} className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+            <div key={platform.id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="px-6 py-6 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-b border-white/20">
                 <div className="flex items-center">
                   <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
@@ -328,7 +329,7 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={task.id}
-                        className="bg-white/50 backdrop-blur-sm border border-white/30 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:bg-white/70"
+                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow duration-300"
                       >
                         <div className="flex items-start justify-between mb-4">
                           <h3 className="font-bold text-gray-900 text-lg">{task.title}</h3>
@@ -369,9 +370,9 @@ export default function DashboardPage() {
                                 {taskStatus.text}
                               </span>
                               
-                              {task.submissions && task.submissions.length > 0 && (
+                              {task._count && task._count.submissions > 0 && (
                                 <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
-                                  {task.submissions.length} محاولة
+                                  {task._count.submissions} محاولة
                                 </span>
                               )}
                             </div>

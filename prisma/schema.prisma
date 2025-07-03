@@ -94,6 +94,7 @@ model Task {
   platform    Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
   submissions Submission[]
   
+  @@index([platformId])
   @@map("tasks")
 }
 
@@ -113,6 +114,7 @@ model Submission {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   
   @@unique([userId, taskId]) // One submission per user per task
+  @@index([userId])
   @@map("submissions")
 }
 

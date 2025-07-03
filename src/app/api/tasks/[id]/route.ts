@@ -27,6 +27,9 @@ export async function GET(
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const includeSubmissions = searchParams.get('include_submissions') === 'true'
+
     const task = await prisma.task.findUnique({
       where: { id: params.id },
       include: {
@@ -37,7 +40,7 @@ export async function GET(
             url: true
           }
         },
-        submissions: {
+        submissions: includeSubmissions ? {
           where: { userId: session.user.id },
           select: {
             id: true,
@@ -48,7 +51,7 @@ export async function GET(
             createdAt: true,
             updatedAt: true
           }
-        }
+        } : undefined
       }
     })
 
@@ -116,16 +119,7 @@ export async function PUT(
 
     const task = await prisma.task.update({
       where: { id: params.id },
-      data: updateData,
-      include: {
-        platform: {
-          select: {
-            id: true,
-            name: true,
-            url: true
-          }
-        }
-      }
+      data: updateData
     })
 
     return NextResponse.json({ task })
@@ -161,26 +155,28 @@ export async function DELETE(
       )
     }
 
-    // Check if task exists
-    const task = await prisma.task.findUnique({
-      where: { id: params.id },
-      include: {
-        submissions: true
-      }
+    // More efficient check for submissions
+    const submissionCount = await prisma.submission.count({
+      where: { taskId: params.id }
     })
 
-    if (!task) {
+    if (submissionCount > 0) {
       return NextResponse.json(
-        { error: 'Task not found' },
-        { status: 404 }
+        { error: 'Cannot delete task with existing submissions. Please delete them first.' },
+        { status: 400 }
       )
     }
 
-    // Check if task has submissions
-    if (task.submissions.length > 0) {
+    // Check if task exists before deleting to provide a clear error message
+    const taskExists = await prisma.task.findUnique({
+      where: { id: params.id },
+      select: { id: true }
+    })
+
+    if (!taskExists) {
       return NextResponse.json(
-        { error: 'Cannot delete task with existing submissions' },
-        { status: 400 }
+        { error: 'Task not found' },
+        { status: 404 }
       )
     }
 
