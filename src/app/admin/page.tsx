@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, FC, FormEvent, JSX } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { 
@@ -10,7 +10,7 @@ import {
   Clock, 
   XCircle, 
   LogOut, 
-  User,
+  User as UserIcon,
   BarChart3,
   FileText,
   Download,
@@ -21,9 +21,11 @@ import {
   X,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RefreshCw
 } from 'lucide-react'
 
+// --- INTERFACES ---
 interface Student {
   id: string
   name: string
@@ -50,6 +52,25 @@ interface User {
   createdAt: string
 }
 
+interface Platform {
+  id: string
+  name: string
+  description: string
+  url: string
+  createdAt: string
+}
+
+interface Task {
+  id: string
+  title: string
+  description: string
+  platformId: string
+  link: string
+  order: number
+  platform: Platform
+  createdAt: string
+}
+
 interface FormData {
   name?: string
   email?: string
@@ -62,8 +83,6 @@ interface FormData {
   link?: string
   order?: number
 }
-
-
 
 interface Submission {
   id: string
@@ -107,7 +126,7 @@ interface AdminStats {
   }[]
 }
 
-// Cache implementation
+// --- CACHE IMPLEMENTATION ---
 class DataCache {
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>()
   
@@ -138,26 +157,26 @@ class DataCache {
 
 const dataCache = new DataCache()
 
+// --- MAIN ADMIN PAGE COMPONENT ---
 export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users'>('overview')
   
-  const [overviewStats, setOverviewStats] = useState<any>(null)
-  const [isOverviewLoading, setIsOverviewLoading] = useState(true)
+  // --- STATE MANAGEMENT ---
+  const [overviewStats, setOverviewStats] = useState<AdminStats | null>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [submissions, setSubmissions] = useState<Submission[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
-  const [showSubmissionModal, setShowSubmissionModal] = useState(false)
-  const [showReviewModal, setShowReviewModal] = useState(false)
-  const [feedback, setFeedback] = useState('')
-  const [score, setScore] = useState<number | null>(null)
-  const [submissionStatus, setSubmissionStatus] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING')
-  const [updating, setUpdating] = useState(false)
-  const [platforms, setPlatforms] = useState<any[]>([])
-  const [tasks, setTasks] = useState<any[]>([])
+  const [platforms, setPlatforms] = useState<Platform[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [users, setUsers] = useState<User[]>([])
+
+  const [isPageLoading, setIsPageLoading] = useState(true)
+  const [isContentLoading, setIsContentLoading] = useState(false)
+
+  // Modals and selected entities
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
+  const [showReviewModal, setShowReviewModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -165,42 +184,42 @@ export default function AdminPage() {
   const [entityType, setEntityType] = useState<'platform' | 'task' | 'user'>('platform')
   const [formData, setFormData] = useState<FormData>({})
 
-
   const [pagination, setPagination] = useState<Record<string, { page: number; limit: number; total: number; totalPages: number; }>>({
     submissions: { page: 1, limit: 10, total: 0, totalPages: 1 },
   });
 
-  const fetchDataForTab = useCallback(async (tab: string, page: number = 1) => {
-    setLoading(true);
+  // --- DATA FETCHING ---
+  const fetchAdminData = useCallback(async (tab: string, page: number = 1) => {
+    if (status !== 'authenticated') return;
+    setIsContentLoading(true);
     try {
-      // For submissions, we always fetch, bypassing cache for simplicity with pagination
-      if (tab === 'submissions') {
-        const limit = 10;
-        const response = await fetch(`/api/submissions?page=${page}&limit=${limit}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSubmissions(data.submissions || []);
-          setPagination(prev => ({ ...prev, submissions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
-        }
-        return;
-      }
-
-      // Handle caching for other tabs
-      const cacheKey = `admin-${tab}`;
+      const cacheKey = `admin-${tab}-${page}`;
       const cachedData = dataCache.get(cacheKey);
+
       if (cachedData) {
-        switch (tab) {
-          case 'students': setStudents(cachedData); break;
-          case 'platforms': setPlatforms(cachedData); break;
-          case 'tasks': setTasks(cachedData); break;
-          case 'users': setUsers(cachedData); break;
+        if (tab === 'overview') setOverviewStats(cachedData);
+        else if (tab === 'students') setStudents(cachedData);
+        else if (tab === 'submissions') {
+          setSubmissions(cachedData.submissions || []);
+          setPagination(prev => ({ ...prev, submissions: cachedData.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
         }
-        setLoading(false);
+        else if (tab === 'platforms') setPlatforms(cachedData);
+        else if (tab === 'tasks') setTasks(cachedData);
+        else if (tab === 'users') setUsers(cachedData);
+        setIsContentLoading(false);
         return;
       }
 
       let response;
       switch (tab) {
+        case 'overview':
+          response = await fetch('/api/dashboard/stats');
+          if (response.ok) {
+            const data = await response.json();
+            setOverviewStats(data);
+            dataCache.set(cacheKey, data);
+          }
+          break;
         case 'students':
           response = await fetch('/api/users?role=STUDENT&includeProgress=true');
           if (response.ok) {
@@ -214,16 +233,20 @@ export default function AdminPage() {
               pendingTasks: user.stats?.pendingSubmissions || 0,
               averageScore: user.stats?.averageScore,
               createdAt: user.createdAt,
-              stats: user.stats ? {
-                totalSubmissions: user.stats.totalSubmissions || 0,
-                approvedSubmissions: user.stats.approvedSubmissions || 0,
-                pendingSubmissions: user.stats.pendingSubmissions || 0,
-                rejectedSubmissions: user.stats.rejectedSubmissions || 0,
-                averageScore: user.stats.averageScore
-              } : undefined
+              stats: user.stats ? { ...user.stats } : undefined
             }));
             setStudents(formattedStudents);
             dataCache.set(cacheKey, formattedStudents);
+          }
+          break;
+        case 'submissions':
+          const limit = 10;
+          response = await fetch(`/api/submissions?page=${page}&limit=${limit}`);
+          if (response.ok) {
+            const data = await response.json();
+            setSubmissions(data.submissions || []);
+            setPagination(prev => ({ ...prev, submissions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+            dataCache.set(cacheKey, data);
           }
           break;
         case 'platforms':
@@ -254,98 +277,53 @@ export default function AdminPage() {
     } catch (error) {
       console.error(`Error fetching ${tab} data:`, error);
     } finally {
-      setLoading(false);
+      setIsContentLoading(false);
     }
-  }, []);
+  }, [status]);
 
+  // --- EFFECTS ---
   useEffect(() => {
-    if (status === 'loading') {
-      setLoading(true);
-      return;
-    }
-    if (!session) {
+    if (status === 'loading') return;
+    if (status === 'unauthenticated') {
       router.push('/login');
       return;
     }
-    if (session.user.role !== 'ADMIN') {
+    if (session?.user?.role !== 'ADMIN') {
       router.push('/dashboard');
       return;
     }
+    setIsPageLoading(false);
+  }, [session, status, router]);
 
-    const fetchOverviewStats = async () => {
-      setIsOverviewLoading(true);
-      setLoading(true);
-      try {
-        const response = await fetch('/api/dashboard/stats');
-        if (!response.ok) {
-          throw new Error('Failed to fetch overview stats');
-        }
-        const data = await response.json();
-        setOverviewStats(data);
-      } catch (error) {
-        console.error(error);
-        setOverviewStats(null);
-      } finally {
-        setIsOverviewLoading(false);
-        setLoading(false);
-      }
-    };
-
-    if (activeTab === 'overview') {
-      fetchOverviewStats();
-    } else {
-      const page = activeTab === 'submissions' ? pagination.submissions.page : 1;
-      fetchDataForTab(activeTab, page);
+  useEffect(() => {
+    if (!isPageLoading) {
+        fetchAdminData(activeTab, pagination.submissions.page);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, status, router, activeTab, pagination.submissions.page]);
+  }, [isPageLoading, activeTab, pagination.submissions.page]);
 
-  const handlePageChange = (tab: string, newPage: number) => {
-    if (newPage > 0 && newPage <= pagination[tab].totalPages) {
-      setPagination(prev => ({ ...prev, [tab]: { ...prev[tab], page: newPage } }));
-    }
+  // --- HANDLERS ---
+  const refreshData = (tab: string) => {
+    const page = tab === 'submissions' ? pagination.submissions.page : 1;
+    dataCache.clear(); // Consider more granular cache invalidation
+    fetchAdminData(tab, page);
+  }
+
+  const handleTabChange = (tab: 'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users') => {
+    setActiveTab(tab);
   };
 
-  const handleSubmissionClick = (submission: Submission) => {
-    setSelectedSubmission(submission)
-    setFeedback(submission.feedback || '')
-    setScore(submission.score)
-    setSubmissionStatus(submission.status)
-    setShowSubmissionModal(true)
-  }
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= pagination.submissions.totalPages) {
+      setPagination(prev => ({ ...prev, submissions: { ...prev.submissions, page: newPage } }));
+    }
+  };
 
   const handleReviewSubmission = (submission: Submission) => {
     setSelectedSubmission(submission)
     setShowReviewModal(true)
   }
 
-  const fetchAdminData = () => {
-    dataCache.clear();
-    if (activeTab === 'overview') {
-      const fetchOverviewStats = async () => {
-        setIsOverviewLoading(true);
-        try {
-          const response = await fetch('/api/dashboard/stats');
-          if (!response.ok) {
-            throw new Error('Failed to fetch overview stats');
-          }
-          const data = await response.json();
-          setOverviewStats(data);
-        } catch (error) {
-          console.error(error);
-          setOverviewStats(null);
-        } finally {
-          setIsOverviewLoading(false);
-        }
-      };
-      fetchOverviewStats();
-    } else {
-      const page = pagination[activeTab]?.page || 1;
-      fetchDataForTab(activeTab, page);
-    }
-  }
-
-  // CRUD Operations
   const handleCreate = (type: 'platform' | 'task' | 'user') => {
     setEntityType(type)
     setFormData({})
@@ -365,1171 +343,590 @@ export default function AdminPage() {
     setShowDeleteModal(true)
   }
 
-  const submitCreate = async () => {
+  const submitForm = async (method: 'POST' | 'PUT' | 'DELETE') => {
     try {
       let endpoint = ''
-      let data = { ...formData }
+      let body = method !== 'DELETE' ? JSON.stringify(formData) : undefined;
       
       switch (entityType) {
-        case 'platform':
-          endpoint = '/api/platforms'
-          break
-        case 'task':
-          endpoint = '/api/tasks'
-          break
-        case 'user':
-          endpoint = '/api/users'
-          break
+        case 'platform': endpoint = `/api/platforms${method !== 'POST' ? `/${selectedEntity.id}`: ''}`; break
+        case 'task': endpoint = `/api/tasks${method !== 'POST' ? `/${selectedEntity.id}`: ''}`; break
+        case 'user': endpoint = `/api/users${method !== 'POST' ? `?id=${selectedEntity.id}`: ''}`; break
       }
       
       const response = await fetch(endpoint, {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body
       })
       
       if (response.ok) {
         setShowCreateModal(false)
-        fetchAdminData()
-      } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to create')
-      }
-    } catch (error) {
-      console.error('Create error:', error)
-      alert('Failed to create')
-    }
-  }
-
-  const submitEdit = async () => {
-    try {
-      let endpoint = ''
-      let data = { ...formData }
-      
-      switch (entityType) {
-        case 'platform':
-          endpoint = `/api/platforms/${selectedEntity.id}`
-          break
-        case 'task':
-          endpoint = `/api/tasks/${selectedEntity.id}`
-          break
-        case 'user':
-          endpoint = `/api/users?id=${selectedEntity.id}`
-          break
-      }
-      
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-      
-      if (response.ok) {
         setShowEditModal(false)
-        fetchAdminData()
-      } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to update')
-      }
-    } catch (error) {
-      console.error('Update error:', error)
-      alert('Failed to update')
-    }
-  }
-
-  const submitDelete = async () => {
-    try {
-      let endpoint = ''
-      
-      switch (entityType) {
-        case 'platform':
-          endpoint = `/api/platforms/${selectedEntity.id}`
-          break
-        case 'task':
-          endpoint = `/api/tasks/${selectedEntity.id}`
-          break
-        case 'user':
-          // Users typically shouldn't be deleted, only deactivated
-          alert('User deletion not implemented for safety')
-          return
-      }
-      
-      const response = await fetch(endpoint, {
-        method: 'DELETE'
-      })
-      
-      if (response.ok) {
         setShowDeleteModal(false)
-        fetchAdminData()
+        refreshData(activeTab)
       } else {
         const error = await response.json()
-        alert(error.error || 'Failed to delete')
+        alert(error.error || `Failed to ${method.toLowerCase()} entity`)
       }
     } catch (error) {
-      console.error('Delete error:', error)
-      alert('Failed to delete')
+      console.error(`${method} error:`, error)
+      alert(`An error occurred while trying to ${method.toLowerCase()} the entity.`)
     }
   }
 
-  const handleUpdateSubmission = async () => {
-    if (!selectedSubmission) return
-    
-    setUpdating(true)
-    try {
-      const response = await fetch(`/api/submissions/${selectedSubmission.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status: submissionStatus,
-          score,
-          feedback
-        })
-      })
-      
-      if (response.ok) {
-        setShowSubmissionModal(false)
-        // Clear cache and refresh data
-        dataCache.clear()
-        fetchAdminData()
-      }
-    } catch (error) {
-      console.error('Error updating submission:', error)
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const baseClasses = "px-2 py-1 text-xs font-medium rounded-full"
-    switch (status) {
-      case 'APPROVED':
-        return `${baseClasses} bg-green-100 text-green-800`
-      case 'PENDING':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`
-      case 'REJECTED':
-        return `${baseClasses} bg-red-100 text-red-800`
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`
-    }
-  }
-
-  if (loading) {
+  // --- RENDER LOGIC ---
+  if (isPageLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <p className="text-gray-600 font-medium">جاري تحميل البيانات...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32 mb-4 mx-auto"></div>
+          <h2 className="text-2xl font-semibold text-gray-700">جاري التحميل...</h2>
+          <p className="text-gray-500">يتم التحقق من صلاحيات الدخول.</p>
         </div>
       </div>
     )
   }
 
+  const renderContent = () => {
+    if (isContentLoading) {
+      return (
+        <div className="flex items-center justify-center h-96">
+            <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+        </div>
+      )
+    }
+
+    switch (activeTab) {
+      case 'overview': return <OverviewTab stats={overviewStats} />
+      case 'students': return <StudentsTab students={students} />
+      case 'submissions': return <SubmissionsTab 
+                                submissions={submissions} 
+                                pagination={pagination.submissions} 
+                                onPageChange={handlePageChange} 
+                                onReview={handleReviewSubmission} 
+                              />
+      case 'platforms': return <PlatformsTab platforms={platforms} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('platform')} />
+      case 'tasks': return <TasksTab tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('task')} />
+      case 'users': return <UsersTab users={users} onEdit={handleEdit} onCreate={() => handleCreate('user')} />
+      default: return <div className="text-center p-8">الرجاء اختيار تبويب لعرض البيانات</div>;
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100" dir="rtl">
-      
-      {/* Header */}
-      <div className="relative bg-white/70 border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Briefcase className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                  لوحة المشرف
-                </h1>
-                <p className="text-gray-600">إدارة الطلاب والمهام</p>
-              </div>
-            </div>
-            <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              className="flex items-center space-x-2 space-x-reverse bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>تسجيل الخروج</span>
-            </button>
-          </div>
+    <div dir="rtl" className="flex h-screen bg-gray-100 font-sans">
+      {/* Sidebar */}
+      <aside className="w-64 bg-gray-800 text-white flex flex-col shrink-0">
+        <div className="p-4 border-b border-gray-700">
+          <h1 className="text-2xl font-bold">لوحة التحكم</h1>
         </div>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Navigation Tabs */}
-        <div className="border-b border-gray-200 mb-8">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { id: 'overview', name: 'Overview', icon: BarChart3 },
-            { id: 'students', name: 'Students', icon: Users },
-            { id: 'submissions', name: 'Submissions', icon: FileText },
-            { id: 'platforms', name: 'Platforms', icon: Briefcase },
-            { id: 'tasks', name: 'Tasks', icon: Clipboard },
-            { id: 'users', name: 'Users', icon: User },
-            ].map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.name}</span>
-                </button>
-              )
-            })}
-          </nav>
+        <nav className="flex-1 p-2 space-y-2">
+          <TabButton icon={<BarChart3 />} label="نظرة عامة" active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} />
+          <TabButton icon={<Users />} label="الطلاب" active={activeTab === 'students'} onClick={() => handleTabChange('students')} />
+          <TabButton icon={<FileText />} label="التقديمات" active={activeTab === 'submissions'} onClick={() => handleTabChange('submissions')} />
+          <TabButton icon={<Briefcase />} label="المنصات" active={activeTab === 'platforms'} onClick={() => handleTabChange('platforms')} />
+          <TabButton icon={<Clipboard />} label="المهام" active={activeTab === 'tasks'} onClick={() => handleTabChange('tasks')} />
+          <TabButton icon={<UserIcon />} label="المستخدمون" active={activeTab === 'users'} onClick={() => handleTabChange('users')} />
+        </nav>
+        <div className="p-4 border-t border-gray-700">
+          <button 
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+          >
+            <LogOut className="ml-2 h-5 w-5" />
+            تسجيل الخروج
+          </button>
         </div>
+      </aside>
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && isOverviewLoading && (
-          <div className="flex justify-center items-center p-8"><p>Loading statistics...</p></div>
-        )}
-        {activeTab === 'overview' && !isOverviewLoading && overviewStats && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <Users className="h-8 w-8 text-blue-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Students</p>
-                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalStudents}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <FileText className="h-8 w-8 text-green-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Submissions</p>
-                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalSubmissions}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <Clock className="h-8 w-8 text-yellow-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Pending Submissions</p>
-                    <p className="text-2xl font-bold text-gray-900">{overviewStats.pendingSubmissions}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <CheckCircle className="h-8 w-8 text-cyan-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Approved Submissions</p>
-                    <p className="text-2xl font-bold text-gray-900">{overviewStats.approvedSubmissions}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <XCircle className="h-8 w-8 text-red-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Rejected Submissions</p>
-                    <p className="text-2xl font-bold text-gray-900">{overviewStats.rejectedSubmissions}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <Star className="h-8 w-8 text-purple-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Average Score</p>
-                    <p className="text-2xl font-bold text-gray-900">{typeof overviewStats.averageScore === 'number' ? overviewStats.averageScore.toFixed(2) : 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <BookOpen className="h-8 w-8 text-indigo-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Platforms</p>
-                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalPlatforms}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                  <Users className="h-8 w-8 text-gray-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Users</p>
-                    <p className="text-2xl font-bold text-gray-900">{overviewStats.totalUsers}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Main Content */}
+      <main className="flex-1 p-6 overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-md p-6 min-h-full">
+          {renderContent()}
+        </div>
+      </main>
 
-        {/* Students Tab */}
-        {activeTab === 'students' && (
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Students</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Submissions
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Approved
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pending
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Average Score
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Joined
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {students.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                          <div className="text-sm text-gray-500">{student.email}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {student.stats?.totalSubmissions || 0}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                          <span className="text-sm text-gray-900">{student.stats?.approvedSubmissions || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <Clock className="h-4 w-4 text-yellow-500 mr-1" />
-                          <span className="text-sm text-gray-900">{student.stats?.pendingSubmissions || 0}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {student.stats?.averageScore ? `${student.stats.averageScore}%` : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(student.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Submissions Tab Content */}
-        {activeTab === 'submissions' && (
-          <div className="mt-4 flex justify-between items-center">
-            <div>
-              <span className="text-sm text-gray-700">
-                Page <span className="font-medium">{pagination.submissions.page}</span> of <span className="font-medium">{pagination.submissions.totalPages}</span> ({pagination.submissions.total} total submissions)
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handlePageChange('submissions', pagination.submissions.page - 1)}
-                disabled={pagination.submissions.page <= 1}
-                className="p-2 text-gray-500 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handlePageChange('submissions', pagination.submissions.page + 1)}
-                disabled={pagination.submissions.page >= pagination.submissions.totalPages}
-                className="p-2 text-gray-500 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'submissions' && (
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Submissions</h2>
-            </div>
-            <div className="divide-y divide-gray-200">
-              {submissions.map((submission) => (
-                <div key={submission.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <h3 className="text-sm font-medium text-gray-900">
-                          {submission.task?.title}
-                        </h3>
-                        <span className={getStatusBadge(submission.status)}>
-                          {submission.status}
-                        </span>
-                        {submission.score !== null && (
-                          <div className="flex items-center space-x-1">
-                            <Star className="h-4 w-4 text-yellow-500" />
-                            <span className="text-sm font-medium text-gray-900">{submission.score}%</span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {submission.task?.platform?.name} • {submission.user?.name}
-                      </p>
-                      <p className="text-sm text-gray-800 mt-2">{submission.summary}</p>
-                      {submission.feedback && (
-                        <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-800">
-                          <strong>Feedback:</strong> {submission.feedback}
-                        </div>
-                      )}
-                     
-                    </div>
-                    <div className="ml-4">
-                      <button
-                        onClick={() => handleReviewSubmission(submission)}
-                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                      >
-                        Review
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Platforms Tab */}
-        {activeTab === 'platforms' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Platforms Management</h2>
-              <button
-                onClick={() => handleCreate('platform')}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Add Platform
-              </button>
-            </div>
-            
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        URL
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tasks
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Created
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {platforms.map((platform) => (
-                      <tr key={platform.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{platform.name}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-xs truncate">
-                            {platform.description || 'No description'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <a
-                            href={platform.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-900 text-sm"
-                          >
-                            Visit Platform
-                          </a>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {platform.tasks?.length || 0} tasks
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(platform.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button
-                            onClick={() => handleEdit(platform, 'platform')}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(platform, 'platform')}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tasks Tab */}
-        {activeTab === 'tasks' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Tasks Management</h2>
-              <button
-                onClick={() => handleCreate('task')}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Add Task
-              </button>
-            </div>
-            
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Title
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Platform
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Order
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Submissions
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {tasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                          {task.link && (
-                            <a
-                              href={task.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-600 hover:text-blue-900"
-                            >
-                              View Task
-                            </a>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{task.platform?.name}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-xs truncate">
-                            {task.description || 'No description'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {task.order}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {task.submissions?.length || 0} submissions
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button
-                            onClick={() => handleEdit(task, 'task')}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(task, 'task')}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Review Modal */}
+      {/* Modals */}
       {showReviewModal && selectedSubmission && (
-        <ReviewModal
-          submission={selectedSubmission}
-          onClose={() => {
-            setShowReviewModal(false)
-            setSelectedSubmission(null)
-          }}
+        <ReviewModal 
+          submission={selectedSubmission} 
+          onClose={() => setShowReviewModal(false)} 
           onUpdate={() => {
-            fetchAdminData()
-            setShowReviewModal(false)
-            setSelectedSubmission(null)
+            setShowReviewModal(false);
+            refreshData('submissions');
           }}
         />
       )}
-
-      {/* Create Modal */}
-      {activeTab === 'users' && (
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Users</h3>
-                <button
-                  onClick={() => handleCreate('user')}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <Plus className="-ml-1 mr-2 h-4 w-4" />
-                  Add User
-                </button>
-              </div>
-              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                <table className="min-w-full divide-y divide-gray-300">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
-                      <tr key={user.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{user.role}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleEdit(user, 'user')}
-                            className="text-indigo-600 hover:text-indigo-900 mr-4"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user, 'user')}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Create New {entityType?.charAt(0).toUpperCase() + entityType?.slice(1)}
-              </h3>
-              <form onSubmit={submitCreate} className="space-y-4">
-                {entityType === 'platform' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Name</label>
-                      <input
-                        type="text"
-                        value={formData.name || ''}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Description</label>
-                      <textarea
-                        value={formData.description || ''}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">URL</label>
-                      <input
-                        type="url"
-                        value={formData.url || ''}
-                        onChange={(e) => setFormData({...formData, url: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-                {entityType === 'task' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Title</label>
-                      <input
-                        type="text"
-                        value={formData.title || ''}
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Platform</label>
-                      <select
-                        value={formData.platformId || ''}
-                        onChange={(e) => setFormData({...formData, platformId: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      >
-                        <option value="">Select Platform</option>
-                        {platforms.map((platform) => (
-                          <option key={platform.id} value={platform.id}>
-                            {platform.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Description</label>
-                      <textarea
-                        value={formData.description || ''}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Link</label>
-                      <input
-                        type="url"
-                        value={formData.link || ''}
-                        onChange={(e) => setFormData({...formData, link: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Order</label>
-                      <input
-                        type="number"
-                        value={formData.order || ''}
-                        onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    Create
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+      {showCreateModal && (
+        <CrudModal
+          mode="create"
+          entityType={entityType}
+          formData={formData}
+          setFormData={setFormData}
+          platforms={platforms}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={() => submitForm('POST')}
+        />
       )}
-
-      {/* Edit Modal */}
       {showEditModal && selectedEntity && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Edit {entityType?.charAt(0).toUpperCase() + entityType?.slice(1)}
-              </h3>
-              <form onSubmit={submitEdit} className="space-y-4">
-                {entityType === 'platform' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Name</label>
-                      <input
-                        type="text"
-                        value={formData.name || ''}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Description</label>
-                      <textarea
-                        value={formData.description || ''}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">URL</label>
-                      <input
-                        type="url"
-                        value={formData.url || ''}
-                        onChange={(e) => setFormData({...formData, url: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-                {entityType === 'task' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Title</label>
-                      <input
-                        type="text"
-                        value={formData.title || ''}
-                        onChange={(e) => setFormData({...formData, title: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Platform</label>
-                      <select
-                        value={formData.platformId || ''}
-                        onChange={(e) => setFormData({...formData, platformId: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      >
-                        <option value="">Select Platform</option>
-                        {platforms.map((platform) => (
-                          <option key={platform.id} value={platform.id}>
-                            {platform.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Description</label>
-                      <textarea
-                        value={formData.description || ''}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Link</label>
-                      <input
-                        type="url"
-                        value={formData.link || ''}
-                        onChange={(e) => setFormData({...formData, link: e.target.value})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Order</label>
-                      <input
-                        type="number"
-                        value={formData.order || ''}
-                        onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-                {entityType === 'user' && (
-                  <>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                      <input
-                        type="text"
-                        value={formData.name || ''}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                      <input
-                        type="email"
-                        value={formData.email || ''}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                      <input
-                        type="password"
-                        value={formData.password || ''}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        minLength={6}
-                        required
-                      />
-                    </div>
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-                      <select
-                        value={formData.role || 'STUDENT'}
-                        onChange={(e) => setFormData({...formData, role: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="STUDENT">Student</option>
-                        <option value="ADMIN">Admin</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                  >
-                    Update
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <CrudModal
+          mode="edit"
+          entityType={entityType}
+          entityData={selectedEntity}
+          formData={formData}
+          setFormData={setFormData}
+          platforms={platforms}
+          onClose={() => setShowEditModal(false)}
+          onSubmit={() => submitForm('PUT')}
+        />
       )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedEntity && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Delete {entityType?.charAt(0).toUpperCase() + entityType?.slice(1)}
-              </h3>
-              <p className="text-sm text-gray-500 mb-6">
-                Are you sure you want to delete this {entityType}? This action cannot be undone.
-                {entityType === 'platform' && ' All associated tasks will also be deleted.'}
-                {entityType === 'task' && ' All associated submissions will also be deleted.'}
-              </p>
-              <div className="flex justify-center space-x-3">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitDelete}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+       {showDeleteModal && selectedEntity && (
+        <DeleteConfirmationModal
+          entityType={entityType}
+          entityName={selectedEntity.name || selectedEntity.title || ''}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => submitForm('DELETE')}
+        />
       )}
     </div>
   )
 }
 
-// Review Modal Component
+// --- CHILD COMPONENTS ---
+
+const TabButton: FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${active ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`}>
+    {icon}
+    <span className="mr-3">{label}</span>
+  </button>
+);
+
+const PageHeader: FC<{ title: string; children?: React.ReactNode }> = ({ title, children }) => (
+    <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800 capitalize">{title}</h2>
+        <div className="flex items-center space-x-4 space-x-reverse">{children}</div>
+    </div>
+);
+
+const OverviewTab: FC<{ stats: AdminStats | null }> = ({ stats }) => {
+  if (!stats) return <div>لا توجد بيانات لعرضها.</div>;
+  return (
+    <>
+      <PageHeader title="نظرة عامة" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard icon={<Users />} title="إجمالي المستخدمين" value={stats.totalUsers} />
+        <StatCard icon={<UserIcon />} title="إجمالي الطلاب" value={stats.totalStudents} />
+        <StatCard icon={<FileText />} title="إجمالي التقديمات" value={stats.totalSubmissions} />
+        <StatCard icon={<Clock />} title="التقديمات المعلقة" value={stats.pendingSubmissions} color="text-yellow-500" />
+      </div>
+    </>
+  );
+};
+
+const StatCard: FC<{ icon: React.ReactNode; title: string; value: number | string; color?: string }> = ({ icon, title, value, color = 'text-blue-500' }) => (
+  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
+    <div className={`p-3 rounded-full bg-blue-100 ${color}`}>{icon}</div>
+    <div className="mr-4">
+      <p className="text-sm font-medium text-gray-600">{title}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    </div>
+  </div>
+);
+
+const StudentsTab: FC<{ students: Student[] }> = ({ students }) => (
+  <>
+    <PageHeader title="الطلاب" />
+    <Table
+      headers={['الاسم', 'البريد الإلكتروني', 'المهام المكتملة', 'متوسط الدرجات', 'تاريخ التسجيل']}
+      rows={students.map(s => [
+        s.name,
+        s.email,
+        `${s.completedTasks}/${s.totalTasks}`,
+        s.averageScore?.toFixed(2) || 'N/A',
+        new Date(s.createdAt).toLocaleDateString('ar-EG'),
+      ])}
+    />
+  </>
+);
+
+const SubmissionsTab: FC<{ 
+  submissions: Submission[]; 
+  pagination: { page: number; totalPages: number; total: number };
+  onPageChange: (page: number) => void;
+  onReview: (submission: Submission) => void;
+}> = ({ submissions, pagination, onPageChange, onReview }) => (
+  <>
+    <PageHeader title="التقديمات" />
+    <Table
+      headers={['الطالب', 'المهمة', 'الحالة', 'الدرجة', 'تاريخ التقديم', 'الإجراءات']}
+      rows={submissions.map(s => [
+        s.user?.name || 'غير معروف',
+        s.task?.title || 'غير معروف',
+        <StatusBadge status={s.status} />,
+        s.score ?? 'لم تقيم',
+        new Date(s.createdAt).toLocaleDateString('ar-EG'),
+        <button onClick={() => onReview(s)} className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600">مراجعة</button>
+      ])}
+    />
+    <PaginationControl {...pagination} onPageChange={onPageChange} />
+  </>
+);
+
+const PlatformsTab: FC<{ platforms: Platform[]; onEdit: (p: Platform, t: 'platform') => void; onDelete: (p: Platform, t: 'platform') => void; onCreate: () => void; }> = ({ platforms, onEdit, onDelete, onCreate }) => (
+  <>
+    <PageHeader title="المنصات">
+      <button onClick={onCreate} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+        <Plus className="ml-2 h-5 w-5" />
+        إضافة منصة
+      </button>
+    </PageHeader>
+    <Table
+      headers={['الاسم', 'الوصف', 'الرابط', 'تاريخ الإنشاء', 'الإجراءات']}
+      rows={platforms.map(p => [
+        p.name,
+        p.description,
+        <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">زيارة</a>,
+        new Date(p.createdAt).toLocaleDateString('ar-EG'),
+        <ActionButtons onEdit={() => onEdit(p, 'platform')} onDelete={() => onDelete(p, 'platform')} />
+      ])}
+    />
+  </>
+);
+
+const TasksTab: FC<{ tasks: Task[]; onEdit: (t: Task, type: 'task') => void; onDelete: (t: Task, type: 'task') => void; onCreate: () => void; }> = ({ tasks, onEdit, onDelete, onCreate }) => (
+  <>
+    <PageHeader title="المهام">
+        <button onClick={onCreate} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+            <Plus className="ml-2 h-5 w-5" />
+            إضافة مهمة
+        </button>
+    </PageHeader>
+    <Table
+      headers={['العنوان', 'المنصة', 'الترتيب', 'تاريخ الإنشاء', 'الإجراءات']}
+      rows={tasks.map(t => [
+        t.title,
+        t.platform?.name || 'N/A',
+        t.order,
+        new Date(t.createdAt).toLocaleDateString('ar-EG'),
+        <ActionButtons onEdit={() => onEdit(t, 'task')} onDelete={() => onDelete(t, 'task')} />
+      ])}
+    />
+  </>
+);
+
+const UsersTab: FC<{ users: User[]; onEdit: (u: User, type: 'user') => void; onCreate: () => void; }> = ({ users, onEdit, onCreate }) => (
+  <>
+    <PageHeader title="المستخدمون">
+        <button onClick={onCreate} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+            <Plus className="ml-2 h-5 w-5" />
+            إضافة مستخدم
+        </button>
+    </PageHeader>
+    <Table
+      headers={['الاسم', 'البريد الإلكتروني', 'الدور', 'تاريخ التسجيل', 'الإجراءات']}
+      rows={users.map(u => [
+        u.name,
+        u.email,
+        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${u.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{u.role}</span>,
+        new Date(u.createdAt).toLocaleDateString('ar-EG'),
+        <ActionButtons onEdit={() => onEdit(u, 'user')} />
+      ])}
+    />
+  </>
+);
+
+const Table: FC<{ headers: string[]; rows: (string | number | JSX.Element)[][] }> = ({ headers, rows }) => (
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          {headers.map(header => (
+            <th key={header} scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              {header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-200">
+        {rows.length > 0 ? rows.map((row, i) => (
+          <tr key={i} className="hover:bg-gray-50">
+            {row.map((cell, j) => (
+              <td key={j} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{cell}</td>
+            ))}
+          </tr>
+        )) : (
+          <tr>
+            <td colSpan={headers.length} className="px-6 py-4 text-center text-gray-500">لا توجد بيانات</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+);
+
+const StatusBadge: FC<{ status: 'PENDING' | 'APPROVED' | 'REJECTED' }> = ({ status }) => {
+  const config = {
+    PENDING: { text: 'معلق', color: 'bg-yellow-100 text-yellow-800' },
+    APPROVED: { text: 'مقبول', color: 'bg-green-100 text-green-800' },
+    REJECTED: { text: 'مرفوض', color: 'bg-red-100 text-red-800' },
+  }
+  return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${config[status].color}`}>{config[status].text}</span>
+};
+
+const ActionButtons: FC<{ onEdit: () => void; onDelete?: () => void; }> = ({ onEdit, onDelete }) => (
+  <div className="flex space-x-2 space-x-reverse">
+    <button onClick={onEdit} className="text-indigo-600 hover:text-indigo-900">تعديل</button>
+    {onDelete && <button onClick={onDelete} className="text-red-600 hover:text-red-900">حذف</button>}
+  </div>
+);
+
+const PaginationControl: FC<{ page: number; totalPages: number; total: number; onPageChange: (page: number) => void; }> = ({ page, totalPages, total, onPageChange }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="mt-4 flex justify-between items-center">
+      <div>
+        <span className="text-sm text-gray-700">
+          صفحة <span className="font-medium">{page}</span> من <span className="font-medium">{totalPages}</span> ({total} إجمالي التقديمات)
+        </span>
+      </div>
+      <div className="flex space-x-2 space-x-reverse">
+        <button onClick={() => onPageChange(page - 1)} disabled={page <= 1} className="p-2 rounded-md bg-gray-200 disabled:opacity-50">
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} className="p-2 rounded-md bg-gray-200 disabled:opacity-50">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  )
+};
+
+// --- MODAL COMPONENTS ---
+
 interface ReviewModalProps {
   submission: Submission
   onClose: () => void
   onUpdate: () => void
 }
 
-function ReviewModal({ submission, onClose, onUpdate }: ReviewModalProps) {
-  const [status, setStatus] = useState(submission.status)
-  const [score, setScore] = useState(submission.score?.toString() || '')
+const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate }) => {
   const [feedback, setFeedback] = useState(submission.feedback || '')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState('')
+  const [score, setScore] = useState<number | string>(submission.score || '')
+  const [status, setStatus] = useState(submission.status)
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setError('')
-
+  const handleSubmit = async () => {
+    setIsUpdating(true);
     try {
-      const response = await fetch(`/api/submissions/${submission.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status,
-          score: score ? parseInt(score) : null,
-          feedback: feedback || null,
-        }),
-      })
-
+      const response = await fetch(`/api/submissions/${submission.id}/review`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          feedback,
+          score: score ? Number(score) : null,
+          status
+        })
+      });
       if (response.ok) {
-        onUpdate()
+        onUpdate();
       } else {
-        const data = await response.json()
-        setError(data.error || 'Failed to update submission')
+        const error = await response.json();
+        alert(`Failed to update: ${error.error}`);
       }
     } catch (error) {
-      setError('An error occurred while updating')
+      console.error('Update error:', error);
+      alert('An error occurred while updating the submission.');
     } finally {
-      setIsSubmitting(false)
+      setIsUpdating(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Review Submission: {submission.task?.title}
-        </h3>
-        
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 mb-2">
-            <strong>Student:</strong> {submission.user?.name} ({submission.user?.email})
-          </p>
-          <p className="text-sm text-gray-600 mb-2">
-            <strong>Platform:</strong> {submission.task?.platform?.name}
-          </p>
-          <p className="text-sm text-gray-600 mb-2">
-            <strong>Submitted:</strong> {new Date(submission.createdAt).toLocaleString()}
-          </p>
-          <div className="mt-3">
-            <strong className="text-sm text-gray-600">Summary:</strong>
-            <p className="text-sm text-gray-800 mt-1">{submission.summary}</p>
-          </div>
-          {/* File download removed as fileUrl functionality has been removed */}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" dir="rtl">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
+        <div className="flex justify-between items-center border-b pb-3 mb-4">
+          <h2 className="text-xl font-bold">مراجعة التقديم</h2>
+          <button onClick={onClose}><X className="h-6 w-6" /></button>
         </div>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
+          <p><strong>الطالب:</strong> {submission.user?.name}</p>
+          <p><strong>المهمة:</strong> {submission.task?.title}</p>
+          {submission.content && <div className="p-2 bg-gray-100 rounded"><strong>المحتوى:</strong> <pre className="whitespace-pre-wrap font-sans">{submission.content}</pre></div>}
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
+            <label className="block text-sm font-medium text-gray-700">الحالة</label>
+            <select value={status} onChange={e => setStatus(e.target.value as any)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+              <option value="PENDING">معلق</option>
+              <option value="APPROVED">مقبول</option>
+              <option value="REJECTED">مرفوض</option>
             </select>
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Score (0-100)
-            </label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={score}
-              onChange={(e) => setScore(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter score (optional)"
-            />
+            <label className="block text-sm font-medium text-gray-700">الدرجة (من 100)</label>
+            <input type="number" value={score} onChange={e => setScore(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Feedback
-            </label>
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Provide feedback to the student..."
-            />
+            <label className="block text-sm font-medium text-gray-700">ملاحظات</label>
+            <textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={4} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
           </div>
-          
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Updating...' : 'Update Review'}
-            </button>
+        </div>
+        <div className="flex justify-end space-x-3 pt-4 mt-4 border-t space-x-reverse">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">إلغاء</button>
+          <button onClick={handleSubmit} disabled={isUpdating} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-300">
+            {isUpdating ? 'جاري التحديث...' : 'تحديث'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface CrudModalProps {
+  mode: 'create' | 'edit';
+  entityType: 'platform' | 'task' | 'user';
+  entityData?: any;
+  formData: FormData;
+  setFormData: (data: FormData) => void;
+  platforms?: Platform[];
+  onClose: () => void;
+  onSubmit: () => void;
+}
+
+const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData, setFormData, platforms, onClose, onSubmit }) => {
+  useEffect(() => {
+    if (mode === 'edit' && entityData) {
+      setFormData(entityData);
+    } else {
+      setFormData({});
+    }
+  }, [mode, entityData, setFormData]);
+
+  const title = `${mode === 'create' ? 'إنشاء' : 'تعديل'} ${{
+    platform: 'منصة',
+    task: 'مهمة',
+    user: 'مستخدم'
+  }[entityType]}`;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleFormSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    onSubmit();
+  }
+
+  const renderFields = () => {
+    switch (entityType) {
+      case 'platform':
+        return (
+          <>
+            <InputField name="name" label="الاسم" value={formData.name || ''} onChange={handleChange} />
+            <InputField name="url" label="الرابط" value={formData.url || ''} onChange={handleChange} />
+            <TextAreaField name="description" label="الوصف" value={formData.description || ''} onChange={handleChange} />
+          </>
+        );
+      case 'task':
+        return (
+          <>
+            <InputField name="title" label="العنوان" value={formData.title || ''} onChange={handleChange} />
+            <SelectField name="platformId" label="المنصة" value={formData.platformId || ''} onChange={handleChange} options={platforms?.map(p => ({ value: p.id, label: p.name })) || []} />
+            <InputField name="link" label="رابط المهمة" value={formData.link || ''} onChange={handleChange} />
+            <InputField name="order" label="الترتيب" type="number" value={formData.order || ''} onChange={handleChange} />
+            <TextAreaField name="description" label="الوصف" value={formData.description || ''} onChange={handleChange} />
+          </>
+        );
+      case 'user':
+        return (
+          <>
+            <InputField name="name" label="الاسم" value={formData.name || ''} onChange={handleChange} />
+            <InputField name="email" label="البريد الإلكتروني" type="email" value={formData.email || ''} onChange={handleChange} />
+            {mode === 'create' && <InputField name="password" label="كلمة المرور" type="password" value={formData.password || ''} onChange={handleChange} />}
+            <SelectField name="role" label="الدور" value={formData.role || ''} onChange={handleChange} options={[{value: 'STUDENT', label: 'طالب'}, {value: 'ADMIN', label: 'مدير'}]} />
+          </>
+        );
+      default: return null;
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50" dir="rtl">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+        <div className="flex justify-between items-center border-b pb-3 mb-4">
+          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+          <button onClick={onClose}><X className="h-6 w-6" /></button>
+        </div>
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          {renderFields()}
+          <div className="flex justify-end space-x-3 pt-4 border-t mt-4 space-x-reverse">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">إلغاء</button>
+            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">حفظ</button>
           </div>
         </form>
       </div>
     </div>
   )
 }
+
+const InputField: FC<{ name: string, label: string, value: string | number, onChange: any, type?: string }> = ({ name, label, value, onChange, type = 'text' }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <input type={type} name={name} value={value} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+  </div>
+);
+
+const TextAreaField: FC<{ name: string, label: string, value: string, onChange: any }> = ({ name, label, value, onChange }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <textarea name={name} value={value} onChange={onChange} rows={4} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+  </div>
+);
+
+const SelectField: FC<{ name: string, label: string, value: string, onChange: any, options: {value: string, label: string}[] }> = ({ name, label, value, onChange, options }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <select name={name} value={value} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required>
+      <option value="">اختر...</option>
+      {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+    </select>
+  </div>
+);
+
+interface DeleteConfirmationModalProps {
+  entityType: string;
+  entityName: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+const DeleteConfirmationModal: FC<DeleteConfirmationModalProps> = ({ entityType, entityName, onClose, onConfirm }) => {
+  const typeMap: { [key: string]: string } = {
+    platform: 'المنصة',
+    task: 'المهمة',
+    user: 'المستخدم'
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50" dir="rtl">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+        <h3 className="text-lg font-bold text-gray-900">تأكيد الحذف</h3>
+        <div className="mt-2">
+          <p className="text-sm text-gray-600">
+            هل أنت متأكد أنك تريد حذف {typeMap[entityType] || 'العنصر'} "{entityName}"؟ لا يمكن التراجع عن هذا الإجراء.
+          </p>
+        </div>
+        <div className="mt-6 flex justify-end space-x-3 space-x-reverse">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+            إلغاء
+          </button>
+          <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
+            حذف
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
