@@ -720,8 +720,8 @@ const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate }) =>
   const handleSubmit = async () => {
     setIsUpdating(true);
     try {
-      const response = await fetch(`/api/submissions/${submission.id}/review`, {
-        method: 'PUT',
+      const response = await fetch(`/api/submissions/${submission.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           feedback,
