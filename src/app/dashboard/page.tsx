@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, FC } from 'react'
+import { useState, useEffect, useCallback, FC, ReactNode } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Clock, CheckCircle, Upload, X, FileText, Trophy, LogOut, RefreshCw } from 'lucide-react'
+import { BookOpen, Clock, CheckCircle, Upload, X, FileText, Trophy, LogOut, RefreshCw, Star, TrendingUp, Award } from 'lucide-react'
 
 // --- INTERFACES ---
 interface Platform {
@@ -157,7 +157,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50" dir="rtl">
       <DashboardHeader userName={session?.user?.name || ''} onRefresh={handleRefresh} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -166,7 +166,7 @@ export default function DashboardPage() {
         ) : (
           <>
             <StatsSection stats={stats} />
-            <div className="space-y-8 mt-8">
+            <div className="space-y-12 mt-10">
               {platforms.map((platform) => (
                 <PlatformCard key={platform.id} platform={platform} onTaskClick={handleTaskClick} />
               ))}
@@ -189,7 +189,7 @@ export default function DashboardPage() {
 // --- CHILD COMPONENTS ---
 
 const PageLoader: FC = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gray-100">
+  <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-blue-100">
     <div className="text-center">
       <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32 mb-4 mx-auto"></div>
       <h2 className="text-2xl font-semibold text-gray-700">جاري التحميل...</h2>
@@ -199,23 +199,23 @@ const PageLoader: FC = () => (
 );
 
 const DashboardHeader: FC<{ userName: string; onRefresh: () => void; }> = ({ userName, onRefresh }) => (
-  <header className="bg-white shadow-sm">
+  <header className="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-40">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center py-4">
         <div className="flex items-center space-x-4 space-x-reverse">
-          <div className="h-10 w-10 bg-blue-600 rounded-lg flex items-center justify-center">
-            <BookOpen className="h-6 w-6 text-white" />
+          <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+            <BookOpen className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">لوحة التعلم</h1>
-            <p className="text-sm text-gray-500">أهلاً بك مجدداً، {userName}!</p>
+            <h1 className="text-2xl font-bold text-gray-800">لوحة التعلم</h1>
+            <p className="text-sm text-gray-500">أهلاً بك مجدداً، <span className="font-semibold text-gray-700">{userName}</span>!</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2 space-x-reverse">
-            <button onClick={onRefresh} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw className="h-5 w-5" /></button>
+        <div className="flex items-center space-x-3 space-x-reverse">
+            <button onClick={onRefresh} className="p-2 text-gray-600 hover:bg-gray-200/80 rounded-full transition-colors"><RefreshCw className="h-5 w-5" /></button>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="flex items-center space-x-2 space-x-reverse bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+              className="flex items-center space-x-2 space-x-reverse bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-px text-sm font-medium"
             >
               <LogOut className="h-4 w-4" />
               <span>تسجيل الخروج</span>
@@ -229,32 +229,41 @@ const DashboardHeader: FC<{ userName: string; onRefresh: () => void; }> = ({ use
 const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
   if (!stats) return null;
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <StatCard icon={<FileText />} title="إجمالي التسليمات" value={stats.totalSubmissions} />
-      <StatCard icon={<CheckCircle />} title="المقبولة" value={stats.approvedSubmissions} color="text-green-500" />
-      <StatCard icon={<Clock />} title="قيد المراجعة" value={stats.pendingSubmissions} color="text-yellow-500" />
-      <StatCard icon={<Trophy />} title="متوسط الدرجات" value={stats.averageScore ? `${stats.averageScore.toFixed(1)}%` : 'N/A'} color="text-purple-500" />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+      <StatCard icon={<FileText />} title="إجمالي التسليمات" value={stats.totalSubmissions} color="blue" />
+      <StatCard icon={<CheckCircle />} title="المقبولة" value={stats.approvedSubmissions} color="green" />
+      <StatCard icon={<Clock />} title="قيد المراجعة" value={stats.pendingSubmissions} color="yellow" />
+      <StatCard icon={<Trophy />} title="متوسط الدرجات" value={stats.averageScore ? `${stats.averageScore.toFixed(1)}%` : 'N/A'} color="purple" />
     </div>
   );
 }
 
-const StatCard: FC<{ icon: React.ReactNode; title: string; value: number | string; color?: string }> = ({ icon, title, value, color = 'text-blue-500' }) => (
-  <div className="bg-white p-4 rounded-lg shadow-sm flex items-center">
-    <div className={`p-2 rounded-lg bg-gray-100 ${color}`}>{icon}</div>
-    <div className="mr-4">
-      <p className="text-sm font-medium text-gray-600">{title}</p>
-      <p className="text-xl font-bold text-gray-900">{value}</p>
+const StatCard: FC<{ icon: ReactNode; title: string; value: number | string; color: 'blue' | 'green' | 'yellow' | 'purple' }> = ({ icon, title, value, color }) => {
+  const colors = {
+    blue: 'from-blue-400 to-blue-600',
+    green: 'from-green-400 to-green-600',
+    yellow: 'from-yellow-400 to-yellow-600',
+    purple: 'from-purple-400 to-purple-600',
+  };
+
+  return (
+    <div className={`bg-white p-5 rounded-xl shadow-md flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105`}>
+      <div className={`p-3 rounded-lg bg-gradient-to-br ${colors[color]} text-white shadow-sm`}>{icon}</div>
+      <div className="mr-4">
+        <p className="text-sm font-medium text-gray-500">{title}</p>
+        <p className="text-2xl font-bold text-gray-800">{value}</p>
+      </div>
     </div>
-  </div>
-);
+  );
+}
 
 const PlatformCard: FC<{ platform: Platform; onTaskClick: (task: Task) => void }> = ({ platform, onTaskClick }) => (
-  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-    <div className="p-5 border-b border-gray-200">
-      <h2 className="text-lg font-semibold text-gray-800">{platform.name}</h2>
-      <p className="text-sm text-gray-500 mt-1">{platform.description}</p>
+  <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
+    <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+      <h2 className="text-xl font-bold text-gray-800">{platform.name}</h2>
+      <p className="text-sm text-gray-600 mt-1">{platform.description}</p>
     </div>
-    <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {platform.tasks.map((task) => (
         <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
       ))}
@@ -266,19 +275,24 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
   const taskStatus = getTaskStatus(task);
   const StatusIcon = taskStatus.icon;
   const difficultyMap = { EASY: 'سهل', MEDIUM: 'متوسط', HARD: 'صعب' };
+  const difficultyColors = {
+    EASY: 'bg-green-100 text-green-800',
+    MEDIUM: 'bg-yellow-100 text-yellow-800',
+    HARD: 'bg-red-100 text-red-800',
+  };
 
   return (
-    <div onClick={onClick} className="border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-blue-500 transition-all cursor-pointer">
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="font-semibold text-gray-800">{task.title}</h3>
-        <StatusIcon className={`h-5 w-5 ${taskStatus.color === 'green' ? 'text-green-500' : taskStatus.color === 'yellow' ? 'text-yellow-500' : taskStatus.color === 'red' ? 'text-red-500' : 'text-gray-400'}`} />
+    <div onClick={onClick} className="bg-gray-50 border border-gray-200/80 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:border-blue-400 hover:scale-105 cursor-pointer group">
+      <div className="flex justify-between items-start mb-3">
+        <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{task.title}</h3>
+        <StatusIcon className={`h-5 w-5 transition-colors ${taskStatus.color}`} />
       </div>
-      <p className="text-sm text-gray-500 mb-4 line-clamp-2">{task.description}</p>
-      <div className="flex justify-between items-center text-xs">
-        <span className={`px-2 py-1 rounded-full font-medium ${task.difficulty === 'EASY' ? 'bg-green-100 text-green-800' : task.difficulty === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+      <p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10">{task.description}</p>
+      <div className="flex justify-between items-center text-xs pt-3 border-t border-gray-200">
+        <span className={`px-2.5 py-1 rounded-full font-medium ${difficultyColors[task.difficulty]}`}>
           {difficultyMap[task.difficulty]}
         </span>
-        <span className="text-gray-500">{taskStatus.text}</span>
+        <span className={`font-medium ${taskStatus.color}`}>{taskStatus.text}</span>
       </div>
     </div>
   );
@@ -286,10 +300,10 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
 
 const getTaskStatus = (task: Task) => {
   const submission = task.submissions?.[0];
-  if (submission?.status === 'APPROVED') return { status: 'completed', color: 'green', icon: CheckCircle, text: 'مكتمل' };
-  if (submission?.status === 'PENDING') return { status: 'pending', color: 'yellow', icon: Clock, text: 'قيد المراجعة' };
-  if (submission?.status === 'REJECTED') return { status: 'rejected', color: 'red', icon: X, text: 'مرفوض' };
-  return { status: 'not_started', color: 'gray', icon: Clock, text: 'لم يبدأ' };
+  if (submission?.status === 'APPROVED') return { status: 'completed', color: 'text-green-500', icon: CheckCircle, text: 'مكتمل' };
+  if (submission?.status === 'PENDING') return { status: 'pending', color: 'text-yellow-500', icon: Clock, text: 'قيد المراجعة' };
+  if (submission?.status === 'REJECTED') return { status: 'rejected', color: 'text-red-500', icon: X, text: 'مرفوض' };
+  return { status: 'not_started', color: 'text-gray-400', icon: Star, text: 'لم يبدأ' };
 };
 
 interface SubmissionModalProps {
@@ -302,7 +316,8 @@ const SubmissionModal: FC<SubmissionModalProps> = ({ task, onClose, onSuccess })
   const [summary, setSummary] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/submissions', {
@@ -325,28 +340,33 @@ const SubmissionModal: FC<SubmissionModalProps> = ({ task, onClose, onSuccess })
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" dir="rtl">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
-        <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h2 className="text-xl font-bold">تقديم الحل: {task.title}</h2>
-          <button onClick={onClose}><X className="h-6 w-6" /></button>
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-lg m-4 animate-scale-in">
+        <div className="flex justify-between items-center border-b border-gray-200 pb-4 mb-5">
+          <h2 className="text-2xl font-bold text-gray-800">تقديم الحل: <span className="text-blue-600">{task.title}</span></h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="h-7 w-7" /></button>
         </div>
-        <div className="space-y-4">
-          {task.link && <a href={task.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">عرض رابط المهمة</a>}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {task.link && 
+            <a href={task.link} target="_blank" rel="noopener noreferrer" className="inline-block text-blue-600 hover:underline font-medium">
+              عرض رابط المهمة
+            </a>
+          }
           <textarea
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             placeholder="اكتب ملخص الحل أو رابط المشروع هنا..."
-            className="w-full h-32 p-2 border border-gray-300 rounded-md"
-            rows={5}
+            className="w-full h-36 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-shadow"
+            rows={6}
+            required
           />
-        </div>
-        <div className="flex justify-end space-x-3 pt-4 mt-4 border-t space-x-reverse">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">إلغاء</button>
-          <button onClick={handleSubmit} disabled={isSubmitting || !summary} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-300">
-            {isSubmitting ? 'جاري الإرسال...' : 'إرسال الحل'}
-          </button>
-        </div>
+          <div className="flex justify-end space-x-4 pt-4 mt-4 border-t border-gray-200 space-x-reverse">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">إلغاء</button>
+            <button type="submit" disabled={isSubmitting || !summary} className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg hover:shadow-lg hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-300 disabled:from-gray-300 disabled:to-gray-400 transition-all transform hover:scale-105">
+              {isSubmitting ? 'جاري الإرسال...' : 'إرسال الحل'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
