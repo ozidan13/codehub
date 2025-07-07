@@ -64,17 +64,21 @@ cp .env.example .env
 Update the following variables:
 
 ```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/codehub_db"
-
-# NextAuth.js
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key-here"
+# Database (Supabase PostgreSQL)
+POSTGRES_URL="your-postgres-url"
+POSTGRES_PRISMA_URL="your-postgres-prisma-url"
+POSTGRES_URL_NON_POOLING="your-postgres-non-pooling-url"
+POSTGRES_USER="postgres"
+POSTGRES_HOST="your-supabase-host"
+POSTGRES_PASSWORD="your-password"
+POSTGRES_DATABASE="postgres"
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
 SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+SUPABASE_JWT_SECRET="your-jwt-secret-key"
+SUPABASE_URL="your-supabase-url"
 ```
 
 ### 3. Database Setup

@@ -26,7 +26,10 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
   // Get the token and check if the user is authenticated (NextAuth)
-  const token = await getToken({ req: request })
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.SUPABASE_JWT_SECRET
+  })
   const isAuthenticated = !!token
   
   // Check if the current route is protected
