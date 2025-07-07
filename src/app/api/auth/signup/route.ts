@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user
+    // Create user in Prisma
     const user = await prisma.user.create({
       data: {
         email,
@@ -45,6 +45,18 @@ export async function POST(request: NextRequest) {
         createdAt: true
       }
     })
+
+    // Optionally create user in Supabase Auth (if needed for additional features)
+    // const { data: authUser, error: authError } = await supabase.auth.signUp({
+    //   email,
+    //   password,
+    //   options: {
+    //     data: {
+    //       name,
+    //       role: 'STUDENT'
+    //     }
+    //   }
+    // })
 
     return NextResponse.json(
       { 

@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { BookOpen, Users, Trophy, ArrowRight } from 'lucide-react'
+// This is a Client Component that uses client-side rendering
+// For server-side data fetching, you would typically use NextAuth session
 
 export default function LandingPage() {
   const platforms = [
@@ -55,7 +57,7 @@ export default function LandingPage() {
                 تسجيل الدخول
               </Link>
               <Link
-                href="/auth/signup"
+                href="/signup"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 ابدأ الآن
@@ -78,7 +80,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/auth/signup"
+              href="/signup"
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition-colors flex items-center justify-center"
             >
               ابدأ التعلم

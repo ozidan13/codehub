@@ -25,7 +25,7 @@ const publicAuthRoutes = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Get the token and check if the user is authenticated
+  // Get the token and check if the user is authenticated (NextAuth)
   const token = await getToken({ req: request })
   const isAuthenticated = !!token
   
@@ -38,15 +38,15 @@ export async function middleware(request: NextRequest) {
   // Check if the current route is a public auth route (login/signup)
   const isPublicAuthRoute = publicAuthRoutes.some(route => pathname.startsWith(route))
   
-  // If the route is protected and the user is not authenticated, redirect to login
+  // If the route is protected (including admin routes) and the user is not authenticated, redirect to login
   if (isProtectedRoute && !isAuthenticated) {
     const url = new URL('/login', request.url)
     url.searchParams.set('callbackUrl', encodeURI(request.url))
     return NextResponse.redirect(url)
   }
   
-  // If the route is admin-only and the user is not an admin, redirect to dashboard
-  if (isAdminRoute && token?.role !== 'ADMIN') {
+  // If the route is admin-only and the user is authenticated but not an admin, redirect to dashboard
+  if (isAdminRoute && isAuthenticated && token?.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
   
