@@ -22,7 +22,10 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Wallet,
+  CreditCard,
+  Calendar
 } from 'lucide-react'
 
 // --- INTERFACES ---
@@ -50,6 +53,13 @@ interface User {
   email: string
   role: string
   createdAt: string
+  stats?: {
+    totalSubmissions: number
+    approvedSubmissions: number
+    pendingSubmissions: number
+    rejectedSubmissions: number
+    averageScore: number | null
+  }
 }
 
 interface Platform {
@@ -57,6 +67,8 @@ interface Platform {
   name: string
   description: string
   url: string
+  price?: number
+  isPaid: boolean
   createdAt: string
 }
 
@@ -112,12 +124,56 @@ interface Submission {
   }
 }
 
+interface Transaction {
+  id: string
+  userId: string
+  type: 'TOP_UP' | 'PLATFORM_PURCHASE' | 'MENTORSHIP_PAYMENT'
+  amount: number
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  description?: string
+  senderWalletNumber?: string
+  adminWalletNumber?: string
+  createdAt: string
+  updatedAt: string
+  user: {
+    id: string
+    name: string
+    email: string
+  }
+}
+
+interface MentorshipBooking {
+  id: string
+  userId: string
+  mentorId: string
+  duration: number
+  amount: number
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+  createdAt: string
+  updatedAt: string
+  user: {
+    id: string
+    name: string
+    email: string
+  }
+  mentor: {
+    id: string
+    name: string
+    email: string
+    mentorRate: number
+  }
+}
+
 interface AdminStats {
   totalUsers: number
   totalStudents: number
   totalSubmissions: number
   pendingSubmissions: number
   totalPlatforms?: number
+  totalTransactions?: number
+  pendingTransactions?: number
+  totalRevenue?: number
+  totalMentorshipBookings?: number
   platformStats: {
     platformId: string
     platformName: string
@@ -128,9 +184,9 @@ interface AdminStats {
 
 // --- CACHE IMPLEMENTATION ---
 class DataCache {
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>()
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>()
   
-  set(key: string, data: any, ttl: number = 5 * 60 * 1000) { // 5 minutes default
+  set(key: string, data: unknown, ttl: number = 5 * 60 * 1000) { // 5 minutes default
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -161,7 +217,7 @@ const dataCache = new DataCache()
 export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship'>('overview')
   
   // --- STATE MANAGEMENT ---
   const [overviewStats, setOverviewStats] = useState<AdminStats | null>(null)
@@ -170,6 +226,8 @@ export default function AdminPage() {
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [mentorshipBookings, setMentorshipBookings] = useState<MentorshipBooking[]>([])
 
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [isContentLoading, setIsContentLoading] = useState(false)
@@ -180,12 +238,14 @@ export default function AdminPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [selectedEntity, setSelectedEntity] = useState<any>(null)
+  const [selectedEntity, setSelectedEntity] = useState<Platform | Task | User | null>(null)
   const [entityType, setEntityType] = useState<'platform' | 'task' | 'user'>('platform')
   const [formData, setFormData] = useState<FormData>({})
 
-  const [pagination, setPagination] = useState<Record<string, { page: number; limit: number; total: number; totalPages: number; }>>({
+  const [pagination, setPagination] = useState<Record<string, { page: number; limit: number; total: number; totalPages: number }>>({
     submissions: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    transactions: { page: 1, limit: 10, total: 0, totalPages: 1 },
+    mentorship: { page: 1, limit: 10, total: 0, totalPages: 1 },
   });
 
   // --- DATA FETCHING ---
@@ -197,15 +257,26 @@ export default function AdminPage() {
       const cachedData = dataCache.get(cacheKey);
 
       if (cachedData) {
-        if (tab === 'overview') setOverviewStats(cachedData);
-        else if (tab === 'students') setStudents(cachedData);
+        if (tab === 'overview') setOverviewStats(cachedData as AdminStats);
+        else if (tab === 'students') setStudents(cachedData as Student[]);
         else if (tab === 'submissions') {
-          setSubmissions(cachedData.submissions || []);
-          setPagination(prev => ({ ...prev, submissions: cachedData.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+          const data = cachedData as any;
+          setSubmissions(data.submissions || []);
+          setPagination(prev => ({ ...prev, submissions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
         }
-        else if (tab === 'platforms') setPlatforms(cachedData);
-        else if (tab === 'tasks') setTasks(cachedData);
-        else if (tab === 'users') setUsers(cachedData);
+        else if (tab === 'transactions') {
+          const data = cachedData as any;
+          setTransactions(data.transactions || []);
+          setPagination(prev => ({ ...prev, transactions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+        }
+        else if (tab === 'mentorship') {
+          const data = cachedData as any;
+          setMentorshipBookings(data.bookings || []);
+          setPagination(prev => ({ ...prev, mentorship: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+        }
+        else if (tab === 'platforms') setPlatforms(cachedData as Platform[]);
+        else if (tab === 'tasks') setTasks(cachedData as Task[]);
+        else if (tab === 'users') setUsers(cachedData as User[]);
         setIsContentLoading(false);
         return;
       }
@@ -224,7 +295,7 @@ export default function AdminPage() {
           response = await fetch('/api/users?role=STUDENT&includeProgress=true');
           if (response.ok) {
             const data = await response.json();
-            const formattedStudents = data.users.map((user: any) => ({
+            const formattedStudents = data.users.map((user: User) => ({
               id: user.id,
               name: user.name || 'Unknown',
               email: user.email,
@@ -273,6 +344,26 @@ export default function AdminPage() {
             dataCache.set(cacheKey, data.users || []);
           }
           break;
+        case 'transactions':
+          const transactionLimit = 10;
+          response = await fetch(`/api/admin/transactions?page=${page}&limit=${transactionLimit}`);
+          if (response.ok) {
+            const data = await response.json();
+            setTransactions(data.transactions || []);
+            setPagination(prev => ({ ...prev, transactions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+            dataCache.set(cacheKey, data);
+          }
+          break;
+        case 'mentorship':
+          const mentorshipLimit = 10;
+          response = await fetch(`/api/admin/mentorship?page=${page}&limit=${mentorshipLimit}`);
+          if (response.ok) {
+            const data = await response.json();
+            setMentorshipBookings(data.bookings || []);
+            setPagination(prev => ({ ...prev, mentorship: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+            dataCache.set(cacheKey, data);
+          }
+          break;
       }
     } catch (error) {
       console.error(`Error fetching ${tab} data:`, error);
@@ -297,25 +388,31 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isPageLoading) {
-        fetchAdminData(activeTab, pagination.submissions.page);
+        const currentPage = activeTab === 'submissions' ? pagination.submissions.page :
+                           activeTab === 'transactions' ? pagination.transactions.page :
+                           activeTab === 'mentorship' ? pagination.mentorship.page : 1;
+        fetchAdminData(activeTab, currentPage);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPageLoading, activeTab, pagination.submissions.page]);
+  }, [isPageLoading, activeTab, pagination.submissions.page, pagination.transactions.page, pagination.mentorship.page]);
 
   // --- HANDLERS ---
   const refreshData = (tab: string) => {
-    const page = tab === 'submissions' ? pagination.submissions.page : 1;
+    const page = tab === 'submissions' ? pagination.submissions.page :
+                 tab === 'transactions' ? pagination.transactions.page :
+                 tab === 'mentorship' ? pagination.mentorship.page : 1;
     dataCache.clear(); // Consider more granular cache invalidation
     fetchAdminData(tab, page);
   }
 
-  const handleTabChange = (tab: 'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users') => {
+  const handleTabChange = (tab: 'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship') => {
     setActiveTab(tab);
   };
 
-  const handlePageChange = (newPage: number) => {
-    if (newPage > 0 && newPage <= pagination.submissions.totalPages) {
-      setPagination(prev => ({ ...prev, submissions: { ...prev.submissions, page: newPage } }));
+  const handlePageChange = (newPage: number, tabType: string = 'submissions') => {
+    const currentPagination = pagination[tabType as keyof typeof pagination];
+    if (newPage > 0 && newPage <= currentPagination.totalPages) {
+      setPagination(prev => ({ ...prev, [tabType]: { ...prev[tabType as keyof typeof prev], page: newPage } }));
     }
   };
 
@@ -330,14 +427,14 @@ export default function AdminPage() {
     setShowCreateModal(true)
   }
 
-  const handleEdit = (entity: any, type: 'platform' | 'task' | 'user') => {
+  const handleEdit = (entity: Platform | Task | User, type: 'platform' | 'task' | 'user') => {
     setSelectedEntity(entity)
     setEntityType(type)
     setFormData(entity)
     setShowEditModal(true)
   }
 
-  const handleDelete = (entity: any, type: 'platform' | 'task' | 'user') => {
+  const handleDelete = (entity: Platform | Task | User, type: 'platform' | 'task' | 'user') => {
     setSelectedEntity(entity)
     setEntityType(type)
     setShowDeleteModal(true)
@@ -349,9 +446,9 @@ export default function AdminPage() {
       let body = method !== 'DELETE' ? JSON.stringify(formData) : undefined;
       
       switch (entityType) {
-        case 'platform': endpoint = `/api/platforms${method !== 'POST' ? `/${selectedEntity.id}`: ''}`; break
-        case 'task': endpoint = `/api/tasks${method !== 'POST' ? `/${selectedEntity.id}`: ''}`; break
-        case 'user': endpoint = `/api/users${method !== 'POST' ? `?id=${selectedEntity.id}`: ''}`; break
+        case 'platform': endpoint = `/api/platforms${method !== 'POST' ? `?id=${selectedEntity?.id}`: ''}`; break
+        case 'task': endpoint = `/api/tasks${method !== 'POST' ? `?id=${selectedEntity?.id}`: ''}`; break
+        case 'user': endpoint = `/api/users${method !== 'POST' ? `?id=${selectedEntity?.id}`: ''}`; break
       }
       
       const response = await fetch(endpoint, {
@@ -403,8 +500,20 @@ export default function AdminPage() {
       case 'submissions': return <SubmissionsTab 
                                 submissions={submissions} 
                                 pagination={pagination.submissions} 
-                                onPageChange={handlePageChange} 
+                                onPageChange={(page) => handlePageChange(page, 'submissions')} 
                                 onReview={handleReviewSubmission} 
+                              />
+      case 'transactions': return <TransactionsTab 
+                                transactions={transactions} 
+                                pagination={pagination.transactions} 
+                                onPageChange={(page) => handlePageChange(page, 'transactions')} 
+                                onRefresh={() => refreshData('transactions')} 
+                              />
+      case 'mentorship': return <MentorshipTab 
+                                bookings={mentorshipBookings} 
+                                pagination={pagination.mentorship} 
+                                onPageChange={(page) => handlePageChange(page, 'mentorship')} 
+                                onRefresh={() => refreshData('mentorship')} 
                               />
       case 'platforms': return <PlatformsTab platforms={platforms} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('platform')} />
       case 'tasks': return <TasksTab tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('task')} />
@@ -424,6 +533,8 @@ export default function AdminPage() {
           <TabButton icon={<BarChart3 />} label="نظرة عامة" active={activeTab === 'overview'} onClick={() => handleTabChange('overview')} />
           <TabButton icon={<Users />} label="الطلاب" active={activeTab === 'students'} onClick={() => handleTabChange('students')} />
           <TabButton icon={<FileText />} label="التقديمات" active={activeTab === 'submissions'} onClick={() => handleTabChange('submissions')} />
+          <TabButton icon={<Wallet />} label="المعاملات المالية" active={activeTab === 'transactions'} onClick={() => handleTabChange('transactions')} />
+          <TabButton icon={<Calendar />} label="جلسات الإرشاد" active={activeTab === 'mentorship'} onClick={() => handleTabChange('mentorship')} />
           <TabButton icon={<Briefcase />} label="المنصات" active={activeTab === 'platforms'} onClick={() => handleTabChange('platforms')} />
           <TabButton icon={<Clipboard />} label="المهام" active={activeTab === 'tasks'} onClick={() => handleTabChange('tasks')} />
           <TabButton icon={<UserIcon />} label="المستخدمون" active={activeTab === 'users'} onClick={() => handleTabChange('users')} />
@@ -483,7 +594,7 @@ export default function AdminPage() {
        {showDeleteModal && selectedEntity && (
         <DeleteConfirmationModal
           entityType={entityType}
-          entityName={selectedEntity.name || selectedEntity.title || ''}
+          entityName={(selectedEntity as any)?.name || (selectedEntity as any)?.title || ''}
           onClose={() => setShowDeleteModal(false)}
           onConfirm={() => submitForm('DELETE')}
         />
@@ -522,6 +633,396 @@ const OverviewTab: FC<{ stats: AdminStats | null }> = ({ stats }) => {
         <StatCard icon={<Clock />} title="التقديمات المعلقة" value={stats.pendingSubmissions} color="text-yellow-500" />
       </div>
     </>
+  );
+};
+
+// --- TRANSACTIONS TAB ---
+interface TransactionsTabProps {
+  transactions: Transaction[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+  onPageChange: (page: number) => void;
+  onRefresh: () => void;
+}
+
+const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, onPageChange, onRefresh }) => {
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  const handleStatusUpdate = async (transactionId: string, status: 'APPROVED' | 'REJECTED') => {
+    setIsUpdating(transactionId);
+    try {
+      const response = await fetch('/api/admin/transactions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId, status }),
+      });
+      if (response.ok) {
+        onRefresh();
+      } else {
+        const error = await response.json();
+        alert(`فشل في تحديث المعاملة: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Transaction update error:', error);
+      alert('حدث خطأ أثناء تحديث المعاملة.');
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap = {
+      PENDING: { label: 'في الانتظار', class: 'bg-yellow-100 text-yellow-800' },
+      APPROVED: { label: 'موافق عليه', class: 'bg-green-100 text-green-800' },
+      REJECTED: { label: 'مرفوض', class: 'bg-red-100 text-red-800' }
+    };
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, class: 'bg-gray-100 text-gray-800' };
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.class}`}>{statusInfo.label}</span>;
+  };
+
+  const getTypeBadge = (type: string) => {
+    const typeMap = {
+      TOP_UP: { label: 'شحن رصيد', class: 'bg-blue-100 text-blue-800' },
+      PLATFORM_PURCHASE: { label: 'شراء منصة', class: 'bg-purple-100 text-purple-800' },
+      MENTORSHIP_PAYMENT: { label: 'دفع إرشاد', class: 'bg-orange-100 text-orange-800' }
+    };
+    const typeInfo = typeMap[type as keyof typeof typeMap] || { label: type, class: 'bg-gray-100 text-gray-800' };
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeInfo.class}`}>{typeInfo.label}</span>;
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <Wallet className="h-8 w-8 text-blue-600" />
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">إدارة المعاملات المالية</h2>
+            <p className="text-gray-600">مراجعة وإدارة جميع المعاملات المالية</p>
+          </div>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="flex items-center space-x-2 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span>تحديث</span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المستخدم</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">النوع</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">محفظة المرسل</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">محفظة الإدارة</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {transactions.map((transaction) => (
+                <tr key={transaction.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{transaction.user.name}</div>
+                      <div className="text-sm text-gray-500">{transaction.user.email}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">{getTypeBadge(transaction.type)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{Number(transaction.amount).toFixed(2)} جنيه</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {transaction.senderWalletNumber || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {transaction.adminWalletNumber || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(transaction.status)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(transaction.createdAt).toLocaleDateString('ar-SA')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {transaction.status === 'PENDING' && (
+                      <div className="flex space-x-2 space-x-reverse">
+                        <button
+                          onClick={() => handleStatusUpdate(transaction.id, 'APPROVED')}
+                          disabled={isUpdating === transaction.id}
+                          className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                        >
+                          <CheckCircle className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(transaction.id, 'REJECTED')}
+                          disabled={isUpdating === transaction.id}
+                          className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                        >
+                          <XCircle className="h-5 w-5" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => onPageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                السابق
+              </button>
+              <button
+                onClick={() => onPageChange(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                التالي
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  عرض <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> إلى{' '}
+                  <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> من{' '}
+                  <span className="font-medium">{pagination.total}</span> نتيجة
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => onPageChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => onPageChange(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        page === pagination.page
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => onPageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- MENTORSHIP TAB ---
+interface MentorshipTabProps {
+  bookings: MentorshipBooking[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+  onPageChange: (page: number) => void;
+  onRefresh: () => void;
+}
+
+const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageChange, onRefresh }) => {
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+  const handleStatusUpdate = async (bookingId: string, status: 'CONFIRMED' | 'CANCELLED') => {
+    setIsUpdating(bookingId);
+    try {
+      const response = await fetch('/api/admin/mentorship', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, status }),
+      });
+      if (response.ok) {
+        onRefresh();
+      } else {
+        const error = await response.json();
+        alert(`فشل في تحديث الحجز: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Booking update error:', error);
+      alert('حدث خطأ أثناء تحديث الحجز.');
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusMap = {
+      PENDING: { label: 'في الانتظار', class: 'bg-yellow-100 text-yellow-800' },
+      CONFIRMED: { label: 'مؤكد', class: 'bg-green-100 text-green-800' },
+      COMPLETED: { label: 'مكتمل', class: 'bg-blue-100 text-blue-800' },
+      CANCELLED: { label: 'ملغي', class: 'bg-red-100 text-red-800' }
+    };
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, class: 'bg-gray-100 text-gray-800' };
+    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.class}`}>{statusInfo.label}</span>;
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <Calendar className="h-8 w-8 text-orange-600" />
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">إدارة جلسات الإرشاد</h2>
+            <p className="text-gray-600">مراجعة وإدارة جميع حجوزات جلسات الإرشاد</p>
+          </div>
+        </div>
+        <button
+          onClick={onRefresh}
+          className="flex items-center space-x-2 space-x-reverse bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span>تحديث</span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الطالب</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المرشد</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المدة</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {bookings.map((booking) => (
+                <tr key={booking.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{booking.user?.name || 'غير محدد'}</div>
+                      <div className="text-sm text-gray-500">{booking.user?.email || 'غير محدد'}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{booking.mentor?.name || 'غير محدد'}</div>
+                      <div className="text-sm text-gray-500">${booking.mentor?.mentorRate || 0}/ساعة</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{booking.duration || 0} دقيقة</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${Number(booking.amount || 0).toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(booking.status)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(booking.createdAt).toLocaleDateString('ar-SA')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {booking.status === 'PENDING' && (
+                      <div className="flex space-x-2 space-x-reverse">
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'CONFIRMED')}
+                          disabled={isUpdating === booking.id}
+                          className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                        >
+                          <CheckCircle className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'CANCELLED')}
+                          disabled={isUpdating === booking.id}
+                          className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                        >
+                          <XCircle className="h-5 w-5" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => onPageChange(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                السابق
+              </button>
+              <button
+                onClick={() => onPageChange(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                التالي
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  عرض <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> إلى{' '}
+                  <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> من{' '}
+                  <span className="font-medium">{pagination.total}</span> نتيجة
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => onPageChange(pagination.page - 1)}
+                    disabled={pagination.page <= 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => onPageChange(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        page === pagination.page
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => onPageChange(pagination.page + 1)}
+                    disabled={pagination.page >= pagination.totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -757,7 +1258,7 @@ const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate }) =>
           
           <div>
             <label className="block text-sm font-medium text-gray-700">الحالة</label>
-            <select value={status} onChange={e => setStatus(e.target.value as any)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+            <select value={status} onChange={e => setStatus(e.target.value as 'PENDING' | 'APPROVED' | 'REJECTED')} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
               <option value="PENDING">معلق</option>
               <option value="APPROVED">مقبول</option>
               <option value="REJECTED">مرفوض</option>
@@ -786,7 +1287,7 @@ const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate }) =>
 interface CrudModalProps {
   mode: 'create' | 'edit';
   entityType: 'platform' | 'task' | 'user';
-  entityData?: any;
+  entityData?: Platform | Task | User;
   formData: FormData;
   setFormData: (data: FormData) => void;
   platforms?: Platform[];
@@ -871,21 +1372,21 @@ const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData,
   )
 }
 
-const InputField: FC<{ name: string, label: string, value: string | number, onChange: any, type?: string }> = ({ name, label, value, onChange, type = 'text' }) => (
+const InputField: FC<{ name: string, label: string, value: string | number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string }> = ({ name, label, value, onChange, type = 'text' }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700">{label}</label>
     <input type={type} name={name} value={value} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
   </div>
 );
 
-const TextAreaField: FC<{ name: string, label: string, value: string, onChange: any }> = ({ name, label, value, onChange }) => (
+const TextAreaField: FC<{ name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }> = ({ name, label, value, onChange }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700">{label}</label>
     <textarea name={name} value={value} onChange={onChange} rows={4} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
   </div>
 );
 
-const SelectField: FC<{ name: string, label: string, value: string, onChange: any, options: {value: string, label: string}[] }> = ({ name, label, value, onChange, options }) => (
+const SelectField: FC<{ name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: {value: string, label: string}[] }> = ({ name, label, value, onChange, options }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700">{label}</label>
     <select name={name} value={value} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required>

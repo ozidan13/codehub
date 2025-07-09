@@ -19,10 +19,20 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  // Monetizing feature fields
+  balance           Decimal           @default(500.00) @db.Decimal(10,2)
+  isMentor          Boolean           @default(false)
+  mentorBio         String?
+  mentorRate        Decimal?          @db.Decimal(10,2)
+  
   // Relations
   submissions Submission[]
   accounts    Account[]
   sessions    Session[]
+  enrollments Enrollment[]
+  transactions Transaction[]
+  studentBookings MentorshipBooking[] @relation("StudentBookings")
+  mentorBookings  MentorshipBooking[] @relation("MentorBookings")
   
   @@map("users")
 }
@@ -74,8 +84,13 @@ model Platform {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  // Monetizing feature fields
+  price       Decimal?  @db.Decimal(10,2)
+  isPaid      Boolean   @default(false)
+  
   // Relations
   tasks Task[]
+  enrollments Enrollment[]
   
   @@map("platforms")
 }
@@ -127,4 +142,75 @@ enum SubmissionStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum TransactionType {
+  TOP_UP
+  PLATFORM_PURCHASE
+  MENTORSHIP_PAYMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  userId     String
+  platformId String
+  createdAt  DateTime @default(now())
+  
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, platformId])
+  @@map("enrollments")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  userId      String
+  type        TransactionType
+  amount      Decimal           @db.Decimal(10,2)
+  status      TransactionStatus @default(PENDING)
+  description String?
+  senderWalletNumber String?    // Wallet number the user sent money from
+  adminWalletNumber  String?    // Admin wallet number for reference
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("transactions")
+}
+
+model MentorshipBooking {
+  id           String        @id @default(cuid())
+  studentId    String
+  mentorId     String
+  duration     Int           @default(60) // minutes
+  amount       Decimal       @db.Decimal(10,2)
+  status       BookingStatus @default(PENDING)
+  sessionDate  DateTime?
+  studentNotes String?
+  adminNotes   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  // Relations
+  student User @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  mentor  User @relation("MentorBookings", fields: [mentorId], references: [id], onDelete: Cascade)
+  
+  @@map("mentorship_bookings")
 }

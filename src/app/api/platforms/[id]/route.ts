@@ -13,8 +13,9 @@ const updatePlatformSchema = z.object({
 // GET /api/platforms/[id] - Get single platform
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -29,7 +30,7 @@ export async function GET(
     const includeTasks = searchParams.get('include_tasks') === 'true'
 
     const platform = await prisma.platform.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: includeTasks ? {
         tasks: {
           orderBy: { order: 'asc' },
@@ -71,8 +72,9 @@ export async function GET(
 // PUT /api/platforms/[id] - Update platform (Admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -88,7 +90,7 @@ export async function PUT(
 
     // Check if platform exists
     const existingPlatform = await prisma.platform.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingPlatform) {
@@ -112,12 +114,12 @@ export async function PUT(
       }
     }
 
-    const platform = await prisma.platform.update({
-      where: { id: params.id },
+    const updatedPlatform = await prisma.platform.update({
+      where: { id },
       data: updateData
     })
 
-    return NextResponse.json({ platform })
+    return NextResponse.json({ platform: updatedPlatform })
 
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -138,8 +140,9 @@ export async function PUT(
 // DELETE /api/platforms/[id] - Delete platform (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -152,7 +155,7 @@ export async function DELETE(
 
     // Check if platform exists before checking for submissions
     const platformExists = await prisma.platform.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { id: true }
     })
 
@@ -167,7 +170,7 @@ export async function DELETE(
     const submissionCount = await prisma.submission.count({
       where: {
         task: {
-          platformId: params.id
+          platformId: id
         }
       }
     })
@@ -181,7 +184,7 @@ export async function DELETE(
 
     // Delete platform (tasks will be deleted due to cascade)
     await prisma.platform.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'Platform deleted successfully' })

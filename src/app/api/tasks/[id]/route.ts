@@ -15,8 +15,9 @@ const updateTaskSchema = z.object({
 // GET /api/tasks/[id] - Get single task
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -31,7 +32,7 @@ export async function GET(
     const includeSubmissions = searchParams.get('include_submissions') === 'true'
 
     const task = await prisma.task.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         platform: {
           select: {
@@ -76,8 +77,9 @@ export async function GET(
 // PUT /api/tasks/[id] - Update task (Admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -93,7 +95,7 @@ export async function PUT(
 
     // Check if task exists
     const existingTask = await prisma.task.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingTask) {
@@ -117,12 +119,12 @@ export async function PUT(
       }
     }
 
-    const task = await prisma.task.update({
-      where: { id: params.id },
+    const updatedTask = await prisma.task.update({
+      where: { id },
       data: updateData
     })
 
-    return NextResponse.json({ task })
+    return NextResponse.json({ task: updatedTask })
 
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -143,8 +145,9 @@ export async function PUT(
 // DELETE /api/tasks/[id] - Delete task (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -157,7 +160,7 @@ export async function DELETE(
 
     // More efficient check for submissions
     const submissionCount = await prisma.submission.count({
-      where: { taskId: params.id }
+      where: { taskId: id }
     })
 
     if (submissionCount > 0) {
@@ -168,12 +171,12 @@ export async function DELETE(
     }
 
     // Check if task exists before deleting to provide a clear error message
-    const taskExists = await prisma.task.findUnique({
-      where: { id: params.id },
+    const existingTask = await prisma.task.findUnique({
+      where: { id },
       select: { id: true }
     })
 
-    if (!taskExists) {
+    if (!existingTask) {
       return NextResponse.json(
         { error: 'Task not found' },
         { status: 404 }
@@ -182,7 +185,7 @@ export async function DELETE(
 
     // Delete task
     await prisma.task.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'Task deleted successfully' })

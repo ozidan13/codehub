@@ -3,13 +3,15 @@
 import { useState, useEffect, useCallback, FC, ReactNode } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Clock, CheckCircle, Upload, X, FileText, Trophy, LogOut, RefreshCw, Star, TrendingUp, Award } from 'lucide-react'
+import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, LogOut, RefreshCw, Star, Wallet, CreditCard, Users, ShoppingCart } from 'lucide-react'
 
 // --- INTERFACES ---
 interface Platform {
   id: string
   name: string
   description: string
+  price?: number
+  isPaid: boolean
   tasks: Task[]
 }
 
@@ -42,11 +44,59 @@ interface StudentStats {
   averageScore: number | null;
 }
 
+interface WalletData {
+  balance: number;
+}
+
+interface Enrollment {
+  id: string;
+  createdAt: string;
+  platform: {
+    id: string;
+    name: string;
+    description: string;
+    url: string;
+    price: number | null;
+    isPaid: boolean;
+  };
+}
+
+interface Transaction {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  description: string;
+  createdAt: string;
+}
+
+interface MentorshipData {
+  mentor: {
+    id: string;
+    name: string;
+    mentorBio: string;
+    mentorRate: number;
+  };
+  bookings: {
+    id: string;
+    duration: number;
+    amount: number;
+    status: string;
+    sessionDate: string | null;
+    studentNotes: string | null;
+    adminNotes: string | null;
+    createdAt: string;
+    mentor: {
+      name: string;
+    };
+  }[];
+}
+
 // --- CACHE IMPLEMENTATION ---
 class DataCache {
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>()
+  private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>()
   
-  set(key: string, data: any, ttl: number = 5 * 60 * 1000) { // 5 minutes default
+  set(key: string, data: unknown, ttl: number = 5 * 60 * 1000) { // 5 minutes default
     this.cache.set(key, { data, timestamp: Date.now(), ttl })
   }
   
@@ -74,39 +124,59 @@ export default function DashboardPage() {
   // --- STATE MANAGEMENT ---
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [stats, setStats] = useState<StudentStats | null>(null)
+  const [wallet, setWallet] = useState<WalletData | null>(null)
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [mentorshipData, setMentorshipData] = useState<MentorshipData | null>(null)
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [isContentLoading, setIsContentLoading] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmissionModal, setShowSubmissionModal] = useState(false)
+  const [showTopUpModal, setShowTopUpModal] = useState(false)
+  const [showMentorshipModal, setShowMentorshipModal] = useState(false)
 
   // --- DATA FETCHING ---
   const fetchData = useCallback(async () => {
     if (status !== 'authenticated') return;
     setIsContentLoading(true);
     try {
-      const cachedPlatforms = dataCache.get('platforms');
-      const cachedStats = dataCache.get('student-stats');
+      const [platformsRes, statsRes, walletRes, enrollmentsRes, transactionsRes, mentorshipRes] = await Promise.all([
+        fetch('/api/platforms?include_tasks=true'),
+        fetch('/api/dashboard/student-stats'),
+        fetch('/api/wallet'),
+        fetch('/api/enrollments'),
+        fetch('/api/transactions?limit=5'),
+        fetch('/api/mentorship')
+      ]);
       
-      if (cachedPlatforms && cachedStats) {
-        setPlatforms(cachedPlatforms);
-        setStats(cachedStats);
-      } else {
-        const [platformsRes, statsRes] = await Promise.all([
-          fetch('/api/platforms?include_tasks=true'),
-          fetch('/api/dashboard/student-stats')
-        ]);
-        
-        if (platformsRes.ok) {
-          const data = await platformsRes.json();
-          setPlatforms(data.platforms || []);
-          dataCache.set('platforms', data.platforms || []);
-        }
-        
-        if (statsRes.ok) {
-          const data = await statsRes.json();
-          setStats(data);
-          dataCache.set('student-stats', data);
-        }
+      if (platformsRes.ok) {
+        const data = await platformsRes.json();
+        setPlatforms(data.platforms || []);
+      }
+      
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        setStats(data);
+      }
+
+      if (walletRes.ok) {
+        const data = await walletRes.json();
+        setWallet(data);
+      }
+
+      if (enrollmentsRes.ok) {
+        const data = await enrollmentsRes.json();
+        setEnrollments(data.enrollments || []);
+      }
+
+      if (transactionsRes.ok) {
+        const data = await transactionsRes.json();
+        setTransactions(data.transactions || []);
+      }
+
+      if (mentorshipRes.ok) {
+        const data = await mentorshipRes.json();
+        setMentorshipData(data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -151,6 +221,20 @@ export default function DashboardPage() {
     handleRefresh();
   }
 
+  const handleTopUpSuccess = () => {
+    setShowTopUpModal(false);
+    handleRefresh();
+  }
+
+  const handleEnrollmentSuccess = () => {
+    handleRefresh();
+  }
+
+  const handleMentorshipSuccess = () => {
+    setShowMentorshipModal(false);
+    handleRefresh();
+  }
+
   // --- RENDER LOGIC ---
   if (isPageLoading) {
     return <PageLoader />;
@@ -166,9 +250,12 @@ export default function DashboardPage() {
         ) : (
           <>
             <StatsSection stats={stats} />
+            <WalletSection wallet={wallet} onTopUp={() => setShowTopUpModal(true)} />
+            <EnrollmentsSection enrollments={enrollments} />
+            <MentorshipSection mentorshipData={mentorshipData} onBookMentorship={() => setShowMentorshipModal(true)} />
             <div className="space-y-12 mt-10">
               {platforms.map((platform) => (
-                <PlatformCard key={platform.id} platform={platform} onTaskClick={handleTaskClick} />
+                <PlatformCard key={platform.id} platform={platform} enrollments={enrollments} onTaskClick={handleTaskClick} onEnrollmentSuccess={handleEnrollmentSuccess} />
               ))}
             </div>
           </>
@@ -182,6 +269,20 @@ export default function DashboardPage() {
           onSuccess={handleSubmissionSuccess} 
         />
       )}
+
+      <TopUpModal 
+        isOpen={showTopUpModal}
+        onClose={() => setShowTopUpModal(false)} 
+        onSuccess={handleTopUpSuccess} 
+      />
+
+      <MentorshipModal 
+        isOpen={showMentorshipModal}
+        mentorshipData={mentorshipData}
+        userBalance={wallet?.balance || 0}
+        onClose={() => setShowMentorshipModal(false)} 
+        onSuccess={handleMentorshipSuccess} 
+      />
     </div>
   )
 }
@@ -257,19 +358,213 @@ const StatCard: FC<{ icon: ReactNode; title: string; value: number | string; col
   );
 }
 
-const PlatformCard: FC<{ platform: Platform; onTaskClick: (task: Task) => void }> = ({ platform, onTaskClick }) => (
-  <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
-    <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-      <h2 className="text-xl font-bold text-gray-800">{platform.name}</h2>
-      <p className="text-sm text-gray-600 mt-1">{platform.description}</p>
+const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({ wallet, onTopUp }) => {
+  if (!wallet) return null;
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <div className="p-3 rounded-lg bg-gradient-to-br from-green-400 to-green-600 text-white">
+            <Wallet className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">المحفظة الإلكترونية</h2>
+            <p className="text-sm text-gray-600">إدارة رصيدك المالي</p>
+          </div>
+        </div>
+        <button
+          onClick={onTopUp}
+          className="flex items-center space-x-2 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-px text-sm font-medium"
+        >
+          <CreditCard className="h-4 w-4" />
+          <span>شحن الرصيد</span>
+        </button>
+      </div>
+      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4">
+        <div className="text-center">
+          <p className="text-sm text-gray-600 mb-1">الرصيد الحالي</p>
+          <p className="text-3xl font-bold text-gray-800">$ {Number(wallet.balance).toFixed(2)}</p>
+        </div>
+      </div>
     </div>
-    <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      {platform.tasks.map((task) => (
-        <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
-      ))}
+  );
+};
+
+const EnrollmentsSection: FC<{ enrollments: Enrollment[] }> = ({ enrollments }) => {
+  if (enrollments.length === 0) return null;
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
+      <div className="flex items-center space-x-3 space-x-reverse mb-6">
+        <div className="p-3 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 text-white">
+          <BookOpen className="h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">المنصات المشترك بها</h2>
+          <p className="text-sm text-gray-600">المنصات التي اشتركت بها</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {enrollments.map((enrollment) => (
+          <div key={enrollment.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-800 mb-2">{enrollment.platform.name}</h3>
+            <p className="text-sm text-gray-600 mb-3">{enrollment.platform.description}</p>
+            <div className="flex justify-between items-center text-xs">
+              <span className={`px-2 py-1 rounded-full font-medium ${
+                enrollment.platform.isPaid ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+              }`}>
+                {enrollment.platform.isPaid ? `$${enrollment.platform.price}` : 'مجاني'}
+              </span>
+              <a
+                href={enrollment.platform.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline font-medium"
+              >
+                زيارة المنصة
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onBookMentorship: () => void }> = ({ mentorshipData, onBookMentorship }) => {
+  if (!mentorshipData) return null;
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <div className="p-3 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white">
+            <Users className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">جلسات الإرشاد</h2>
+            <p className="text-sm text-gray-600">احجز جلسة إرشاد مع المرشد</p>
+          </div>
+        </div>
+        <button
+          onClick={onBookMentorship}
+          className="flex items-center space-x-2 space-x-reverse bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-px text-sm font-medium"
+        >
+          <Users className="h-4 w-4" />
+          <span>احجز جلسة</span>
+        </button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-4">
+          <h3 className="font-semibold text-gray-800 mb-2">المرشد: {mentorshipData.mentor.name}</h3>
+          <p className="text-sm text-gray-600 mb-3">{mentorshipData.mentor.mentorBio}</p>
+          <p className="text-lg font-bold text-orange-600">${mentorshipData.mentor.mentorRate}/ساعة</p>
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-3">جلساتك الأخيرة</h3>
+          {mentorshipData.bookings.length === 0 ? (
+            <p className="text-sm text-gray-500">لا توجد جلسات محجوزة</p>
+          ) : (
+            <div className="space-y-2">
+              {mentorshipData.bookings.slice(0, 3).map((booking) => (
+                <div key={booking.id} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">{booking.duration} دقيقة</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                      booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      booking.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {booking.status === 'CONFIRMED' ? 'مؤكد' :
+                       booking.status === 'PENDING' ? 'في الانتظار' :
+                       booking.status === 'COMPLETED' ? 'مكتمل' : 'ملغي'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">${Number(booking.amount).toFixed(2)}</p>
+
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskClick: (task: Task) => void; onEnrollmentSuccess: () => void }> = ({ platform, enrollments, onTaskClick, onEnrollmentSuccess }) => {
+  const isEnrolled = enrollments.some(e => e.platform.id === platform.id);
+  const [isEnrolling, setIsEnrolling] = useState(false);
+
+  const handleEnroll = async () => {
+    setIsEnrolling(true);
+    try {
+      const response = await fetch('/api/enrollments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platformId: platform.id }),
+      });
+      if (response.ok) {
+        onEnrollmentSuccess();
+      } else {
+        const error = await response.json();
+        alert(`فشل الاشتراك: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Enrollment error:', error);
+      alert('حدث خطأ أثناء الاشتراك.');
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
+      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">{platform.name}</h2>
+            <p className="text-sm text-gray-600 mt-1">{platform.description}</p>
+          </div>
+          <div className="flex items-center space-x-2 space-x-reverse">
+            {platform.isPaid && (
+              <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                ${platform.price}
+              </span>
+            )}
+            {!isEnrolled ? (
+              <button
+                onClick={handleEnroll}
+                disabled={isEnrolling}
+                className="flex items-center space-x-1 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:bg-gray-400"
+              >
+                <ShoppingCart className="h-3 w-3" />
+                <span>{isEnrolling ? 'جاري...' : 'اشترك'}</span>
+              </button>
+            ) : (
+              <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                مشترك
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {isEnrolled ? (
+          platform.tasks.map((task) => (
+            <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8">
+            <div className="text-gray-400 mb-2">
+              <BookOpen className="h-12 w-12 mx-auto" />
+            </div>
+            <p className="text-gray-600">يجب الاشتراك في المنصة لعرض المهام</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) => {
   const taskStatus = getTaskStatus(task);
@@ -364,6 +659,220 @@ const SubmissionModal: FC<SubmissionModalProps> = ({ task, onClose, onSuccess })
             <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">إلغاء</button>
             <button type="submit" disabled={isSubmitting || !summary} className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg hover:shadow-lg hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-300 disabled:from-gray-300 disabled:to-gray-400 transition-all transform hover:scale-105">
               {isSubmitting ? 'جاري الإرسال...' : 'إرسال الحل'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => void }> = ({ isOpen, onClose, onSuccess }) => {
+  const [amount, setAmount] = useState('');
+  const [senderWalletNumber, setSenderWalletNumber] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!amount || parseFloat(amount) <= 0) {
+      alert('يرجى إدخال مبلغ صحيح');
+      return;
+    }
+    if (!senderWalletNumber.trim()) {
+      alert('يرجى إدخال رقم المحفظة المرسل منها');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/wallet/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          amount: parseFloat(amount),
+          senderWalletNumber: senderWalletNumber.trim()
+        }),
+      });
+      if (response.ok) {
+        onSuccess();
+        onClose();
+        setAmount('');
+        setSenderWalletNumber('');
+        alert('تم إرسال طلب الشحن بنجاح. سيتم مراجعته من قبل الإدارة.');
+      } else {
+        const error = await response.json();
+        alert(`فشل في إرسال الطلب: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Top-up error:', error);
+      alert('حدث خطأ أثناء إرسال الطلب.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" dir="rtl">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800">شحن الرصيد</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 mb-1">رقم المحفظة للتحويل إليها:</label>
+            <div className="text-lg font-bold text-blue-600">01026454497</div>
+            <p className="text-xs text-gray-600 mt-1">قم بتحويل المبلغ إلى هذا الرقم ثم أدخل البيانات أدناه</p>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">المبلغ (جنيه مصري)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="أدخل المبلغ المحول"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">رقم المحفظة المرسل منها</label>
+            <input
+              type="text"
+              value={senderWalletNumber}
+              onChange={(e) => setSenderWalletNumber(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="أدخل رقم محفظتك التي حولت منها"
+              required
+            />
+          </div>
+          <div className="flex space-x-3 space-x-reverse">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400"
+            >
+              {isSubmitting ? 'جاري الإرسال...' : 'إرسال الطلب'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | null; userBalance: number; onClose: () => void; onSuccess: () => void }> = ({ isOpen, mentorshipData, userBalance, onClose, onSuccess }) => {
+  const [duration, setDuration] = useState('60');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen || !mentorshipData) return null;
+
+  const totalAmount = (parseInt(duration) / 60) * mentorshipData.mentor.mentorRate;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!duration || parseInt(duration) <= 0) {
+      alert('يرجى إدخال مدة صحيحة');
+      return;
+    }
+
+    if (totalAmount > userBalance) {
+      alert('رصيدك غير كافي لحجز هذه الجلسة. يرجى شحن رصيدك أولاً.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/mentorship', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration: parseInt(duration) }),
+      });
+      if (response.ok) {
+        onSuccess();
+        onClose();
+        setDuration('60');
+        alert('تم حجز الجلسة بنجاح!');
+      } else {
+        const error = await response.json();
+        alert(`فشل في حجز الجلسة: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Mentorship booking error:', error);
+      alert('حدث خطأ أثناء حجز الجلسة.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" dir="rtl">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-gray-800">حجز جلسة إرشاد</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">مدة الجلسة (دقيقة)</label>
+            <select
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="30">30 دقيقة</option>
+              <option value="60">60 دقيقة</option>
+              <option value="90">90 دقيقة</option>
+              <option value="120">120 دقيقة</option>
+            </select>
+          </div>
+          <div className="mb-4 p-3 bg-orange-50 rounded-lg">
+            <div className="flex justify-between text-sm">
+              <span>المدة:</span>
+              <span>{duration} دقيقة</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>السعر:</span>
+              <span>${mentorshipData.mentor.mentorRate}/ساعة</span>
+            </div>
+            <div className="flex justify-between font-bold text-orange-600 border-t border-orange-200 pt-2 mt-2">
+              <span>المجموع:</span>
+              <span>${totalAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600 mt-1">
+              <span>رصيدك الحالي:</span>
+              <span className={Number(userBalance) >= totalAmount ? 'text-green-600' : 'text-red-600'}>${Number(userBalance).toFixed(2)}</span>
+            </div>
+          </div>
+          <div className="flex space-x-3 space-x-reverse">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || totalAmount > userBalance}
+              className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:bg-gray-400"
+            >
+              {isSubmitting ? 'جاري الحجز...' : 'احجز الآن'}
             </button>
           </div>
         </form>

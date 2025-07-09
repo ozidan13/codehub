@@ -29,22 +29,43 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user in Prisma
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        role: 'STUDENT' // Default role
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true
-      }
+    // Create user with starting balance in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user with 500 EGP starting balance
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          role: 'STUDENT', // Default role
+          balance: 500.00 // Starting balance of 500 EGP
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          balance: true,
+          createdAt: true
+        }
+      })
+
+      // Create initial transaction record for the starting balance
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          type: 'TOP_UP',
+          amount: 500.00,
+          status: 'APPROVED',
+          description: 'Welcome bonus - Starting balance',
+          adminWalletNumber: '01026454497'
+        }
+      })
+
+      return user
     })
+
+    const user = result
 
     // Optionally create user in Supabase Auth (if needed for additional features)
     // const { data: authUser, error: authError } = await supabase.auth.signUp({

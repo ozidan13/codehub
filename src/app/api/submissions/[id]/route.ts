@@ -13,8 +13,9 @@ const updateSubmissionSchema = z.object({
 // GET /api/submissions/[id] - Get specific submission
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -26,7 +27,7 @@ export async function GET(
     }
 
     const submission = await prisma.submission.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         task: {
           include: {
@@ -77,8 +78,9 @@ export async function GET(
 // PATCH /api/submissions/[id] - Update submission (Admin only for scoring/feedback)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -94,7 +96,7 @@ export async function PATCH(
 
     // Check if submission exists
     const existingSubmission = await prisma.submission.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingSubmission) {
@@ -106,7 +108,7 @@ export async function PATCH(
 
     // Update submission
     const updatedSubmission = await prisma.submission.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(status && { status }),
         ...(score !== undefined && { score }),
@@ -154,8 +156,9 @@ export async function PATCH(
 // DELETE /api/submissions/[id] - Delete submission (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     
@@ -168,7 +171,7 @@ export async function DELETE(
 
     // Check if submission exists
     const existingSubmission = await prisma.submission.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingSubmission) {
@@ -180,7 +183,7 @@ export async function DELETE(
 
     // Delete submission
     await prisma.submission.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json(

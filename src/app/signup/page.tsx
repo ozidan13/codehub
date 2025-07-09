@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, UserPlus, BookOpen } from 'lucide-react'
+import { Eye, EyeOff, BookOpen } from 'lucide-react'
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({

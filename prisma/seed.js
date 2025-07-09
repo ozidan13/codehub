@@ -11,27 +11,37 @@ async function main() {
     {
       name: 'Algorithms & Data Structures',
       description: 'Learn fundamental algorithms and data structures',
-      url: 'https://ozidan13.github.io/algorithms/'
+      url: 'https://ozidan13.github.io/algorithms/',
+      price: 100.00,
+      isPaid: true
     },
     {
       name: 'Object-Oriented Programming (OOP)',
       description: 'Master object-oriented programming concepts',
-      url: 'https://oop-pi.vercel.app/'
+      url: 'https://oop-pi.vercel.app/',
+      price: 150.00,
+      isPaid: true
     },
     {
       name: 'SOLID & Design Patterns',
       description: 'Learn SOLID principles and design patterns',
-      url: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/'
+      url: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/',
+      price: 200.00,
+      isPaid: true
     },
     {
       name: 'JavaScript Interview Questions',
       description: 'Prepare for JavaScript technical interviews',
-      url: 'https://javascriptinterview-kappa.vercel.app/'
+      url: 'https://javascriptinterview-kappa.vercel.app/',
+      price: 120.00,
+      isPaid: true
     },
     {
       name: 'JavaScript Tasks',
       description: 'Practice JavaScript programming tasks',
-      url: 'https://ozidan13.github.io/js-tasks/'
+      url: 'https://ozidan13.github.io/js-tasks/',
+      price: null,
+      isPaid: false
     }
   ]
 
@@ -176,14 +186,18 @@ async function main() {
   console.log('👤 Creating admin user...')
   const hashedPassword = await bcrypt.hash('admin123', 12)
   
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: 'admin@codehub.com' },
     update: {},
     create: {
       email: 'admin@codehub.com',
       name: 'Admin User',
       password: hashedPassword,
-      role: 'ADMIN'
+      role: 'ADMIN',
+      balance: 1000.00,
+      isMentor: true,
+      mentorBio: 'Experienced software developer and mentor with 10+ years in the industry.',
+      mentorRate: 50.00
     }
   })
   console.log('✅ Created admin user: admin@codehub.com (password: admin123)')
@@ -192,17 +206,49 @@ async function main() {
   console.log('👤 Creating sample student user...')
   const studentPassword = await bcrypt.hash('student123', 12)
   
-  await prisma.user.upsert({
+  const studentUser = await prisma.user.upsert({
     where: { email: 'student@codehub.com' },
     update: {},
     create: {
       email: 'student@codehub.com',
       name: 'Student User',
       password: studentPassword,
-      role: 'STUDENT'
+      role: 'STUDENT',
+      balance: 500.00
     }
   })
   console.log('✅ Created student user: student@codehub.com (password: student123)')
+
+  // Create sample transactions
+  console.log('💰 Creating sample transactions...')
+  await prisma.transaction.create({
+    data: {
+      userId: studentUser.id,
+      type: 'TOP_UP',
+      amount: 500.00,
+      status: 'APPROVED',
+      description: 'Initial wallet top-up',
+      adminWalletNumber: '01026454497',
+      senderWalletNumber: '01234567890'
+    }
+  })
+  console.log('✅ Created sample transaction')
+
+  // Create sample enrollment for free platform
+  console.log('📚 Creating sample enrollment...')
+  const freePlatform = await prisma.platform.findFirst({
+    where: { isPaid: false }
+  })
+  
+  if (freePlatform) {
+    await prisma.enrollment.create({
+      data: {
+        userId: studentUser.id,
+        platformId: freePlatform.id
+      }
+    })
+    console.log('✅ Created sample enrollment for free platform')
+  }
 
   console.log('🎉 Database seed completed successfully!')
 }

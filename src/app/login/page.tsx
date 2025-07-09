@@ -2,9 +2,9 @@
 
 import { useState, Suspense } from 'react'
 import { signIn, getSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, LogIn, BookOpen } from 'lucide-react'
+import { Eye, EyeOff, BookOpen } from 'lucide-react'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -13,7 +13,6 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   
-  const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
 
