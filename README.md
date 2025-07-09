@@ -1,47 +1,49 @@
-# 🎓 CodeHub - Learning Tracker Platform
+# 🎓 CodeHub - Learning Management Platform
 
 A comprehensive full-stack learning management system built with Next.js, Prisma, PostgreSQL, and Tailwind CSS. Track your progress across five programming platforms with task submissions, feedback, and detailed analytics.
 
 ## 🚀 Features
 
 ### 👩‍🎓 Student Features
-- **Secure Authentication**: Role-based access with NextAuth.js
+- **Secure Authentication**: Role-based authentication system using NextAuth.js
 - **Progress Dashboard**: Track learning progress and task completion
 - **Five Learning Platforms**:
   - Algorithms & Data Structures
   - Object-Oriented Programming (OOP)
   - SOLID Principles & Design Patterns
-  - JavaScript Interview Prep
+  - JavaScript Interview Questions
   - JavaScript Practice Tasks
-- **Task Management**: Submit summaries, track status (Pending/Completed/Rejected)
-- **File Uploads**: Attach files to submissions via Supabase
+- **Task Management**: Submit task summaries and track status (pending/completed/rejected)
+- **Summary Submission**: Write educational summaries for completed tasks
 - **Resubmission**: Allowed for rejected tasks
 
 ### 🧑‍🏫 Admin Features
 - **Student Management**: View all registered students
-- **Submission Review**: Review and grade task submissions
-- **Scoring System**: Assign scores (0-100) with detailed feedback
+- **Submission Review**: Review and evaluate task submissions
+- **Grading System**: Assign grades (0-100) with detailed feedback
 - **Status Management**: Approve or reject submissions
-- **Analytics Dashboard**: Track platform-wise statistics
+- **Analytics Dashboard**: Track statistics by platform
 
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
-|-------|------------|
+|-------|----------|
 | Frontend | Next.js 15 (App Router) |
 | Backend | Next.js API Routes |
 | Database | PostgreSQL |
 | ORM | Prisma |
-| Authentication | NextAuth.js |
-| File Storage | Supabase |
-| Styling | Tailwind CSS |
+| Authentication | NextAuth.js (Credentials Provider) |
+| Styling | Tailwind CSS + Lucide React Icons |
+| Validation | Zod |
 | TypeScript | Full type safety |
+| UI Direction | RTL (Right-to-Left) Support |
 
 ## 📋 Prerequisites
 
 - Node.js 18+ and npm
 - PostgreSQL database
-- Supabase account (for file uploads)
+- Basic knowledge of Next.js and React
+- Text editor (VS Code recommended)
 
 ## 🚀 Quick Start
 
@@ -49,37 +51,27 @@ A comprehensive full-stack learning management system built with Next.js, Prisma
 
 ```bash
 git clone <repository-url>
-cd codeapp
+cd codehub
 npm install
 ```
 
 ### 2. Environment Setup
 
-Create a `.env` file based on `.env.example`:
-
-```bash
-cp .env.example .env
-```
-
-Update the following variables:
+Create a `.env.local` file in the project root:
 
 ```env
-# Database (Supabase PostgreSQL)
-POSTGRES_URL="your-postgres-url"
-POSTGRES_PRISMA_URL="your-postgres-prisma-url"
-POSTGRES_URL_NON_POOLING="your-postgres-non-pooling-url"
-POSTGRES_USER="postgres"
-POSTGRES_HOST="your-supabase-host"
-POSTGRES_PASSWORD="your-password"
-POSTGRES_DATABASE="postgres"
+# Database URL
+DATABASE_URL="postgresql://username:password@localhost:5432/codehub"
 
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
-SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
-SUPABASE_JWT_SECRET="your-jwt-secret-key"
-SUPABASE_URL="your-supabase-url"
+# NextAuth Configuration
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-nextauth-secret-key"
+
+# Optional: For production
+# NEXTAUTH_URL="https://your-domain.com"
 ```
+
+**Note**: Make sure to create a PostgreSQL database named `codehub` or use another name and update the `DATABASE_URL` accordingly.
 
 ### 3. Database Setup
 
@@ -87,20 +79,16 @@ SUPABASE_URL="your-supabase-url"
 # Generate Prisma client
 npx prisma generate
 
-# Run database migrations
+# Apply database schema
 npx prisma db push
 
-# Seed the database with sample data
+# Seed database with sample data
+npm run seed
+# or
 node prisma/seed.js
 ```
 
-### 4. Supabase Storage Setup
-
-1. Create a bucket named `learning-tracker-files` in your Supabase project
-2. Set the bucket to public access for file downloads
-3. Configure RLS policies as needed
-
-### 5. Start Development Server
+### 4. Start Development Server
 
 ```bash
 npm run dev
@@ -110,7 +98,7 @@ Visit `http://localhost:3000` to access the application.
 
 ## 👥 Default Users
 
-After seeding, you can log in with:
+After seeding the database, you can login using:
 
 **Admin Account:**
 - Email: `admin@codehub.com`
@@ -120,30 +108,31 @@ After seeding, you can log in with:
 - Email: `student@codehub.com`
 - Password: `student123`
 
+**Or you can create a new account from the signup page**
+
 ## 📚 Learning Platforms
 
-The platform integrates with five external learning resources:
+The platform integrates with five external educational resources:
 
 1. **Algorithms & Data Structures** - [View Platform](https://ozidan13.github.io/algorithms/)
 2. **Object-Oriented Programming** - [View Platform](https://oop-pi.vercel.app/)
-3. **SOLID & Design Patterns** - [View Platform](https://ozidan13.github.io/SOLID-Principles-Design-Patterns/)
+3. **SOLID Principles & Design Patterns** - [View Platform](https://ozidan13.github.io/SOLID-Principles-Design-Patterns/)
 4. **JavaScript Interview Questions** - [View Platform](https://javascriptinterview-kappa.vercel.app/)
-5. **JavaScript Tasks** - [View Platform](https://ozidan13.github.io/js-tasks/)
+5. **JavaScript Practice Tasks** - [View Platform](https://ozidan13.github.io/js-tasks/)
 
 ## 🔄 Submission Workflow
 
 ```mermaid
 flowchart TD
-    A[Student Opens Task] --> B[Click 'Complete']
-    B --> C[Write Summary]
-    C --> D[Upload File (Optional)]
-    D --> E[Submit]
-    E --> F[Status: Pending]
-    F --> G{Admin Review}
-    G -->|Approve| H[Status: Completed + Score]
-    G -->|Reject| I[Status: Rejected + Feedback]
-    I --> J[Student Resubmits]
-    J --> F
+    A[Student opens task] --> B[Click 'Complete']
+    B --> C[Write summary]
+    C --> D[Submit summary]
+    D --> E[Status: Pending]
+    E --> F{Teacher review}
+    F -->|Approve| G[Status: Completed + Grade]
+    F -->|Reject| H[Status: Rejected + Feedback]
+    H --> I[Student resubmits]
+    I --> E
 ```
 
 ## 🗂️ Project Structure
@@ -152,40 +141,63 @@ flowchart TD
 src/
 ├── app/
 │   ├── api/           # API routes
+│   │   ├── auth/      # User authentication
+│   │   ├── dashboard/ # Dashboard statistics
+│   │   ├── platforms/ # Platform management
+│   │   ├── submissions/ # Submission management
+│   │   ├── tasks/     # Task management
+│   │   └── users/     # User management
 │   ├── admin/         # Admin dashboard
 │   ├── dashboard/     # Student dashboard
-│   ├── login/         # Authentication
-│   └── signup/        # User registration
+│   ├── login/         # Login page
+│   ├── signup/        # Signup page
+│   ├── layout.tsx     # Root layout
+│   ├── page.tsx       # Home page
+│   └── providers.tsx  # Context providers
 ├── lib/
 │   ├── auth.ts        # NextAuth configuration
-│   ├── prisma.ts      # Database client
-│   └── supabase.ts    # File storage client
+│   └── prisma.ts      # Database client
 ├── types/
 │   └── next-auth.d.ts # Type definitions
-└── middleware.ts      # Route protection
+├── middleware.ts      # Route protection
+prisma/
+├── schema.prisma      # Database schema
+└── seed.js           # Sample data
 ```
 
 ## 🔧 API Endpoints
 
 ### Authentication
-- `POST /api/auth/signup` - User registration
+- `POST /api/auth/signup` - Register new user
 - `POST /api/auth/signin` - User login
+- `POST /api/auth/signout` - User logout
+- `GET /api/auth/session` - Get current user session
 
 ### Platforms & Tasks
-- `GET /api/platforms` - Get all platforms with tasks
-- `GET /api/tasks` - Get tasks (with optional platform filter)
-- `POST /api/tasks` - Create new task (Admin only)
+- `GET /api/platforms` - Get all platforms
+- `POST /api/platforms` - Create new platform (admin only)
+- `PUT /api/platforms/[id]` - Update platform (admin only)
+- `DELETE /api/platforms/[id]` - Delete platform (admin only)
+- `GET /api/tasks` - Get tasks
+- `GET /api/tasks/[id]` - Get specific task
+- `POST /api/tasks` - Create new task (admin only)
+- `PUT /api/tasks/[id]` - Update task (admin only)
+- `DELETE /api/tasks/[id]` - Delete task (admin only)
 
 ### Submissions
 - `GET /api/submissions` - Get submissions
-- `POST /api/submissions` - Create submission
+- `POST /api/submissions` - Create new submission
 - `GET /api/submissions/[id]` - Get specific submission
-- `PATCH /api/submissions/[id]` - Update submission (Admin only)
-- `DELETE /api/submissions/[id]` - Delete submission (Admin only)
+- `PUT /api/submissions/[id]` - Update submission (review)
+- `DELETE /api/submissions/[id]` - Delete submission
 
 ### Users & Dashboard
-- `GET /api/users` - Get all users (Admin only)
+- `GET /api/users` - Get all users (admin only)
+- `GET /api/users/[id]` - Get specific user
+- `PUT /api/users/[id]` - Update user
+- `DELETE /api/users/[id]` - Delete user (admin only)
 - `GET /api/dashboard` - Get dashboard statistics
+- `GET /api/dashboard/stats` - Get detailed statistics
 
 ## 🧪 Testing
 
