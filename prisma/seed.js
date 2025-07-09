@@ -12,36 +12,36 @@ async function main() {
       name: 'Algorithms & Data Structures',
       description: 'Learn fundamental algorithms and data structures',
       url: 'https://ozidan13.github.io/algorithms/',
-      price: 100.00,
+      price: 400.00,
       isPaid: true
     },
     {
       name: 'Object-Oriented Programming (OOP)',
       description: 'Master object-oriented programming concepts',
       url: 'https://oop-pi.vercel.app/',
-      price: 150.00,
+      price: 400.00,
       isPaid: true
     },
     {
       name: 'SOLID & Design Patterns',
       description: 'Learn SOLID principles and design patterns',
       url: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/',
-      price: 200.00,
+      price: 400.00,
       isPaid: true
     },
     {
       name: 'JavaScript Interview Questions',
       description: 'Prepare for JavaScript technical interviews',
       url: 'https://javascriptinterview-kappa.vercel.app/',
-      price: 120.00,
+      price: 400.00,
       isPaid: true
     },
     {
       name: 'JavaScript Tasks',
       description: 'Practice JavaScript programming tasks',
       url: 'https://ozidan13.github.io/js-tasks/',
-      price: null,
-      isPaid: false
+      price: 400.00,
+      isPaid: true
     }
   ]
 
@@ -49,10 +49,15 @@ async function main() {
   for (const platform of platforms) {
     await prisma.platform.upsert({
       where: { name: platform.name },
-      update: {},
+      update: {
+        description: platform.description,
+        url: platform.url,
+        price: platform.price,
+        isPaid: platform.isPaid
+      },
       create: platform
     })
-    console.log(`✅ Created platform: ${platform.name}`)
+    console.log(`✅ Created/Updated platform: ${platform.name} - $${platform.price}`)
   }
 
   // Create sample tasks for each platform
@@ -234,21 +239,7 @@ async function main() {
   })
   console.log('✅ Created sample transaction')
 
-  // Create sample enrollment for free platform
-  console.log('📚 Creating sample enrollment...')
-  const freePlatform = await prisma.platform.findFirst({
-    where: { isPaid: false }
-  })
-  
-  if (freePlatform) {
-    await prisma.enrollment.create({
-      data: {
-        userId: studentUser.id,
-        platformId: freePlatform.id
-      }
-    })
-    console.log('✅ Created sample enrollment for free platform')
-  }
+  // Note: Students will enroll themselves through the application
 
   console.log('🎉 Database seed completed successfully!')
 }
