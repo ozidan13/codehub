@@ -29,6 +29,44 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const includeTasks = searchParams.get('include_tasks') === 'true'
 
+    // Check if user has an active enrollment for this platform
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_platformId: {
+          userId: session.user.id,
+          platformId: id
+        }
+      },
+      select: {
+        id: true,
+        userId: true,
+        platformId: true,
+        createdAt: true,
+        expiresAt: true
+      }
+    })
+
+    // If no enrollment exists, deny access
+    if (!enrollment) {
+      return NextResponse.json(
+        { error: 'Access denied. You must enroll in this platform first.' },
+        { status: 403 }
+      )
+    }
+
+    // Check if enrollment is expired
+    const now = new Date()
+    if (now > enrollment.expiresAt) {
+      return NextResponse.json(
+        { 
+          error: 'Access denied. Your enrollment has expired. Please renew to continue.',
+          enrollmentExpired: true,
+          enrollmentId: enrollment.id
+        },
+        { status: 403 }
+      )
+    }
+
     const platform = await prisma.platform.findUnique({
       where: { id },
       include: includeTasks ? {
@@ -58,7 +96,18 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ platform })
+    // Add enrollment status to response
+    const daysRemaining = Math.ceil((enrollment.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    return NextResponse.json({ 
+      platform,
+      enrollment: {
+        id: enrollment.id,
+        expiresAt: enrollment.expiresAt,
+        daysRemaining,
+        status: daysRemaining <= 7 ? 'expiring_soon' : 'active'
+      }
+    })
 
   } catch (error) {
     console.error('Platform fetch error:', error)

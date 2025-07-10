@@ -164,10 +164,13 @@ enum BookingStatus {
 }
 
 model Enrollment {
-  id         String   @id @default(cuid())
-  userId     String
-  platformId String
-  createdAt  DateTime @default(now())
+  id            String    @id @default(cuid())
+  userId        String
+  platformId    String
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime  // 30 days from enrollment date
+  isActive      Boolean   @default(true) // Current enrollment status
+  lastRenewalAt DateTime? // Last renewal date (optional)
   
   // Relations
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)

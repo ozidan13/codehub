@@ -27,6 +27,46 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const platformId = searchParams.get('platformId')
 
+    // If platformId is specified, check enrollment
+    if (platformId) {
+      const enrollment = await prisma.enrollment.findUnique({
+        where: {
+          userId_platformId: {
+            userId: session.user.id,
+            platformId
+          }
+        },
+        select: {
+          id: true,
+          userId: true,
+          platformId: true,
+          createdAt: true,
+          expiresAt: true
+        }
+      })
+
+      // If no enrollment exists, deny access
+      if (!enrollment) {
+        return NextResponse.json(
+          { error: 'Access denied. You must enroll in this platform first.' },
+          { status: 403 }
+        )
+      }
+
+      // Check if enrollment is expired
+      const now = new Date()
+      if (now > enrollment.expiresAt) {
+        return NextResponse.json(
+          { 
+            error: 'Access denied. Your enrollment has expired. Please renew to continue.',
+            enrollmentExpired: true,
+            enrollmentId: enrollment.id
+          },
+          { status: 403 }
+        )
+      }
+    }
+
     const whereClause = platformId ? { platformId } : {}
 
     const includeSubmissions = searchParams.get('include_submissions') === 'true'

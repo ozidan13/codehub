@@ -164,6 +164,30 @@ interface MentorshipBooking {
   }
 }
 
+interface Enrollment {
+  id: string
+  userId: string
+  platformId: string
+  createdAt: string
+  expiresAt: string
+  isExpired?: boolean
+  daysRemaining?: number
+  status?: 'active' | 'expired' | 'expiring_soon'
+  platform: {
+    id: string
+    name: string
+    description: string
+    url: string
+    price: number | null
+    isPaid: boolean
+  }
+  user?: {
+    id: string
+    name: string
+    email: string
+  }
+}
+
 interface AdminStats {
   totalUsers: number
   totalStudents: number

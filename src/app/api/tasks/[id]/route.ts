@@ -63,6 +63,54 @@ export async function GET(
       )
     }
 
+    // Check if user has an active enrollment for this task's platform
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_platformId: {
+          userId: session.user.id,
+          platformId: task.platformId
+        }
+      },
+      select: {
+        id: true,
+        userId: true,
+        platformId: true,
+        createdAt: true,
+        expiresAt: true,
+        platform: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            url: true,
+            price: true,
+            isPaid: true
+          }
+        }
+      }
+    })
+
+    // If no enrollment exists, deny access
+    if (!enrollment) {
+      return NextResponse.json(
+        { error: 'Access denied. You must enroll in this platform first.' },
+        { status: 403 }
+      )
+    }
+
+    // Check if enrollment is expired
+    const now = new Date()
+    if (now > enrollment.expiresAt) {
+      return NextResponse.json(
+        { 
+          error: 'Access denied. Your enrollment has expired. Please renew to continue.',
+          enrollmentExpired: true,
+          enrollmentId: enrollment.id
+        },
+        { status: 403 }
+      )
+    }
+
     return NextResponse.json({ task })
 
   } catch (error) {
@@ -158,6 +206,19 @@ export async function DELETE(
       )
     }
 
+    // Check if task exists before checking for submissions
+    const taskExists = await prisma.task.findUnique({
+      where: { id },
+      select: { id: true }
+    })
+
+    if (!taskExists) {
+      return NextResponse.json(
+        { error: 'Task not found' },
+        { status: 404 }
+      )
+    }
+
     // More efficient check for submissions
     const submissionCount = await prisma.submission.count({
       where: { taskId: id }
@@ -167,19 +228,6 @@ export async function DELETE(
       return NextResponse.json(
         { error: 'Cannot delete task with existing submissions. Please delete them first.' },
         { status: 400 }
-      )
-    }
-
-    // Check if task exists before deleting to provide a clear error message
-    const existingTask = await prisma.task.findUnique({
-      where: { id },
-      select: { id: true }
-    })
-
-    if (!existingTask) {
-      return NextResponse.json(
-        { error: 'Task not found' },
-        { status: 404 }
       )
     }
 
