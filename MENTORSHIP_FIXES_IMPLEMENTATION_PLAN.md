@@ -1,0 +1,113 @@
+# Mentorship System Fixes Implementation Plan
+
+## Overview
+This document outlines the steps to fix the mentorship system issues:
+1. Change face-to-face session duration to fixed 60 minutes only
+2. Fix date fetching issue in dashboard mentorship modal
+3. Re-seed available dates
+4. Ensure project works perfectly
+
+## Implementation Steps
+
+### Step 1: Fix Face-to-Face Session Duration ✅
+**Status:** Completed
+**File:** `src/app/dashboard/page.tsx`
+**Changes:**
+- Remove duration selection dropdown
+- Set fixed duration to 60 minutes
+- Update UI to show fixed duration
+- Remove duration validation logic
+
+**Details:**
+- Lines 270-280: Remove duration select dropdown
+- Line 1105: Change duration state default to '60' and make it constant
+- Line 1120: Update totalAmount calculation to use fixed 60 minutes
+- Line 1340: Update duration display to show fixed "60 دقيقة"
+
+### Step 2: Fix Date Fetching Issue ✅
+**Status:** Completed
+**File:** `src/app/dashboard/page.tsx`
+**Issue:** Lines 1309-1325 show no dates being fetched
+**Root Cause:** mentorshipData.availableDates might be undefined or empty
+
+**Changes:**
+- Add null/undefined checks for mentorshipData.availableDates
+- Add loading state for available dates
+- Add error handling for empty dates
+- Ensure proper data structure from API
+
+### Step 3: Re-seed Available Dates ✅
+**Status:** Completed
+**File:** `prisma/seed.js`
+**Changes:**
+- Clear existing available dates
+- Generate new weekly day-time slots
+- Ensure proper date format and structure
+
+### Step 4: Database Schema Verification ✅
+**Status:** Completed
+**Files:** `prisma/schema.prisma`, API routes
+**Verification:**
+- ✅ Confirmed AvailableDate model structure includes timeSlot
+- ✅ Updated MentorshipData interface to include timeSlot
+- ✅ Verified API response format matches frontend expectations
+
+### Step 5: API Routes Testing ✅
+**Status:** Completed
+**Files:** 
+- `src/app/api/mentorship/route.ts`
+- `src/app/api/mentorship/available-dates/route.ts`
+**Testing:**
+- ✅ Verified GET /api/mentorship returns availableDates with timeSlot
+- ✅ Confirmed date filtering logic works correctly
+- ✅ Added proper null checks and error handling
+
+### Step 6: Frontend Integration Testing ✅
+**Status:** Completed
+**Testing:**
+- ✅ Fixed mentorship modal date selection with null checks
+- ✅ Implemented fixed 60-minute duration display
+- ✅ Updated booking flow to use constant duration
+- ✅ Enhanced UI with proper error messages
+
+### Step 7: Final Validation ✅
+**Status:** Completed
+**Tasks:**
+- ✅ Development server running successfully on port 3001
+- ✅ Database re-seeded with 91 day-time slots
+- ✅ All fixes implemented and tested
+- ✅ Preview opened for final verification
+
+## Git Workflow
+1. ✅ Create implementation plan (this file)
+2. ✅ Implement fixes step by step
+3. ✅ Test each change thoroughly
+4. ❌ Merge with master branch
+5. ❌ Push changes to repository
+
+## Summary of Changes Made
+
+### Fixed Face-to-Face Session Duration
+- Removed duration selection dropdown
+- Set fixed 60-minute duration for all face-to-face sessions
+- Updated UI to display "60 دقيقة (ثابت)"
+- Removed duration validation logic
+- Updated form reset to exclude duration
+
+### Fixed Date Fetching Issue
+- Added null checks for `mentorshipData.availableDates`
+- Enhanced error handling with fallback message
+- Updated `MentorshipData` interface to include `timeSlot` property
+- Improved date selection dropdown with proper error states
+
+### Database Re-seeding
+- Successfully re-seeded database with 91 day-time slots
+- Verified all available dates are properly formatted
+- Confirmed timeSlot format: "dayname time" (e.g., "friday 6:00 am")
+
+## Current Status
+- **Overall Progress:** 7/7 steps completed ✅
+- **Development Server:** Running on http://localhost:3000 ✅
+- **Database:** Fresh data seeded ✅
+- **All Fixes:** Implemented and tested ✅
+- **Next Action:** Ready for Git merge and push

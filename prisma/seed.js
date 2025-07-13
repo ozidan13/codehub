@@ -239,6 +239,133 @@ async function main() {
   })
   console.log('✅ Created sample transaction')
 
+  // Create weekly available dates for mentorship (Friday to Thursday, 6 AM to 7 PM)
+  console.log('📅 Creating weekly available dates...')
+  
+  // Generate weekly day-time slots (recurring pattern)
+  const generateWeeklyDates = () => {
+    const dates = []
+    
+    // Days from Friday to Thursday
+    const dayNames = ['friday', 'saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
+    
+    // Time slots from 6 AM to 7 PM (13 hours = 13 slots)
+    const timeSlots = [
+      '6:00 am', '7:00 am', '8:00 am', '9:00 am', '10:00 am', '11:00 am',
+      '12:00 pm', '1:00 pm', '2:00 pm', '3:00 pm', '4:00 pm', '5:00 pm', '6:00 pm'
+    ]
+    
+    // Create a base date for reference (we'll use a neutral date)
+    const baseDate = new Date('2025-01-01T00:00:00Z')
+    
+    // Generate day-time combinations
+    dayNames.forEach((dayName, dayIndex) => {
+      timeSlots.forEach((timeSlot, timeIndex) => {
+        // Create a unique date for each day-time combination
+        // We'll use the day index and time index to create unique dates
+        const slotDate = new Date(baseDate)
+        slotDate.setDate(baseDate.getDate() + dayIndex)
+        slotDate.setHours(timeIndex + 6, 0, 0, 0) // Start from 6 AM
+        
+        dates.push({
+          date: slotDate,
+          timeSlot: `${dayName} ${timeSlot}`,
+          isBooked: false
+        })
+      })
+    })
+    
+    return dates
+  }
+  
+  const availableDates = generateWeeklyDates()
+  console.log(`📊 Generated ${availableDates.length} day-time slots to process...`)
+  
+  // Process dates in batches for better performance
+  const batchSize = 50
+  let processed = 0
+  
+  for (let i = 0; i < availableDates.length; i += batchSize) {
+    const batch = availableDates.slice(i, i + batchSize)
+    
+    await Promise.all(batch.map(async (dateData) => {
+      await prisma.availableDate.upsert({
+        where: {
+          date_timeSlot: {
+            date: dateData.date,
+            timeSlot: dateData.timeSlot
+          }
+        },
+        update: {},
+        create: dateData
+      })
+    }))
+    
+    processed += batch.length
+    console.log(`⏳ Processed ${processed}/${availableDates.length} dates...`)
+  }
+  
+  console.log(`✅ Created ${availableDates.length} weekly day-time slots (Friday-Thursday, 6 AM-7 PM)`)
+
+  // Create recorded session
+  console.log('🎥 Creating recorded session...')
+  await prisma.recordedSession.upsert({
+    where: { id: 'recorded-session-1' },
+    update: {
+      title: 'Complete React Development Masterclass',
+      description: 'A comprehensive recorded session covering React fundamentals, hooks, state management, and best practices. Perfect for beginners and intermediate developers.',
+      videoLink: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      price: 150.00,
+      isActive: true
+    },
+    create: {
+      id: 'recorded-session-1',
+      title: 'Complete React Development Masterclass',
+      description: 'A comprehensive recorded session covering React fundamentals, hooks, state management, and best practices. Perfect for beginners and intermediate developers.',
+      videoLink: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      price: 150.00,
+      isActive: true
+    }
+  })
+  console.log('✅ Created recorded session')
+
+  // Create sample mentorship bookings
+  console.log('🎓 Creating sample mentorship bookings...')
+  
+  // Recorded session booking
+  await prisma.mentorshipBooking.create({
+    data: {
+      studentId: studentUser.id,
+      mentorId: adminUser.id,
+      sessionType: 'RECORDED',
+      duration: 60,
+      amount: 100.00,
+      status: 'CONFIRMED',
+      sessionDate: new Date(),
+      studentNotes: 'Looking for help with React basics',
+      videoLink: 'https://example.com/recorded-session-1',
+      dateChanged: false
+    }
+  })
+
+  // Face-to-face session booking (pending)
+  await prisma.mentorshipBooking.create({
+    data: {
+      studentId: studentUser.id,
+      mentorId: adminUser.id,
+      sessionType: 'FACE_TO_FACE',
+      duration: 60,
+      amount: 500.00,
+      status: 'PENDING',
+      sessionDate: new Date('2025-01-15T10:00:00Z'),
+      originalSessionDate: new Date('2025-01-15T10:00:00Z'),
+      studentNotes: 'Need help with advanced JavaScript concepts',
+      whatsappNumber: '+201234567890',
+      dateChanged: false
+    }
+  })
+  console.log('✅ Created sample mentorship bookings')
+
   // Note: Students will enroll themselves through the application
 
   console.log('🎉 Database seed completed successfully!')

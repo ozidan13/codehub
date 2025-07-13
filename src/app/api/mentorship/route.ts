@@ -5,8 +5,12 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const bookingSchema = z.object({
+  sessionType: z.enum(['RECORDED', 'FACE_TO_FACE']),
   duration: z.number().min(30).max(180).default(60),
-  studentNotes: z.string().optional()
+  studentNotes: z.string().optional(),
+  whatsappNumber: z.string().optional(),
+  selectedDateId: z.string().optional(),
+  recordedSessionId: z.string().optional()
 })
 
 // GET /api/mentorship - Get mentorship pricing and user bookings
@@ -49,9 +53,34 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     })
 
+    // Get available dates for face-to-face sessions
+    const availableDates = await prisma.availableDate.findMany({
+      where: {
+        isBooked: false,
+        date: {
+          gte: new Date() // Only future dates
+        }
+      },
+      orderBy: { date: 'asc' }
+    })
+
+    // Get recorded sessions
+    const recordedSessions = await prisma.recordedSession.findMany({
+      where: {
+        isActive: true
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
     return NextResponse.json({
       mentor,
-      bookings
+      bookings,
+      availableDates,
+      recordedSessions,
+      pricing: {
+        recordedSession: 100,
+        faceToFaceSession: 500
+      }
     })
   } catch (error) {
     console.error('Error fetching mentorship data:', error)
@@ -69,7 +98,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { duration, studentNotes } = bookingSchema.parse(body)
+    const { sessionType, duration, studentNotes, whatsappNumber, selectedDateId, recordedSessionId } = bookingSchema.parse(body)
+
+    // Validate session type specific requirements
+    if (sessionType === 'RECORDED') {
+      if (!recordedSessionId) {
+        return NextResponse.json({ error: 'Please select a recorded session' }, { status: 400 })
+      }
+    }
+    
+    if (sessionType === 'FACE_TO_FACE') {
+      if (!whatsappNumber) {
+        return NextResponse.json({ error: 'WhatsApp number is required for face-to-face sessions' }, { status: 400 })
+      }
+      if (!selectedDateId) {
+        return NextResponse.json({ error: 'Please select an available date for face-to-face sessions' }, { status: 400 })
+      }
+    }
 
     // Get mentor (admin) details
     const mentor = await prisma.user.findFirst({
@@ -83,13 +128,38 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    if (!mentor || !mentor.mentorRate) {
+    if (!mentor) {
       return NextResponse.json({ error: 'No mentor available' }, { status: 404 })
     }
 
-    // Calculate session cost
-    const hourlyRate = mentor.mentorRate.toNumber()
-    const sessionCost = (hourlyRate * duration) / 60
+    // Calculate session cost based on session type
+    let sessionCost: number
+    let selectedDate: any = null
+    let recordedSession: any = null
+    
+    if (sessionType === 'RECORDED') {
+      // Get the selected recorded session
+      recordedSession = await prisma.recordedSession.findUnique({
+        where: { id: recordedSessionId }
+      })
+      
+      if (!recordedSession || !recordedSession.isActive) {
+        return NextResponse.json({ error: 'Selected recorded session is not available' }, { status: 400 })
+      }
+      
+      sessionCost = recordedSession.price.toNumber()
+    } else {
+      sessionCost = 500 // Fixed price for face-to-face sessions
+      
+      // Verify and reserve the selected date
+      selectedDate = await prisma.availableDate.findUnique({
+        where: { id: selectedDateId }
+      })
+      
+      if (!selectedDate || selectedDate.isBooked) {
+        return NextResponse.json({ error: 'Selected date is no longer available' }, { status: 400 })
+      }
+    }
 
     // Check user balance
     const user = await prisma.user.findUnique({
@@ -110,26 +180,42 @@ export async function POST(request: NextRequest) {
       })
 
       // Create transaction record
+      const transactionType = sessionType === 'RECORDED' ? 'RECORDED_SESSION' : 'FACE_TO_FACE_SESSION'
       await tx.transaction.create({
         data: {
           userId: session.user.id,
-          type: 'MENTORSHIP_PAYMENT',
+          type: transactionType,
           amount: sessionCost.toString(),
           status: 'APPROVED',
-          description: `Mentorship session booking (${duration} minutes)`
+          description: `${sessionType === 'RECORDED' ? 'Recorded' : 'Face-to-face'} mentorship session booking (${duration} minutes)`
         }
       })
 
-      // Create booking
+      // Create booking with session type specific data
+      const bookingData: any = {
+        studentId: session.user.id,
+        mentorId: mentor.id,
+        sessionType,
+        duration,
+        amount: sessionCost,
+        status: sessionType === 'RECORDED' ? 'CONFIRMED' : 'PENDING',
+        studentNotes,
+        dateChanged: false
+      }
+
+      if (sessionType === 'RECORDED') {
+        // For recorded sessions, use the selected recorded session
+        bookingData.videoLink = recordedSession.videoLink
+        bookingData.sessionDate = new Date()
+      } else {
+        // For face-to-face sessions, set the selected date and WhatsApp number
+        bookingData.sessionDate = selectedDate.date
+        bookingData.originalSessionDate = selectedDate.date
+        bookingData.whatsappNumber = whatsappNumber
+      }
+
       const booking = await tx.mentorshipBooking.create({
-        data: {
-          studentId: session.user.id,
-          mentorId: mentor.id,
-          duration,
-          amount: sessionCost,
-          status: 'PENDING',
-          studentNotes
-        },
+        data: bookingData,
         include: {
           mentor: {
             select: {
@@ -139,11 +225,26 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      // For face-to-face sessions, mark the date as booked with booking ID
+      if (sessionType === 'FACE_TO_FACE' && selectedDate) {
+        await tx.availableDate.update({
+          where: { id: selectedDateId },
+          data: { 
+            isBooked: true,
+            bookingId: booking.id
+          }
+        })
+      }
+
       return booking
     })
 
+    const message = sessionType === 'RECORDED' 
+      ? 'Recorded session booked successfully! Your video link is ready.'
+      : 'Face-to-face session booked successfully! Awaiting admin confirmation.'
+    
     return NextResponse.json({ 
-      message: 'Mentorship session booked successfully. Payment deducted. Awaiting admin confirmation.',
+      message,
       booking: result
     })
   } catch (error) {

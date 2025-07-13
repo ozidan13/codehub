@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, FC, ReactNode } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, LogOut, RefreshCw, Star, Wallet, CreditCard, Users, ShoppingCart, XCircle } from 'lucide-react'
+import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, LogOut, RefreshCw, Star, Wallet, CreditCard, Users, ShoppingCart, XCircle, Play } from 'lucide-react'
 
 // --- INTERFACES ---
 interface Platform {
@@ -81,12 +81,34 @@ interface MentorshipData {
     mentorBio: string;
     mentorRate: number;
   };
+  pricing: {
+    recordedSession: number;
+    faceToFaceSession: number;
+  };
+  availableDates: {
+    id: string;
+    date: string;
+    timeSlot: string;
+    isBooked: boolean;
+  }[];
+  recordedSessions: {
+    id: string;
+    title: string;
+    description: string;
+    videoLink: string;
+    price: number;
+    isActive: boolean;
+  }[];
   bookings: {
     id: string;
     duration: number;
     amount: number;
     status: string;
+    sessionType: 'RECORDED' | 'FACE_TO_FACE';
     sessionDate: string | null;
+    videoLink: string | null;
+    meetingLink: string | null;
+    whatsappNumber: string | null;
     studentNotes: string | null;
     adminNotes: string | null;
     createdAt: string;
@@ -566,6 +588,12 @@ const EnrollmentsSection: FC<{ enrollments: Enrollment[]; onEnrollmentRenewal: (
 
 const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onBookMentorship: () => void }> = ({ mentorshipData, onBookMentorship }) => {
   if (!mentorshipData) return null;
+  
+  // Check if user has purchased any recorded sessions
+  const purchasedRecordedSessions = mentorshipData.bookings.filter(
+    booking => booking.sessionType === 'RECORDED' && booking.status === 'CONFIRMED'
+  );
+  
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
       <div className="flex items-center justify-between mb-6">
@@ -586,11 +614,63 @@ const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onBookMento
           <span>احجز جلسة</span>
         </button>
       </div>
+      
+      {/* Recorded Sessions Section */}
+      {mentorshipData.recordedSessions.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">الجلسات المسجلة</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {mentorshipData.recordedSessions.map((session) => {
+              const isPurchased = purchasedRecordedSessions.some(
+                booking => booking.videoLink === session.videoLink
+              );
+              
+              return (
+                <div key={session.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-800 mb-1">{session.title}</h4>
+                      <p className="text-sm text-gray-600 mb-2">{session.description}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold text-blue-600">${Number(session.price).toFixed(2)}</span>
+                        {isPurchased ? (
+                          <a
+                            href={session.videoLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-1 space-x-reverse bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                          >
+                            <Play className="h-4 w-4" />
+                            <span>شاهد الآن</span>
+                          </a>
+                        ) : (
+                          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                            غير مشترى
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-4">
           <h3 className="font-semibold text-gray-800 mb-2">المرشد: {mentorshipData.mentor.name}</h3>
           <p className="text-sm text-gray-600 mb-3">{mentorshipData.mentor.mentorBio}</p>
-          <p className="text-lg font-bold text-orange-600">${mentorshipData.mentor.mentorRate}/ساعة</p>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">جلسة مسجلة:</span>
+              <span className="font-bold text-orange-600">${mentorshipData.pricing.recordedSession.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">جلسة مباشرة:</span>
+              <span className="font-bold text-orange-600">${mentorshipData.pricing.faceToFaceSession.toFixed(2)}/ساعة</span>
+            </div>
+          </div>
         </div>
         <div>
           <h3 className="font-semibold text-gray-800 mb-3">جلساتك الأخيرة</h3>
@@ -600,8 +680,17 @@ const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onBookMento
             <div className="space-y-2">
               {mentorshipData.bookings.slice(0, 3).map((booking) => (
                 <div key={booking.id} className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{booking.duration} دقيقة</span>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        booking.sessionType === 'RECORDED' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {booking.sessionType === 'RECORDED' ? 'مسجلة' : 'مباشرة'}
+                      </span>
+                      {booking.sessionType === 'FACE_TO_FACE' && (
+                        <span className="text-sm font-medium">{booking.duration} دقيقة</span>
+                      )}
+                    </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
                       booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
@@ -613,8 +702,50 @@ const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onBookMento
                        booking.status === 'COMPLETED' ? 'مكتمل' : 'ملغي'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">${Number(booking.amount).toFixed(2)}</p>
-
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span>المبلغ: ${Number(booking.amount).toFixed(2)}</span>
+                      <span>تاريخ الحجز: {new Date(booking.createdAt).toLocaleDateString('ar-SA')}</span>
+                    </div>
+                    {booking.sessionDate && (
+                      <div className="text-center">
+                        <span className="font-medium text-orange-600">
+                          موعد الجلسة: {new Date(booking.sessionDate).toLocaleDateString('ar-SA', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {booking.videoLink && booking.status === 'COMPLETED' && (
+                    <div className="mt-2">
+                      <a 
+                        href={booking.videoLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-orange-600 hover:text-orange-800 underline"
+                      >
+                        مشاهدة الفيديو
+                      </a>
+                    </div>
+                  )}
+                  {booking.meetingLink && booking.status === 'CONFIRMED' && (
+                    <div className="mt-2">
+                      <a 
+                        href={booking.meetingLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-green-600 hover:text-green-800 underline"
+                      >
+                        رابط الاجتماع
+                      </a>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -970,18 +1101,55 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
 };
 
 const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | null; userBalance: number; onClose: () => void; onSuccess: () => void }> = ({ isOpen, mentorshipData, userBalance, onClose, onSuccess }) => {
-  const [duration, setDuration] = useState('60');
+  const [sessionType, setSessionType] = useState<'RECORDED' | 'FACE_TO_FACE'>('RECORDED');
+  const duration = '60'; // Fixed 60 minutes for face-to-face sessions
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [selectedDateId, setSelectedDateId] = useState('');
+  const [selectedRecordedSessionId, setSelectedRecordedSessionId] = useState('');
+  const [studentNotes, setStudentNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen || !mentorshipData) return null;
 
-  const totalAmount = (parseInt(duration) / 60) * mentorshipData.mentor.mentorRate;
+  // Check if user has purchased any recorded sessions
+  const purchasedRecordedSessions = mentorshipData.bookings.filter(
+    booking => booking.sessionType === 'RECORDED' && booking.status === 'CONFIRMED'
+  );
+
+  const selectedRecordedSession = mentorshipData.recordedSessions.find(s => s.id === selectedRecordedSessionId);
+  const sessionPrice = sessionType === 'RECORDED' 
+    ? (selectedRecordedSession?.price || mentorshipData.pricing.recordedSession)
+    : mentorshipData.pricing.faceToFaceSession;
+  const totalAmount = sessionType === 'RECORDED' ? sessionPrice : (parseInt(duration) / 60) * sessionPrice;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!duration || parseInt(duration) <= 0) {
-      alert('يرجى إدخال مدة صحيحة');
-      return;
+    
+    // Validation
+    if (sessionType === 'RECORDED') {
+      if (!selectedRecordedSessionId) {
+        alert('يرجى اختيار جلسة مسجلة');
+        return;
+      }
+      // Check if already purchased
+      const alreadyPurchased = purchasedRecordedSessions.some(
+        booking => booking.videoLink === selectedRecordedSession?.videoLink
+      );
+      if (alreadyPurchased) {
+        alert('لقد قمت بشراء هذه الجلسة مسبقاً');
+        return;
+      }
+    }
+    
+    if (sessionType === 'FACE_TO_FACE') {
+      if (!whatsappNumber.trim()) {
+        alert('يرجى إدخال رقم الواتساب');
+        return;
+      }
+      if (!selectedDateId) {
+        alert('يرجى اختيار تاريخ للجلسة');
+        return;
+      }
     }
 
     if (totalAmount > userBalance) {
@@ -991,16 +1159,38 @@ const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | nu
 
     setIsSubmitting(true);
     try {
+      const requestBody: any = {
+        sessionType,
+        studentNotes: studentNotes.trim() || undefined
+      };
+
+      if (sessionType === 'RECORDED') {
+        requestBody.recordedSessionId = selectedRecordedSessionId;
+      }
+
+      if (sessionType === 'FACE_TO_FACE') {
+        requestBody.duration = parseInt(duration);
+        requestBody.whatsappNumber = whatsappNumber.trim();
+        requestBody.selectedDateId = selectedDateId;
+      }
+
       const response = await fetch('/api/mentorship', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: parseInt(duration) }),
+        body: JSON.stringify(requestBody),
       });
+      
       if (response.ok) {
+        const result = await response.json();
         onSuccess();
         onClose();
-        setDuration('60');
-        alert('تم حجز الجلسة بنجاح!');
+        // Reset form
+        setSessionType('RECORDED');
+        setWhatsappNumber('');
+        setSelectedDateId('');
+        setSelectedRecordedSessionId('');
+        setStudentNotes('');
+        alert(result.message || 'تم حجز الجلسة بنجاح!');
       } else {
         const error = await response.json();
         alert(`فشل في حجز الجلسة: ${error.error}`);
@@ -1024,26 +1214,141 @@ const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | nu
         </div>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">مدة الجلسة (دقيقة)</label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-            >
-              <option value="30">30 دقيقة</option>
-              <option value="60">60 دقيقة</option>
-              <option value="90">90 دقيقة</option>
-              <option value="120">120 دقيقة</option>
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-2">نوع الجلسة</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setSessionType('RECORDED')}
+                className={`p-3 rounded-lg border-2 transition-all ${
+                  sessionType === 'RECORDED'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-sm font-medium">جلسة مسجلة</div>
+                <div className="text-xs text-gray-500 mt-1">فيديو جاهز للمشاهدة</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionType('FACE_TO_FACE')}
+                className={`p-3 rounded-lg border-2 transition-all ${
+                  sessionType === 'FACE_TO_FACE'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-sm font-medium">جلسة مباشرة</div>
+                <div className="text-xs text-gray-500 mt-1">لقاء مباشر مع المرشد</div>
+              </button>
+            </div>
+          </div>
+
+          {sessionType === 'RECORDED' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">اختر الجلسة المسجلة</label>
+              <select
+                value={selectedRecordedSessionId}
+                onChange={(e) => setSelectedRecordedSessionId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                required
+              >
+                <option value="">اختر الجلسة</option>
+                {mentorshipData.recordedSessions
+                  .filter(session => {
+                    const alreadyPurchased = purchasedRecordedSessions.some(
+                      booking => booking.videoLink === session.videoLink
+                    );
+                    return session.isActive && !alreadyPurchased;
+                  })
+                  .map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {session.title} - ${Number(session.price).toFixed(2)}
+                    </option>
+                  ))}
+              </select>
+              {selectedRecordedSession && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-gray-600">{selectedRecordedSession.description}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {sessionType === 'FACE_TO_FACE' && (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">مدة الجلسة</label>
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                  60 دقيقة (ثابت)
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">رقم الواتساب</label>
+                <input
+                  type="tel"
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  placeholder="مثال: +966501234567"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">اختر التاريخ المتاح</label>
+                <select
+                  value={selectedDateId}
+                  onChange={(e) => setSelectedDateId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  required
+                >
+                  <option value="">اختر التاريخ</option>
+                  {mentorshipData.availableDates && mentorshipData.availableDates.length > 0 ? (
+                    mentorshipData.availableDates
+                      .filter(date => !date.isBooked)
+                      .map((date) => (
+                        <option key={date.id} value={date.id}>
+                          {date.timeSlot}
+                        </option>
+                      ))
+                  ) : (
+                    <option value="" disabled>لا توجد مواعيد متاحة حالياً</option>
+                  )}
+                </select>
+              </div>
+            </>
+          )}
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">ملاحظات إضافية (اختياري)</label>
+            <textarea
+              value={studentNotes}
+              onChange={(e) => setStudentNotes(e.target.value)}
+              placeholder="أي ملاحظات أو أسئلة تريد مناقشتها..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            />
           </div>
           <div className="mb-4 p-3 bg-orange-50 rounded-lg">
             <div className="flex justify-between text-sm">
-              <span>المدة:</span>
-              <span>{duration} دقيقة</span>
+              <span>نوع الجلسة:</span>
+              <span>{sessionType === 'RECORDED' ? 'جلسة مسجلة' : 'جلسة مباشرة'}</span>
             </div>
+            {sessionType === 'FACE_TO_FACE' && (
+              <div className="flex justify-between text-sm">
+                <span>المدة:</span>
+                <span>{duration} دقيقة</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span>السعر:</span>
-              <span>${mentorshipData.mentor.mentorRate}/ساعة</span>
+              <span>
+                {sessionType === 'RECORDED' 
+                  ? `$${sessionPrice.toFixed(2)} (ثابت)`
+                  : `$${sessionPrice.toFixed(2)}/ساعة`
+                }
+              </span>
             </div>
             <div className="flex justify-between font-bold text-orange-600 border-t border-orange-200 pt-2 mt-2">
               <span>المجموع:</span>

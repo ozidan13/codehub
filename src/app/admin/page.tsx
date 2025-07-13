@@ -149,6 +149,13 @@ interface MentorshipBooking {
   duration: number
   amount: number
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+  sessionType: 'RECORDED' | 'FACE_TO_FACE'
+  sessionDate: string | null
+  videoLink: string | null
+  meetingLink: string | null
+  whatsappNumber: string | null
+  studentNotes: string | null
+  adminNotes: string | null
   createdAt: string
   updatedAt: string
   user: {
@@ -241,7 +248,7 @@ const dataCache = new DataCache()
 export default function AdminPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship' | 'dates'>('overview')
   
   // --- STATE MANAGEMENT ---
   const [overviewStats, setOverviewStats] = useState<AdminStats | null>(null)
@@ -429,7 +436,7 @@ export default function AdminPage() {
     fetchAdminData(tab, page);
   }
 
-  const handleTabChange = (tab: 'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship') => {
+  const handleTabChange = (tab: 'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship' | 'dates') => {
     setActiveTab(tab);
   };
 
@@ -539,6 +546,7 @@ export default function AdminPage() {
                                 onPageChange={(page) => handlePageChange(page, 'mentorship')} 
                                 onRefresh={() => refreshData('mentorship')} 
                               />
+      case 'dates': return <DatesTab />
       case 'platforms': return <PlatformsTab platforms={platforms} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('platform')} />
       case 'tasks': return <TasksTab tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('task')} />
       case 'users': return <UsersTab users={users} onEdit={handleEdit} onCreate={() => handleCreate('user')} />
@@ -559,6 +567,7 @@ export default function AdminPage() {
           <TabButton icon={<FileText />} label="التقديمات" active={activeTab === 'submissions'} onClick={() => handleTabChange('submissions')} />
           <TabButton icon={<Wallet />} label="المعاملات المالية" active={activeTab === 'transactions'} onClick={() => handleTabChange('transactions')} />
           <TabButton icon={<Calendar />} label="جلسات الإرشاد" active={activeTab === 'mentorship'} onClick={() => handleTabChange('mentorship')} />
+          <TabButton icon={<Clock />} label="إدارة المواعيد" active={activeTab === 'dates'} onClick={() => handleTabChange('dates')} />
           <TabButton icon={<Briefcase />} label="المنصات" active={activeTab === 'platforms'} onClick={() => handleTabChange('platforms')} />
           <TabButton icon={<Clipboard />} label="المهام" active={activeTab === 'tasks'} onClick={() => handleTabChange('tasks')} />
           <TabButton icon={<UserIcon />} label="المستخدمون" active={activeTab === 'users'} onClick={() => handleTabChange('users')} />
@@ -856,6 +865,261 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, o
           </div>
         )}
       </div>
+
+    </div>
+  );
+};
+
+// Booking Update Modal Component
+interface BookingUpdateModalProps {
+  booking: MentorshipBooking;
+  onClose: () => void;
+  onUpdate: () => void;
+}
+
+const BookingUpdateModal: FC<BookingUpdateModalProps> = ({ booking, onClose, onUpdate }) => {
+  const [status, setStatus] = useState(booking.status);
+  const [videoLink, setVideoLink] = useState(booking.videoLink || '');
+  const [meetingLink, setMeetingLink] = useState(booking.meetingLink || '');
+  const [adminNotes, setAdminNotes] = useState(booking.adminNotes || '');
+  const [sessionDate, setSessionDate] = useState(booking.sessionDate || '');
+  const [availableDates, setAvailableDates] = useState<any[]>([]);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isLoadingDates, setIsLoadingDates] = useState(false);
+
+  // Fetch available dates for face-to-face sessions
+  useEffect(() => {
+    if (booking.sessionType === 'FACE_TO_FACE') {
+      fetchAvailableDates();
+    }
+  }, [booking.sessionType]);
+
+  const fetchAvailableDates = async () => {
+    setIsLoadingDates(true);
+    try {
+      const response = await fetch('/api/admin/available-dates');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableDates(data.availableDates.filter((date: any) => !date.isBooked || date.id === booking.availableDateId));
+      }
+    } catch (error) {
+      console.error('Error fetching available dates:', error);
+    } finally {
+      setIsLoadingDates(false);
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
+
+    try {
+      const updateData: any = {
+        bookingId: booking.id,
+        status,
+        adminNotes: adminNotes.trim() || undefined
+      };
+
+      if (booking.sessionType === 'RECORDED' && videoLink.trim()) {
+        updateData.videoLink = videoLink.trim();
+      }
+
+      if (booking.sessionType === 'FACE_TO_FACE') {
+        if (meetingLink.trim()) {
+          updateData.meetingLink = meetingLink.trim();
+        }
+        if (sessionDate && sessionDate !== booking.sessionDate) {
+          updateData.sessionDate = sessionDate;
+        }
+      }
+
+      const response = await fetch('/api/admin/mentorship', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        onUpdate();
+      } else {
+        const error = await response.json();
+        alert(`فشل في تحديث الحجز: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Booking update error:', error);
+      alert('حدث خطأ أثناء تحديث الحجز.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" dir="rtl">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-gray-800">تحديث حجز الجلسة</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Booking Info */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-semibold text-gray-800 mb-3">معلومات الحجز</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">الطالب:</span>
+                <span className="font-medium mr-2">{booking.user?.name}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">نوع الجلسة:</span>
+                <span className="font-medium mr-2">
+                  {booking.sessionType === 'RECORDED' ? 'جلسة مسجلة' : 'جلسة مباشرة'}
+                </span>
+              </div>
+              {booking.sessionType === 'FACE_TO_FACE' && (
+                <>
+                  <div>
+                    <span className="text-gray-600">المدة:</span>
+                    <span className="font-medium mr-2">{booking.duration} دقيقة</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">رقم الواتساب:</span>
+                    <span className="font-medium mr-2">{booking.whatsappNumber}</span>
+                  </div>
+                </>
+              )}
+              <div>
+                <span className="text-gray-600">المبلغ:</span>
+                <span className="font-medium mr-2">${Number(booking.amount).toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">تاريخ الحجز:</span>
+                <span className="font-medium mr-2">
+                  {new Date(booking.createdAt).toLocaleDateString('ar-SA')}
+                </span>
+              </div>
+            </div>
+            {booking.studentNotes && (
+              <div className="mt-3">
+                <span className="text-gray-600">ملاحظات الطالب:</span>
+                <p className="text-sm text-gray-800 mt-1 p-2 bg-white rounded border">
+                  {booking.studentNotes}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Status */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">حالة الحجز</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="PENDING">في الانتظار</option>
+              <option value="CONFIRMED">مؤكد</option>
+              <option value="COMPLETED">مكتمل</option>
+              <option value="CANCELLED">ملغي</option>
+            </select>
+          </div>
+
+          {/* Video Link for Recorded Sessions */}
+          {booking.sessionType === 'RECORDED' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">رابط الفيديو</label>
+              <input
+                type="url"
+                value={videoLink}
+                onChange={(e) => setVideoLink(e.target.value)}
+                placeholder="https://example.com/video"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+          )}
+
+          {/* Session Date and Meeting Link for Face-to-Face Sessions */}
+          {booking.sessionType === 'FACE_TO_FACE' && (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">تاريخ ووقت الجلسة</label>
+                {isLoadingDates ? (
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                    جاري تحميل المواعيد المتاحة...
+                  </div>
+                ) : (
+                  <select
+                    value={sessionDate}
+                    onChange={(e) => setSessionDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">اختر موعد الجلسة</option>
+                    {availableDates.map((date) => (
+                      <option key={date.id} value={date.id}>
+                        {date.timeSlot}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {booking.sessionDate && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    الموعد الحالي: {new Date(booking.sessionDate).toLocaleDateString('ar-SA', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                )}
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">رابط الاجتماع</label>
+                <input
+                  type="url"
+                  value={meetingLink}
+                  onChange={(e) => setMeetingLink(e.target.value)}
+                  placeholder="https://zoom.us/j/..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Admin Notes */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">ملاحظات الإدارة</label>
+            <textarea
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+              placeholder="أي ملاحظات إضافية..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-3 space-x-reverse">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:bg-gray-400"
+            >
+              {isUpdating ? 'جاري التحديث...' : 'تحديث الحجز'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
@@ -868,8 +1132,245 @@ interface MentorshipTabProps {
   onRefresh: () => void;
 }
 
+interface RecordedSession {
+  id: string;
+  title: string;
+  description: string | null;
+  videoLink: string;
+  price: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface RecordedSessionCardProps {
+  onRefresh: () => void;
+}
+
+const RecordedSessionCard: FC<RecordedSessionCardProps> = ({ onRefresh }) => {
+  const [recordedSession, setRecordedSession] = useState<RecordedSession | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    videoLink: '',
+    price: 150,
+    isActive: true
+  });
+
+  const fetchRecordedSession = async () => {
+    try {
+      const response = await fetch('/api/admin/recorded-sessions');
+      if (response.ok) {
+        const sessions = await response.json();
+        const activeSession = sessions.find((s: RecordedSession) => s.isActive) || sessions[0];
+        setRecordedSession(activeSession || null);
+        if (activeSession) {
+          setFormData({
+            title: activeSession.title,
+            description: activeSession.description || '',
+            videoLink: activeSession.videoLink,
+            price: activeSession.price,
+            isActive: activeSession.isActive
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching recorded session:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecordedSession();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      const url = recordedSession ? '/api/admin/recorded-sessions' : '/api/admin/recorded-sessions';
+      const method = recordedSession ? 'PUT' : 'POST';
+      const body = recordedSession ? { id: recordedSession.id, ...formData } : formData;
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (response.ok) {
+        await fetchRecordedSession();
+        setIsEditing(false);
+        onRefresh();
+      } else {
+        const error = await response.json();
+        alert(`خطأ في حفظ الجلسة المسجلة: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error saving recorded session:', error);
+      alert('حدث خطأ أثناء حفظ الجلسة المسجلة');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-20 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <div className="p-3 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 text-white">
+            <FileText className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">إدارة الجلسة المسجلة</h3>
+            <p className="text-sm text-gray-600">رابط واحد لجميع الطلاب</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          {isEditing ? 'إلغاء' : 'تعديل'}
+        </button>
+      </div>
+
+      {isEditing ? (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">عنوان الجلسة</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="أدخل عنوان الجلسة"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">وصف الجلسة</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              rows={3}
+              placeholder="أدخل وصف الجلسة"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">رابط الفيديو</label>
+            <input
+              type="url"
+              value={formData.videoLink}
+              onChange={(e) => setFormData({ ...formData, videoLink: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="https://example.com/video"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">السعر</label>
+              <input
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">الحالة</label>
+              <select
+                value={formData.isActive.toString()}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="true">نشط</option>
+                <option value="false">غير نشط</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3 space-x-reverse">
+            <button
+              onClick={() => setIsEditing(false)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              إلغاء
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              حفظ
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {recordedSession ? (
+            <>
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h4 className="text-lg font-semibold text-gray-800">{recordedSession.title}</h4>
+                  {recordedSession.description && (
+                    <p className="text-gray-600 mt-1">{recordedSession.description}</p>
+                  )}
+                </div>
+                <div className="text-left">
+                  <span className="text-2xl font-bold text-purple-600">${Number(recordedSession.price).toFixed(2)}</span>
+                  <div className="mt-1">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      recordedSession.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {recordedSession.isActive ? 'نشط' : 'غير نشط'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-sm text-gray-600 mb-1">رابط الفيديو:</p>
+                <a
+                  href={recordedSession.videoLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 hover:text-purple-800 text-sm break-all"
+                >
+                  {recordedSession.videoLink}
+                </a>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600">لا توجد جلسة مسجلة</p>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="mt-3 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                إضافة جلسة مسجلة
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageChange, onRefresh }) => {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<MentorshipBooking | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const handleStatusUpdate = async (bookingId: string, status: 'CONFIRMED' | 'CANCELLED') => {
     setIsUpdating(bookingId);
@@ -893,6 +1394,11 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
     }
   };
 
+  const handleUpdateBooking = (booking: MentorshipBooking) => {
+    setSelectedBooking(booking);
+    setShowUpdateModal(true);
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap = {
       PENDING: { label: 'في الانتظار', class: 'bg-yellow-100 text-yellow-800' },
@@ -906,11 +1412,14 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      {/* Recorded Session Management */}
+      <RecordedSessionCard onRefresh={onRefresh} />
+      
+      <div className="flex justify-between items-center mb-6 mt-8">
         <div className="flex items-center space-x-3 space-x-reverse">
           <Calendar className="h-8 w-8 text-orange-600" />
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">إدارة جلسات الإرشاد</h2>
+            <h2 className="text-2xl font-bold text-gray-800">إدارة حجوزات الجلسات</h2>
             <p className="text-gray-600">مراجعة وإدارة جميع حجوزات جلسات الإرشاد</p>
           </div>
         </div>
@@ -929,8 +1438,8 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الطالب</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المرشد</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المدة</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نوع الجلسة</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التفاصيل</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
@@ -947,36 +1456,64 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{booking.mentor?.name || 'غير محدد'}</div>
-                      <div className="text-sm text-gray-500">${booking.mentor?.mentorRate || 0}/ساعة</div>
+                    <div className="flex items-center space-x-2 space-x-reverse">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        booking.sessionType === 'RECORDED' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {booking.sessionType === 'RECORDED' ? 'مسجلة' : 'مباشرة'}
+                      </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{booking.duration || 0} دقيقة</td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm">
+                      {booking.sessionType === 'FACE_TO_FACE' && (
+                        <div className="text-gray-900">{booking.duration || 0} دقيقة</div>
+                      )}
+                      {booking.sessionDate && (
+                        <div className="text-gray-500">
+                          {new Date(booking.sessionDate).toLocaleDateString('ar-SA')}
+                        </div>
+                      )}
+                      {booking.whatsappNumber && (
+                        <div className="text-gray-500 text-xs">{booking.whatsappNumber}</div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${Number(booking.amount || 0).toFixed(2)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(booking.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(booking.createdAt).toLocaleDateString('ar-SA')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {booking.status === 'PENDING' && (
-                      <div className="flex space-x-2 space-x-reverse">
-                        <button
-                          onClick={() => handleStatusUpdate(booking.id, 'CONFIRMED')}
-                          disabled={isUpdating === booking.id}
-                          className="text-green-600 hover:text-green-900 disabled:opacity-50"
-                        >
-                          <CheckCircle className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleStatusUpdate(booking.id, 'CANCELLED')}
-                          disabled={isUpdating === booking.id}
-                          className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                        >
-                          <XCircle className="h-5 w-5" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex space-x-2 space-x-reverse">
+                      <button
+                        onClick={() => handleUpdateBooking(booking)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="تحديث الحجز"
+                      >
+                        <FileText className="h-5 w-5" />
+                      </button>
+                      {booking.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleStatusUpdate(booking.id, 'CONFIRMED')}
+                            disabled={isUpdating === booking.id}
+                            className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                            title="تأكيد الحجز"
+                          >
+                            <CheckCircle className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => handleStatusUpdate(booking.id, 'CANCELLED')}
+                            disabled={isUpdating === booking.id}
+                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                            title="إلغاء الحجز"
+                          >
+                            <XCircle className="h-5 w-5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1046,6 +1583,22 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
           </div>
         )}
       </div>
+
+      {/* Update Modal */}
+      {showUpdateModal && selectedBooking && (
+        <BookingUpdateModal
+          booking={selectedBooking}
+          onClose={() => {
+            setShowUpdateModal(false);
+            setSelectedBooking(null);
+          }}
+          onUpdate={() => {
+            setShowUpdateModal(false);
+            setSelectedBooking(null);
+            onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -1409,6 +1962,278 @@ const TextAreaField: FC<{ name: string, label: string, value: string, onChange: 
     <textarea name={name} value={value} onChange={onChange} rows={4} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
   </div>
 );
+
+// --- DATES TAB ---
+interface AvailableDate {
+  id: string
+  date: string
+  timeSlot: string
+  isBooked: boolean
+  bookingId?: string
+  booking?: {
+    student: {
+      name: string
+      email: string
+    }
+  }
+}
+
+const DatesTab: FC = () => {
+  const [availableDates, setAvailableDates] = useState<AvailableDate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [filter, setFilter] = useState<'all' | 'available' | 'booked'>('all')
+  const [dateFilter, setDateFilter] = useState('')
+
+  const fetchAvailableDates = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/available-dates')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableDates(data.availableDates || [])
+      }
+    } catch (error) {
+      console.error('Error fetching available dates:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchAvailableDates()
+  }, [])
+
+  const handleGenerateWeeklyDates = async () => {
+    try {
+      setGenerating(true)
+      
+      const response = await fetch('/api/admin/available-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generateWeekly: true
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        alert(`تم إنشاء ${data.createdCount} موعد جديد من أصل ${data.totalGenerated} موعد`)
+        fetchAvailableDates()
+        setShowGenerateModal(false)
+      } else {
+        const error = await response.json()
+        alert(`خطأ: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error generating dates:', error)
+      alert('حدث خطأ أثناء إنشاء المواعيد')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleDeleteDate = async (dateId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا الموعد؟')) return
+
+    try {
+      const response = await fetch(`/api/admin/available-dates?id=${dateId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        alert('تم حذف الموعد بنجاح')
+        fetchAvailableDates()
+      } else {
+        const error = await response.json()
+        alert(`خطأ: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Error deleting date:', error)
+      alert('حدث خطأ أثناء حذف الموعد')
+    }
+  }
+
+  const filteredDates = (availableDates || []).filter(date => {
+    if (filter === 'available' && date.isBooked) return false
+    if (filter === 'booked' && !date.isBooked) return false
+    if (dateFilter && !date.date.includes(dateFilter)) return false
+    return true
+  })
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ar-EG', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  const formatTime = (timeSlot: string) => {
+    const [start] = timeSlot.split('-')
+    const [hour, minute] = start.split(':')
+    const hourNum = parseInt(hour)
+    const ampm = hourNum >= 12 ? 'PM' : 'AM'
+    const displayHour = hourNum > 12 ? hourNum - 12 : hourNum === 0 ? 12 : hourNum
+    return `${displayHour}:${minute} ${ampm}`
+  }
+
+  return (
+    <>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">إدارة المواعيد المتاحة</h2>
+        <button
+          onClick={() => setShowGenerateModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center"
+        >
+          <Plus className="ml-2 h-4 w-4" />
+          إنشاء مواعيد أسبوعية
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-4 flex gap-4 items-center">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">تصفية حسب الحالة</label>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as any)}
+            className="border border-gray-300 rounded-md px-3 py-2"
+          >
+            <option value="all">جميع المواعيد</option>
+            <option value="available">المتاحة فقط</option>
+            <option value="booked">المحجوزة فقط</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">تصفية حسب التاريخ</label>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-2"
+          />
+        </div>
+        <button
+          onClick={fetchAvailableDates}
+          className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center mt-6"
+        >
+          <RefreshCw className="ml-2 h-4 w-4" />
+          تحديث
+        </button>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <StatCard
+          icon={<Calendar />}
+          title="إجمالي المواعيد"
+          value={(availableDates || []).length}
+          color="text-blue-500"
+        />
+        <StatCard
+          icon={<CheckCircle />}
+          title="المواعيد المتاحة"
+          value={(availableDates || []).filter(d => !d.isBooked).length}
+          color="text-green-500"
+        />
+        <StatCard
+          icon={<Clock />}
+          title="المواعيد المحجوزة"
+          value={(availableDates || []).filter(d => d.isBooked).length}
+          color="text-orange-500"
+        />
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8">جاري التحميل...</div>
+      ) : (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الوقت</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الطالب</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredDates.map((date) => (
+                <tr key={date.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {date.timeSlot}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {date.timeSlot}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      date.isBooked 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {date.isBooked ? 'محجوز' : 'متاح'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {date.booking?.student?.name || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {!date.isBooked && (
+                      <button
+                        onClick={() => handleDeleteDate(date.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        حذف
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredDates.length === 0 && (
+            <div className="text-center py-8 text-gray-500">لا توجد مواعيد متاحة</div>
+          )}
+        </div>
+      )}
+
+      {/* Generate Weekly Dates Modal */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50" dir="rtl">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">إنشاء مواعيد أسبوعية</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              سيتم إنشاء مواعيد من الجمعة إلى الخميس، من الساعة 6 صباحاً إلى 7 مساءً، بفترات ساعة واحدة لكل موعد.
+            </p>
+            <div className="space-y-4">
+              <button
+                onClick={() => handleGenerateWeeklyDates()}
+                disabled={generating}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {generating ? 'جاري الإنشاء...' : 'إنشاء مواعيد الأسبوع (91 فترة زمنية)'}
+              </button>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowGenerateModal(false)}
+                disabled={generating}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
 
 const SelectField: FC<{ name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: {value: string, label: string}[] }> = ({ name, label, value, onChange, options }) => (
   <div>

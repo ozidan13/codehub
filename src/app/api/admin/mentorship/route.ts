@@ -6,8 +6,10 @@ import { z } from 'zod'
 
 const updateBookingSchema = z.object({
   bookingId: z.string(),
-  status: z.enum(['CONFIRMED', 'CANCELLED']),
+  status: z.enum(['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']).optional(),
   sessionDate: z.string().optional(),
+  meetingLink: z.string().url().optional(),
+  videoLink: z.string().url().optional(),
   adminNotes: z.string().optional()
 })
 
@@ -59,8 +61,31 @@ export async function GET(request: NextRequest) {
       prisma.mentorshipBooking.count({ where })
     ])
 
+    // Get statistics
+    const allBookings = await prisma.mentorshipBooking.findMany({
+      select: {
+        status: true,
+        sessionType: true,
+        amount: true
+      }
+    })
+
+    const stats = {
+      total: allBookings.length,
+      pending: allBookings.filter(b => b.status === 'PENDING').length,
+      confirmed: allBookings.filter(b => b.status === 'CONFIRMED').length,
+      completed: allBookings.filter(b => b.status === 'COMPLETED').length,
+      cancelled: allBookings.filter(b => b.status === 'CANCELLED').length,
+      recordedSessions: allBookings.filter(b => b.sessionType === 'RECORDED').length,
+      faceToFaceSessions: allBookings.filter(b => b.sessionType === 'FACE_TO_FACE').length,
+      totalRevenue: allBookings
+        .filter(b => b.status !== 'CANCELLED')
+        .reduce((sum, b) => sum + b.amount.toNumber(), 0)
+    }
+
     return NextResponse.json({
       bookings,
+      stats,
       pagination: {
         page,
         limit,
@@ -84,7 +109,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { bookingId, status, sessionDate, adminNotes } = updateBookingSchema.parse(body)
+    const { bookingId, status, sessionDate, meetingLink, videoLink, adminNotes } = updateBookingSchema.parse(body)
 
     const booking = await prisma.mentorshipBooking.findUnique({
       where: { id: bookingId },
@@ -95,13 +120,57 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
     }
 
-    if (booking.status !== 'PENDING') {
-      return NextResponse.json({ error: 'Booking already processed' }, { status: 400 })
-    }
-
-    const updateData: any = { status, adminNotes }
+    const updateData: any = {}
+    if (status) updateData.status = status
+    if (adminNotes) updateData.adminNotes = adminNotes
+    if (meetingLink) updateData.meetingLink = meetingLink
+    if (videoLink) updateData.videoLink = videoLink
     
-    if (status === 'CONFIRMED' && sessionDate) {
+    // Handle session date changes for face-to-face sessions
+    if (sessionDate && booking.sessionType === 'FACE_TO_FACE') {
+      const newSessionDate = new Date(sessionDate)
+      if (newSessionDate.getTime() !== booking.sessionDate?.getTime()) {
+        updateData.sessionDate = newSessionDate
+        updateData.dateChanged = true
+        updateData.originalSessionDate = booking.originalSessionDate || booking.sessionDate
+        
+        // Update available dates - free up old slot and book new slot
+        if (booking.sessionDate) {
+          // Free up the old slot
+          await prisma.availableDate.updateMany({
+            where: {
+              date: booking.sessionDate,
+              bookingId: bookingId
+            },
+            data: {
+              isBooked: false,
+              bookingId: null
+            }
+          })
+        }
+        
+        // Book the new slot (find matching available date)
+        const newSlot = await prisma.availableDate.findFirst({
+          where: {
+            date: {
+              gte: new Date(newSessionDate.getFullYear(), newSessionDate.getMonth(), newSessionDate.getDate()),
+              lt: new Date(newSessionDate.getFullYear(), newSessionDate.getMonth(), newSessionDate.getDate() + 1)
+            },
+            isBooked: false
+          }
+        })
+        
+        if (newSlot) {
+          await prisma.availableDate.update({
+            where: { id: newSlot.id },
+            data: {
+              isBooked: true,
+              bookingId: bookingId
+            }
+          })
+        }
+      }
+    } else if (sessionDate) {
       updateData.sessionDate = new Date(sessionDate)
     }
 
@@ -114,20 +183,35 @@ export async function PATCH(request: NextRequest) {
           data: updateData
         })
 
+        // Free up available date slot for face-to-face sessions
+        if (booking.sessionType === 'FACE_TO_FACE' && booking.sessionDate) {
+          await tx.availableDate.updateMany({
+            where: {
+              date: booking.sessionDate,
+              bookingId: bookingId
+            },
+            data: {
+              isBooked: false,
+              bookingId: null
+            }
+          })
+        }
+
         // Refund student
         await tx.user.update({
           where: { id: booking.studentId },
           data: { balance: { increment: booking.amount } }
         })
 
-        // Create refund transaction
+        // Create refund transaction with appropriate type
+        const refundType = booking.sessionType === 'RECORDED' ? 'RECORDED_SESSION' : 'FACE_TO_FACE_SESSION'
         await tx.transaction.create({
           data: {
             userId: booking.studentId,
-            type: 'TOP_UP',
-            amount: booking.amount.toString(),
+            type: refundType,
+            amount: `-${booking.amount.toString()}`, // Negative amount for refund
             status: 'APPROVED',
-            description: `Refund for cancelled mentorship session`
+            description: `Refund for cancelled ${booking.sessionType === 'RECORDED' ? 'recorded' : 'face-to-face'} mentorship session`
           }
         })
       })
@@ -151,7 +235,7 @@ export async function PATCH(request: NextRequest) {
       })
 
       return NextResponse.json({ 
-        message: `Booking ${status.toLowerCase()} successfully`,
+        message: `Booking ${status ? status.toLowerCase() : 'updated'} successfully`,
         booking: updatedBooking
       })
     }

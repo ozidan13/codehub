@@ -148,6 +148,8 @@ enum TransactionType {
   TOP_UP
   PLATFORM_PURCHASE
   MENTORSHIP_PAYMENT
+  RECORDED_SESSION
+  FACE_TO_FACE_SESSION
 }
 
 enum TransactionStatus {
@@ -161,6 +163,11 @@ enum BookingStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+}
+
+enum SessionType {
+  RECORDED
+  FACE_TO_FACE
 }
 
 model Enrollment {
@@ -199,21 +206,55 @@ model Transaction {
 }
 
 model MentorshipBooking {
-  id           String        @id @default(cuid())
-  studentId    String
-  mentorId     String
-  duration     Int           @default(60) // minutes
-  amount       Decimal       @db.Decimal(10,2)
-  status       BookingStatus @default(PENDING)
-  sessionDate  DateTime?
-  studentNotes String?
-  adminNotes   String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                 String        @id @default(cuid())
+  studentId          String
+  mentorId           String
+  sessionType        SessionType   // RECORDED or FACE_TO_FACE
+  duration           Int           @default(60) // minutes
+  amount             Decimal       @db.Decimal(10,2)
+  status             BookingStatus @default(PENDING)
+  sessionDate        DateTime?
+  originalSessionDate DateTime?    // Track original date for change notifications
+  dateChanged        Boolean       @default(false)
+  studentNotes       String?
+  adminNotes         String?
+  whatsappNumber     String?       // Student's WhatsApp number for face-to-face sessions
+  videoLink          String?       // For recorded sessions
+  meetingLink        String?       // For face-to-face sessions (admin input)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
   
   // Relations
   student User @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
   mentor  User @relation("MentorBookings", fields: [mentorId], references: [id], onDelete: Cascade)
   
   @@map("mentorship_bookings")
+}
+
+model AvailableDate {
+  id          String   @id @default(cuid())
+  date        DateTime
+  timeSlot    String   // e.g., "06:00-07:00", "07:00-08:00", etc.
+  isBooked    Boolean  @default(false)
+  bookingId   String?  // Reference to MentorshipBooking if booked
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([date, timeSlot])
+  @@index([date])
+  @@index([isBooked])
+  @@map("available_dates")
+}
+
+model RecordedSession {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  videoLink   String
+  price       Decimal  @db.Decimal(10,2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("recorded_sessions")
 }
