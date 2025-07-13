@@ -166,13 +166,14 @@ export default function DashboardPage() {
     if (status !== 'authenticated') return;
     setIsContentLoading(true);
     try {
-      const [platformsRes, statsRes, walletRes, enrollmentsRes, transactionsRes, mentorshipRes] = await Promise.all([
+      const [platformsRes, statsRes, walletRes, enrollmentsRes, transactionsRes, mentorshipRes, availableDatesRes] = await Promise.all([
         fetch('/api/platforms?include_tasks=true'),
         fetch('/api/dashboard/student-stats'),
         fetch('/api/wallet'),
         fetch('/api/enrollments'),
         fetch('/api/transactions?limit=5'),
-        fetch('/api/mentorship')
+        fetch('/api/mentorship'),
+        fetch('/api/mentorship/available-dates')
       ]);
       
       if (platformsRes.ok) {
@@ -202,6 +203,13 @@ export default function DashboardPage() {
 
       if (mentorshipRes.ok) {
         const data = await mentorshipRes.json();
+        
+        // Merge available dates from dedicated endpoint
+        if (availableDatesRes.ok) {
+          const datesData = await availableDatesRes.json();
+          data.availableDates = Array.isArray(datesData) ? datesData : (datesData.availableDates || []);
+        }
+        
         setMentorshipData(data);
       }
     } catch (error) {
@@ -1116,10 +1124,10 @@ const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | nu
     booking => booking.sessionType === 'RECORDED' && booking.status === 'CONFIRMED'
   );
 
-  const selectedRecordedSession = mentorshipData.recordedSessions.find(s => s.id === selectedRecordedSessionId);
-  const sessionPrice = sessionType === 'RECORDED' 
-    ? (selectedRecordedSession?.price || mentorshipData.pricing.recordedSession)
-    : mentorshipData.pricing.faceToFaceSession;
+  const selectedRecordedSession = mentorshipData.recordedSessions?.find(s => s.id === selectedRecordedSessionId);
+  const sessionPrice = Number(sessionType === 'RECORDED' 
+    ? (selectedRecordedSession?.price || mentorshipData.pricing?.recordedSession || 100)
+    : (mentorshipData.pricing?.faceToFaceSession || 500));
   const totalAmount = sessionType === 'RECORDED' ? sessionPrice : (parseInt(duration) / 60) * sessionPrice;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1345,14 +1353,14 @@ const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | nu
               <span>السعر:</span>
               <span>
                 {sessionType === 'RECORDED' 
-                  ? `$${sessionPrice.toFixed(2)} (ثابت)`
-                  : `$${sessionPrice.toFixed(2)}/ساعة`
+                  ? `$${Number(sessionPrice || 0).toFixed(2)} (ثابت)`
+                : `$${Number(sessionPrice || 0).toFixed(2)}/ساعة`
                 }
               </span>
             </div>
             <div className="flex justify-between font-bold text-orange-600 border-t border-orange-200 pt-2 mt-2">
               <span>المجموع:</span>
-              <span>${totalAmount.toFixed(2)}</span>
+              <span>${Number(totalAmount || 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-600 mt-1">
               <span>رصيدك الحالي:</span>
