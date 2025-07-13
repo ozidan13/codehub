@@ -1,0 +1,260 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL_NON_POOLING")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Monetizing feature fields
+  balance           Decimal           @default(500.00) @db.Decimal(10,2)
+  isMentor          Boolean           @default(false)
+  mentorBio         String?
+  mentorRate        Decimal?          @db.Decimal(10,2)
+  
+  // Relations
+  submissions Submission[]
+  accounts    Account[]
+  sessions    Session[]
+  enrollments Enrollment[]
+  transactions Transaction[]
+  studentBookings MentorshipBooking[] @relation("StudentBookings")
+  mentorBookings  MentorshipBooking[] @relation("MentorBookings")
+  
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Platform {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  url         String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Monetizing feature fields
+  price       Decimal?  @db.Decimal(10,2)
+  isPaid      Boolean   @default(false)
+  
+  // Relations
+  tasks Task[]
+  enrollments Enrollment[]
+  
+  @@map("platforms")
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  link        String?  // URL link to the specific task content
+  platformId  String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  platform    Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  
+  @@index([platformId])
+  @@map("tasks")
+}
+
+model Submission {
+  id        String           @id @default(cuid())
+  summary   String           @db.Text
+  status    SubmissionStatus @default(PENDING)
+  score     Int?             // 0-100, only set when status is APPROVED
+  feedback  String?          @db.Text
+  userId    String
+  taskId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, taskId]) // One submission per user per task
+  @@index([userId])
+  @@map("submissions")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  TOP_UP
+  PLATFORM_PURCHASE
+  MENTORSHIP_PAYMENT
+  RECORDED_SESSION
+  FACE_TO_FACE_SESSION
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum SessionType {
+  RECORDED
+  FACE_TO_FACE
+}
+
+model Enrollment {
+  id            String    @id @default(cuid())
+  userId        String
+  platformId    String
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime  // 30 days from enrollment date
+  isActive      Boolean   @default(true) // Current enrollment status
+  lastRenewalAt DateTime? // Last renewal date (optional)
+  
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, platformId])
+  @@map("enrollments")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  userId      String
+  type        TransactionType
+  amount      Decimal           @db.Decimal(10,2)
+  status      TransactionStatus @default(PENDING)
+  description String?
+  senderWalletNumber String?    // Wallet number the user sent money from
+  adminWalletNumber  String?    // Admin wallet number for reference
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("transactions")
+}
+
+model MentorshipBooking {
+  id                 String        @id @default(cuid())
+  studentId          String
+  mentorId           String
+  sessionType        SessionType   // RECORDED or FACE_TO_FACE
+  duration           Int           @default(60) // minutes
+  amount             Decimal       @db.Decimal(10,2)
+  status             BookingStatus @default(PENDING)
+  sessionDate        DateTime?
+  originalSessionDate DateTime?    // Track original date for change notifications
+  dateChanged        Boolean       @default(false)
+  studentNotes       String?
+  adminNotes         String?
+  whatsappNumber     String?       // Student's WhatsApp number for face-to-face sessions
+  videoLink          String?       // For recorded sessions
+  meetingLink        String?       // For face-to-face sessions (admin input)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  
+  // Relations
+  student User @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  mentor  User @relation("MentorBookings", fields: [mentorId], references: [id], onDelete: Cascade)
+  
+  @@map("mentorship_bookings")
+}
+
+model AvailableDate {
+  id          String   @id @default(cuid())
+  date        DateTime
+  timeSlot    String   // e.g., "06:00-07:00", "07:00-08:00", etc.
+  isBooked    Boolean  @default(false)
+  bookingId   String?  // Reference to MentorshipBooking if booked
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([date, timeSlot])
+  @@index([date])
+  @@index([isBooked])
+  @@map("available_dates")
+}
+
+model RecordedSession {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  videoLink   String
+  price       Decimal  @db.Decimal(10,2)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("recorded_sessions")
+}
