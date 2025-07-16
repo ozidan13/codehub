@@ -61,8 +61,19 @@ export async function GET() {
           gte: new Date() // Only future dates
         }
       },
-      orderBy: { date: 'asc' }
+      orderBy: [
+        { date: 'asc' },
+        { id: 'asc' }
+      ]
     })
+
+    // Format dates for frontend
+    const formattedAvailableDates = availableDates.map(date => ({
+      ...date,
+      formattedDate: `${date.date.getDate().toString().padStart(2, '0')}/${(date.date.getMonth() + 1).toString().padStart(2, '0')}/${date.date.getFullYear()}`,
+      timeSlot: `${date.startTime} - ${date.endTime}`,
+      dayOfWeek: date.date.toLocaleDateString('en-US', { weekday: 'long' })
+    }))
 
     // Get recorded sessions
     const recordedSessions = await prisma.recordedSession.findMany({
@@ -75,7 +86,7 @@ export async function GET() {
     return NextResponse.json({
       mentor,
       bookings,
-      availableDates,
+      availableDates: formattedAvailableDates,
       recordedSessions,
       pricing: {
         recordedSession: 100,
@@ -208,9 +219,12 @@ export async function POST(request: NextRequest) {
         bookingData.videoLink = recordedSession.videoLink
         bookingData.sessionDate = new Date()
       } else {
-        // For face-to-face sessions, set the selected date and WhatsApp number
+        // For face-to-face sessions, set the selected date and time details
         bookingData.sessionDate = selectedDate.date
         bookingData.originalSessionDate = selectedDate.date
+        bookingData.sessionStartTime = selectedDate.startTime
+        bookingData.sessionEndTime = selectedDate.endTime
+        bookingData.availableDateId = selectedDate.id
         bookingData.whatsappNumber = whatsappNumber
       }
 
@@ -225,13 +239,12 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // For face-to-face sessions, mark the date as booked with booking ID
+      // For face-to-face sessions, mark the date as booked and link to booking
       if (sessionType === 'FACE_TO_FACE' && selectedDate) {
         await tx.availableDate.update({
           where: { id: selectedDateId },
           data: { 
-            isBooked: true,
-            bookingId: booking.id
+            isBooked: true
           }
         })
       }

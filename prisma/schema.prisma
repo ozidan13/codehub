@@ -214,6 +214,8 @@ model MentorshipBooking {
   amount             Decimal       @db.Decimal(10,2)
   status             BookingStatus @default(PENDING)
   sessionDate        DateTime?
+  sessionStartTime   String?       // Start time in HH:MM format
+  sessionEndTime     String?       // End time in HH:MM format
   originalSessionDate DateTime?    // Track original date for change notifications
   dateChanged        Boolean       @default(false)
   studentNotes       String?
@@ -221,6 +223,7 @@ model MentorshipBooking {
   whatsappNumber     String?       // Student's WhatsApp number for face-to-face sessions
   videoLink          String?       // For recorded sessions
   meetingLink        String?       // For face-to-face sessions (admin input)
+  availableDateId    String?       // Reference to the booked AvailableDate
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
   
@@ -233,16 +236,21 @@ model MentorshipBooking {
 
 model AvailableDate {
   id          String   @id @default(cuid())
-  date        DateTime
-  timeSlot    String   // e.g., "06:00-07:00", "07:00-08:00", etc.
+  date        DateTime // Actual calendar date (YYYY-MM-DD)
+  startTime   String   // Start time in HH:MM format (e.g., "09:00")
+  endTime     String   // End time in HH:MM format (e.g., "10:00")
+  timeSlot    String   // Display format (e.g., "09:00 - 10:00")
   isBooked    Boolean  @default(false)
   bookingId   String?  // Reference to MentorshipBooking if booked
+  isRecurring Boolean  @default(false) // For weekly recurring slots
+  dayOfWeek   Int?     // 0-6 (Sunday-Saturday) for recurring slots
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  @@unique([date, timeSlot])
+  @@unique([date, startTime, endTime])
   @@index([date])
   @@index([isBooked])
+  @@index([dayOfWeek])
   @@map("available_dates")
 }
 

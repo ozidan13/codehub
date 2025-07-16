@@ -4,20 +4,50 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
+// Schema for creating a single available date slot
 const availableDateSchema = z.object({
   date: z.string().datetime(),
-  timeSlot: z.string().min(1)
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
+  isRecurring: z.boolean().optional().default(false),
+  dayOfWeek: z.number().min(0).max(6).optional() // 0 = Sunday, 6 = Saturday
 })
 
+// Schema for bulk creation
 const bulkCreateSchema = z.object({
-  generateWeekly: z.boolean().optional(),
-  startDate: z.string().datetime().optional(),
-  weeks: z.number().min(1).max(12).optional(),
+  dateRange: z.object({
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime()
+  }).optional(),
+  timeSlots: z.array(z.object({
+    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+  })).optional(),
+  excludeWeekends: z.boolean().optional().default(true),
+  recurringTemplate: z.object({
+    dayOfWeek: z.number().min(0).max(6),
+    startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+  }).optional(),
   dates: z.array(availableDateSchema).optional()
 })
 
+// Helper function to format date as DD/MM/YYYY
+function formatDateDMY(date: Date): string {
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+// Helper function to check if date is weekend
+function isWeekend(date: Date): boolean {
+  const day = date.getDay()
+  return day === 0 || day === 6 // Sunday or Saturday
+}
+
 // GET /api/admin/available-dates - Get all available dates
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -25,33 +55,44 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const includeBooked = searchParams.get('includeBooked') === 'true'
+
+    // Build where clause
+    const whereClause: any = {}
+    
+    if (startDate && endDate) {
+      whereClause.date = {
+        gte: new Date(startDate),
+        lte: new Date(endDate)
+      }
+    }
+
+    if (!includeBooked) {
+      whereClause.isBooked = false
+    }
+
     const availableDates = await prisma.availableDate.findMany({
-      orderBy: { timeSlot: 'asc' }
+      where: whereClause,
+      orderBy: [
+        { date: 'asc' },
+        { id: 'asc' }
+      ]
     })
 
-    // Get booking details for booked dates
-    const bookedDates = availableDates.filter(date => date.isBooked && date.bookingId)
-    const bookingIds = bookedDates.map(date => date.bookingId!)
-    
-    const bookings = bookingIds.length > 0 ? await prisma.mentorshipBooking.findMany({
-      where: { id: { in: bookingIds } },
-      include: {
-        student: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      }
-    }) : []
-
-    // Combine the data
-    const availableDatesWithBookings = availableDates.map(date => ({
+    // Format dates for frontend
+    const formattedDates = availableDates.map(date => ({
       ...date,
-      booking: date.bookingId ? bookings.find(b => b.id === date.bookingId) : null
+      formattedDate: formatDateDMY(date.date),
+      timeSlot: `${date.startTime} - ${date.endTime}`
     }))
 
-    return NextResponse.json({ availableDates: availableDatesWithBookings })
+    return NextResponse.json({ 
+      availableDates: formattedDates,
+      total: formattedDates.length
+    })
   } catch (error) {
     console.error('Error fetching available dates:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -69,64 +110,87 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
-    // Check if it's a single date creation or bulk creation
-    if (body.generateWeekly || body.dates) {
-      const { generateWeekly, startDate, weeks = 4, dates } = bulkCreateSchema.parse(body)
+    // Check if it's bulk creation or single date creation
+    if (body.dateRange || body.dates || body.recurringTemplate) {
+      const { dateRange, timeSlots, excludeWeekends, recurringTemplate, dates } = bulkCreateSchema.parse(body)
       
-      if (generateWeekly) {
-        // Generate weekly day-time slots (recurring pattern)
-        const generatedDates = []
-        
-        // Days from Friday to Thursday
-        const dayNames = ['friday', 'saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
-        
-        // Time slots from 6 AM to 7 PM
-        const timeSlots = [
-          '6:00 am', '7:00 am', '8:00 am', '9:00 am', '10:00 am', '11:00 am',
-          '12:00 pm', '1:00 pm', '2:00 pm', '3:00 pm', '4:00 pm', '5:00 pm', '6:00 pm'
-        ]
-        
-        // Create a base date for reference
-        const baseDate = new Date('2025-01-01T00:00:00Z')
-        
-        // Generate day-time combinations
-        dayNames.forEach((dayName, dayIndex) => {
-          timeSlots.forEach((timeSlot, timeIndex) => {
-            // Create a unique date for each day-time combination
-            const slotDate = new Date(baseDate)
-            slotDate.setDate(baseDate.getDate() + dayIndex)
-            slotDate.setHours(timeIndex + 6, 0, 0, 0) // Start from 6 AM
-            
-            generatedDates.push({
-              date: slotDate,
-              timeSlot: `${dayName} ${timeSlot}`,
-              isBooked: false
-            })
-          })
+      if (recurringTemplate) {
+        // Create recurring template
+        const created = await prisma.availableDate.create({
+          data: {
+            date: new Date('2025-01-01'), // Template date
+            startTime: recurringTemplate.startTime,
+            endTime: recurringTemplate.endTime,
+            timeSlot: `${recurringTemplate.startTime} - ${recurringTemplate.endTime}`,
+            isRecurring: true,
+            dayOfWeek: recurringTemplate.dayOfWeek,
+            isBooked: false
+          }
         })
 
-        // Create dates in bulk, skip existing ones
-        const createdDates = []
-        for (const dateData of generatedDates) {
-          try {
-            const created = await prisma.availableDate.create({
-              data: dateData
+        return NextResponse.json({
+          message: 'Recurring template created successfully',
+          template: created
+        })
+      }
+      
+      if (dateRange && timeSlots) {
+        // Generate dates for range
+        const generatedDates = []
+        const start = new Date(dateRange.startDate)
+        const end = new Date(dateRange.endDate)
+        
+        for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+          // Skip weekends if requested
+          if (excludeWeekends && isWeekend(date)) {
+            continue
+          }
+          
+          // Create slots for each time slot
+          for (const slot of timeSlots) {
+            generatedDates.push({
+              date: new Date(date),
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              timeSlot: `${slot.startTime} - ${slot.endTime}`,
+              isRecurring: false,
+              isBooked: false
             })
-            createdDates.push(created)
-          } catch (error: any) {
-            // Skip if date already exists (unique constraint)
-            if (error.code !== 'P2002') {
-              throw error
-            }
+          }
+        }
+
+        // Create dates in batches
+        const createdDates = []
+        const batchSize = 100
+        
+        for (let i = 0; i < generatedDates.length; i += batchSize) {
+          const batch = generatedDates.slice(i, i + batchSize)
+          
+          try {
+            const batchResults = await Promise.allSettled(
+              batch.map(dateData => 
+                prisma.availableDate.create({ data: dateData })
+              )
+            )
+            
+            batchResults.forEach((result, index) => {
+              if (result.status === 'fulfilled') {
+                createdDates.push(result.value)
+              }
+            })
+          } catch (error) {
+            console.error('Batch creation error:', error)
           }
         }
 
         return NextResponse.json({
-          message: `Created ${createdDates.length} day-time slots (Friday-Thursday, 6 AM-7 PM)`,
+          message: `Created ${createdDates.length} available date slots`,
           createdCount: createdDates.length,
           totalGenerated: generatedDates.length
         })
-      } else if (dates && Array.isArray(dates)) {
+      }
+      
+      if (dates && Array.isArray(dates)) {
         // Create specific dates
         const createdDates = []
         
@@ -135,15 +199,19 @@ export async function POST(request: NextRequest) {
             const created = await prisma.availableDate.create({
               data: {
                 date: new Date(dateData.date),
-                timeSlot: dateData.timeSlot,
+                startTime: dateData.startTime,
+                endTime: dateData.endTime,
+                timeSlot: `${dateData.startTime} - ${dateData.endTime}`,
+                isRecurring: dateData.isRecurring || false,
+                dayOfWeek: dateData.dayOfWeek,
                 isBooked: false
               }
             })
             createdDates.push(created)
           } catch (error: any) {
-            // Skip if date already exists
+            // Skip if date already exists (unique constraint)
             if (error.code !== 'P2002') {
-              throw error
+              console.error('Error creating date:', error)
             }
           }
         }
@@ -155,15 +223,14 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Single date creation
-      const { date, timeSlot } = availableDateSchema.parse(body)
+      const { date, startTime, endTime, isRecurring, dayOfWeek } = availableDateSchema.parse(body)
 
       // Check if this date and time slot already exists
-      const existingDate = await prisma.availableDate.findUnique({
+      const existingDate = await prisma.availableDate.findFirst({
         where: {
-          date_timeSlot: {
-            date: new Date(date),
-            timeSlot
-          }
+          date: new Date(date),
+          startTime,
+          endTime
         }
       })
 
@@ -174,14 +241,22 @@ export async function POST(request: NextRequest) {
       const availableDate = await prisma.availableDate.create({
         data: {
           date: new Date(date),
-          timeSlot,
+          startTime,
+          endTime,
+          timeSlot: `${startTime} - ${endTime}`,
+          isRecurring: isRecurring || false,
+          dayOfWeek,
           isBooked: false
         }
       })
 
       return NextResponse.json({ 
         message: 'Available date created successfully',
-        availableDate 
+        availableDate: {
+          ...availableDate,
+          formattedDate: formatDateDMY(availableDate.date),
+          timeSlot: `${availableDate.startTime} - ${availableDate.endTime}`
+        }
       })
     }
   } catch (error) {
@@ -189,6 +264,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 })
     }
     console.error('Error creating available date(s):', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// PUT /api/admin/available-dates - Update available date
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { id, date, startTime, endTime, isRecurring, dayOfWeek } = z.object({
+      id: z.string(),
+      date: z.string().datetime().optional(),
+      startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+      endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+      isRecurring: z.boolean().optional(),
+      dayOfWeek: z.number().min(0).max(6).optional()
+    }).parse(body)
+
+    // Check if the date exists and is not booked
+    const existingDate = await prisma.availableDate.findUnique({
+      where: { id }
+    })
+
+    if (!existingDate) {
+      return NextResponse.json({ error: 'Available date not found' }, { status: 404 })
+    }
+
+    if (existingDate.isBooked) {
+      return NextResponse.json({ error: 'Cannot update a booked date' }, { status: 400 })
+    }
+
+    // Calculate new timeSlot if startTime or endTime is being updated
+    const newStartTime = startTime || existingDate.startTime
+    const newEndTime = endTime || existingDate.endTime
+    const newTimeSlot = `${newStartTime} - ${newEndTime}`
+
+    const updatedDate = await prisma.availableDate.update({
+      where: { id },
+      data: {
+        ...(date && { date: new Date(date) }),
+        ...(startTime && { startTime }),
+        ...(endTime && { endTime }),
+        timeSlot: newTimeSlot,
+        ...(isRecurring !== undefined && { isRecurring }),
+        ...(dayOfWeek !== undefined && { dayOfWeek })
+      }
+    })
+
+    return NextResponse.json({
+      message: 'Available date updated successfully',
+      availableDate: {
+        ...updatedDate,
+        formattedDate: formatDateDMY(updatedDate.date),
+        timeSlot: `${updatedDate.startTime} - ${updatedDate.endTime}`
+      }
+    })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input data', details: error.errors }, { status: 400 })
+    }
+    console.error('Error updating available date:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -204,14 +345,27 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const dateId = searchParams.get('id')
+    const deleteAll = searchParams.get('deleteAll') === 'true'
 
-    if (!dateId) {
-      return NextResponse.json({ error: 'Date ID is required' }, { status: 400 })
+    if (!dateId && !deleteAll) {
+      return NextResponse.json({ error: 'Date ID is required or set deleteAll=true' }, { status: 400 })
+    }
+
+    if (deleteAll) {
+      // Delete all unbooked dates
+      const deletedCount = await prisma.availableDate.deleteMany({
+        where: { isBooked: false }
+      })
+
+      return NextResponse.json({ 
+        message: `Deleted ${deletedCount.count} unbooked available dates`,
+        deletedCount: deletedCount.count
+      })
     }
 
     // Check if the date is booked
     const availableDate = await prisma.availableDate.findUnique({
-      where: { id: dateId }
+      where: { id: dateId! }
     })
 
     if (!availableDate) {
@@ -223,7 +377,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.availableDate.delete({
-      where: { id: dateId }
+      where: { id: dateId! }
     })
 
     return NextResponse.json({ message: 'Available date deleted successfully' })

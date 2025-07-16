@@ -25,8 +25,11 @@ import {
   RefreshCw,
   Wallet,
   CreditCard,
-  Calendar
+  Calendar,
+  Settings
 } from 'lucide-react'
+import { CalendlyAdminCalendar } from '@/components/calendar'
+import { formatDate, formatDateTime } from '@/lib/dateUtils';
 
 // --- INTERFACES ---
 interface Student {
@@ -1623,7 +1626,7 @@ const StudentsTab: FC<{ students: Student[] }> = ({ students }) => (
         s.email,
         `${s.completedTasks}/${s.totalTasks}`,
         s.averageScore?.toFixed(2) || 'N/A',
-        new Date(s.createdAt).toLocaleDateString('ar-EG'),
+        formatDate(s.createdAt),
       ])}
     />
   </>
@@ -1644,7 +1647,7 @@ const SubmissionsTab: FC<{
         s.task?.title || 'غير معروف',
         <StatusBadge status={s.status} />,
         s.score ?? 'لم تقيم',
-        new Date(s.createdAt).toLocaleDateString('ar-EG'),
+        formatDate(s.createdAt),
         <button onClick={() => onReview(s)} className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600">مراجعة</button>
       ])}
     />
@@ -1967,8 +1970,11 @@ const TextAreaField: FC<{ name: string, label: string, value: string, onChange: 
 interface AvailableDate {
   id: string
   date: string
-  timeSlot: string
+  startTime: string
+  endTime: string
   isBooked: boolean
+  isRecurring: boolean
+  dayOfWeek?: number
   bookingId?: string
   booking?: {
     student: {
@@ -1981,10 +1987,6 @@ interface AvailableDate {
 const DatesTab: FC = () => {
   const [availableDates, setAvailableDates] = useState<AvailableDate[]>([])
   const [loading, setLoading] = useState(true)
-  const [showGenerateModal, setShowGenerateModal] = useState(false)
-  const [generating, setGenerating] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'available' | 'booked'>('all')
-  const [dateFilter, setDateFilter] = useState('')
 
   const fetchAvailableDates = useCallback(async () => {
     try {
@@ -2005,233 +2007,212 @@ const DatesTab: FC = () => {
     fetchAvailableDates()
   }, [])
 
-  const handleGenerateWeeklyDates = async () => {
+  // Handle creating a single time slot
+  const handleCreateTimeSlot = async (date: Date, timeSlot: { start: string; end: string }) => {
     try {
-      setGenerating(true)
-      
       const response = await fetch('/api/admin/available-dates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          generateWeekly: true
+          date: date.toISOString(),
+          startTime: timeSlot.start,
+          endTime: timeSlot.end,
+          isRecurring: false
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        alert(`تم إنشاء ${data.createdCount} موعد جديد من أصل ${data.totalGenerated} موعد`)
-        fetchAvailableDates()
-        setShowGenerateModal(false)
-      } else {
+      if (!response.ok) {
         const error = await response.json()
-        alert(`خطأ: ${error.error}`)
+        if (error.error === 'This date and time slot already exists') {
+          // Silently ignore duplicate entries - this is expected behavior
+          console.log('Time slot already exists, skipping creation')
+          return
+        }
+        throw new Error(error.error || 'Failed to create time slot')
       }
     } catch (error) {
-      console.error('Error generating dates:', error)
-      alert('حدث خطأ أثناء إنشاء المواعيد')
-    } finally {
-      setGenerating(false)
+      console.error('Error creating time slot:', error)
+      throw error
     }
   }
 
-  const handleDeleteDate = async (dateId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا الموعد؟')) return
-
+  // Handle deleting a time slot
+  const handleDeleteTimeSlot = async (dateId: string) => {
     try {
       const response = await fetch(`/api/admin/available-dates?id=${dateId}`, {
         method: 'DELETE'
       })
 
-      if (response.ok) {
-        alert('تم حذف الموعد بنجاح')
-        fetchAvailableDates()
-      } else {
+      if (!response.ok) {
         const error = await response.json()
-        alert(`خطأ: ${error.error}`)
+        throw new Error(error.error || 'Failed to delete time slot')
       }
     } catch (error) {
-      console.error('Error deleting date:', error)
-      alert('حدث خطأ أثناء حذف الموعد')
+      console.error('Error deleting time slot:', error)
+      throw error
     }
   }
 
-  const filteredDates = (availableDates || []).filter(date => {
-    if (filter === 'available' && date.isBooked) return false
-    if (filter === 'booked' && !date.isBooked) return false
-    if (dateFilter && !date.date.includes(dateFilter)) return false
-    return true
-  })
+  // Handle bulk creating time slots
+  const handleBulkCreate = async (date: Date, timeSlots: { start: string; end: string }[]) => {
+    try {
+      const response = await fetch('/api/admin/available-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dates: timeSlots.map(slot => ({
+            date: date.toISOString(),
+            startTime: slot.start,
+            endTime: slot.end,
+            isRecurring: false
+          }))
+        })
+      })
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('ar-EG', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric'
-    })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create time slots')
+      }
+    } catch (error) {
+      console.error('Error creating bulk time slots:', error)
+      throw error
+    }
   }
 
-  const formatTime = (timeSlot: string) => {
-    const [start] = timeSlot.split('-')
-    const [hour, minute] = start.split(':')
-    const hourNum = parseInt(hour)
-    const ampm = hourNum >= 12 ? 'PM' : 'AM'
-    const displayHour = hourNum > 12 ? hourNum - 12 : hourNum === 0 ? 12 : hourNum
-    return `${displayHour}:${minute} ${ampm}`
+  // Handle bulk date range creation
+  const handleBulkDateRangeCreate = async (
+    startDate: Date,
+    endDate: Date,
+    timeSlots: { start: string; end: string }[],
+    excludeWeekends: boolean
+  ) => {
+    try {
+      const response = await fetch('/api/admin/available-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dateRange: {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+          },
+          timeSlots: timeSlots.map(slot => ({
+             startTime: slot.start,
+             endTime: slot.end
+           })),
+          excludeWeekends
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create time slots')
+      }
+
+      const result = await response.json()
+      return result
+    } catch (error) {
+      console.error('Error creating bulk date range:', error)
+      throw error
+    }
   }
 
   return (
-    <>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">إدارة المواعيد المتاحة</h2>
-        <button
-          onClick={() => setShowGenerateModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center"
-        >
-          <Plus className="ml-2 h-4 w-4" />
-          إنشاء مواعيد أسبوعية
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="mb-4 flex gap-4 items-center">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">تصفية حسب الحالة</label>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            className="border border-gray-300 rounded-md px-3 py-2"
-          >
-            <option value="all">جميع المواعيد</option>
-            <option value="available">المتاحة فقط</option>
-            <option value="booked">المحجوزة فقط</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">تصفية حسب التاريخ</label>
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2"
-          />
-        </div>
-        <button
-          onClick={fetchAvailableDates}
-          className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 flex items-center mt-6"
-        >
-          <RefreshCw className="ml-2 h-4 w-4" />
-          تحديث
-        </button>
-      </div>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <StatCard
-          icon={<Calendar />}
-          title="إجمالي المواعيد"
-          value={(availableDates || []).length}
-          color="text-blue-500"
-        />
-        <StatCard
-          icon={<CheckCircle />}
-          title="المواعيد المتاحة"
-          value={(availableDates || []).filter(d => !d.isBooked).length}
-          color="text-green-500"
-        />
-        <StatCard
-          icon={<Clock />}
-          title="المواعيد المحجوزة"
-          value={(availableDates || []).filter(d => d.isBooked).length}
-          color="text-orange-500"
-        />
-      </div>
-
-      {loading ? (
-        <div className="text-center py-8">جاري التحميل...</div>
-      ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الوقت</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الطالب</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredDates.map((date) => (
-                <tr key={date.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {date.timeSlot}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {date.timeSlot}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      date.isBooked 
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {date.isBooked ? 'محجوز' : 'متاح'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {date.booking?.student?.name || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {!date.isBooked && (
-                      <button
-                        onClick={() => handleDeleteDate(date.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        حذف
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredDates.length === 0 && (
-            <div className="text-center py-8 text-gray-500">لا توجد مواعيد متاحة</div>
-          )}
-        </div>
-      )}
-
-      {/* Generate Weekly Dates Modal */}
-      {showGenerateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50" dir="rtl">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">إنشاء مواعيد أسبوعية</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              سيتم إنشاء مواعيد من الجمعة إلى الخميس، من الساعة 6 صباحاً إلى 7 مساءً، بفترات ساعة واحدة لكل موعد.
-            </p>
-            <div className="space-y-4">
-              <button
-                onClick={() => handleGenerateWeeklyDates()}
-                disabled={generating}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-              >
-                {generating ? 'جاري الإنشاء...' : 'إنشاء مواعيد الأسبوع (91 فترة زمنية)'}
-              </button>
+    <div className="space-y-6">
+      {/* Enhanced Stats Display */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium">إجمالي الأوقات المتاحة</p>
+              <p className="text-3xl font-bold mt-2">{availableDates.length}</p>
+              <p className="text-blue-200 text-xs mt-1">جميع الفترات الزمنية</p>
             </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setShowGenerateModal(false)}
-                disabled={generating}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
-              >
-                إلغاء
-              </button>
+            <div className="bg-blue-400 bg-opacity-30 rounded-full p-3">
+              <Calendar className="w-8 h-8 text-blue-100" />
             </div>
           </div>
         </div>
-      )}
-    </>
+        
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm font-medium">الأوقات المتاحة للحجز</p>
+              <p className="text-3xl font-bold mt-2">{availableDates.filter(d => !d.isBooked).length}</p>
+              <p className="text-green-200 text-xs mt-1">جاهزة للحجز</p>
+            </div>
+            <div className="bg-green-400 bg-opacity-30 rounded-full p-3">
+              <Clock className="w-8 h-8 text-green-100" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-100 text-sm font-medium">الأوقات المحجوزة</p>
+              <p className="text-3xl font-bold mt-2">{availableDates.filter(d => d.isBooked).length}</p>
+              <p className="text-orange-200 text-xs mt-1">تم حجزها بالفعل</p>
+            </div>
+            <div className="bg-orange-400 bg-opacity-30 rounded-full p-3">
+              <CheckCircle className="w-8 h-8 text-orange-100" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium">القوالب المتكررة</p>
+              <p className="text-3xl font-bold mt-2">{availableDates.filter(d => d.isRecurring).length}</p>
+              <p className="text-purple-200 text-xs mt-1">أوقات ثابتة أسبوعياً</p>
+            </div>
+            <div className="bg-purple-400 bg-opacity-30 rounded-full p-3">
+              <RefreshCw className="w-8 h-8 text-purple-100" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+          <Settings className="w-5 h-5 ml-2 text-gray-600" />
+          إجراءات سريعة
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button 
+            onClick={fetchAvailableDates}
+            className="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 border border-blue-200"
+          >
+            <RefreshCw className="w-5 h-5 ml-2 text-blue-600" />
+            <span className="text-blue-700 font-medium">تحديث البيانات</span>
+          </button>
+          
+          <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <span className="text-gray-600 text-sm">
+              آخر تحديث: {new Date().toLocaleString('ar-SA')}
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-center p-4 bg-green-50 rounded-lg border border-green-200">
+            <span className="text-green-700 font-medium">
+              معدل الحجز: {availableDates.length > 0 ? Math.round((availableDates.filter(d => d.isBooked).length / availableDates.length) * 100) : 0}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <CalendlyAdminCalendar
+        availableDates={availableDates}
+        onRefresh={fetchAvailableDates}
+        onCreateTimeSlot={handleCreateTimeSlot}
+        onDeleteTimeSlot={handleDeleteTimeSlot}
+        onBulkCreate={handleBulkCreate}
+        onBulkDateRangeCreate={handleBulkDateRangeCreate}
+        loading={loading}
+        className="p-6"
+      />
+    </div>
   )
 }
 

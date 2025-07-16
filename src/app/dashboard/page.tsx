@@ -3,120 +3,15 @@
 import { useState, useEffect, useCallback, FC, ReactNode } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, LogOut, RefreshCw, Star, Wallet, CreditCard, Users, ShoppingCart, XCircle, Play } from 'lucide-react'
+import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, LogOut, RefreshCw, Star, Wallet, CreditCard, Users, ShoppingCart, XCircle, Play, Video, ChevronDown } from 'lucide-react'
+import { CalendlyStudentCalendar } from '@/components/calendar';
+import RecordedSessionsList from '@/components/mentorship/RecordedSessionsList';
+import LiveSessionBooking from '@/components/mentorship/LiveSessionBooking';
+import { formatDate, formatDateTime } from '@/lib/dateUtils';
+import { Platform, Task, Submission, StudentStats, WalletData, Enrollment, Transaction, MentorshipData } from '@/types';
 
 // --- INTERFACES ---
-interface Platform {
-  id: string
-  name: string
-  description: string
-  price?: number
-  isPaid: boolean
-  tasks: Task[]
-}
 
-interface Task {
-  id: string
-  title: string
-  description: string
-  link?: string
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD'
-  platformId: string
-  submissions?: Submission[]
-  _count?: {
-    submissions: number
-  }
-}
-
-interface Submission {
-  id: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  score?: number
-  feedback?: string
-  createdAt: string
-}
-
-interface StudentStats {
-  totalSubmissions: number;
-  pendingSubmissions: number;
-  approvedSubmissions: number;
-  rejectedSubmissions: number;
-  averageScore: number | null;
-}
-
-interface WalletData {
-  balance: number;
-}
-
-interface Enrollment {
-  id: string;
-  createdAt: string;
-  expiresAt?: string;
-  isExpired?: boolean;
-  daysRemaining?: number;
-  status?: 'active' | 'expiring_soon' | 'expired';
-  platform: {
-    id: string;
-    name: string;
-    description: string;
-    url: string;
-    price: number | null;
-    isPaid: boolean;
-  };
-}
-
-interface Transaction {
-  id: string;
-  type: string;
-  amount: number;
-  status: string;
-  description: string;
-  createdAt: string;
-}
-
-interface MentorshipData {
-  mentor: {
-    id: string;
-    name: string;
-    mentorBio: string;
-    mentorRate: number;
-  };
-  pricing: {
-    recordedSession: number;
-    faceToFaceSession: number;
-  };
-  availableDates: {
-    id: string;
-    date: string;
-    timeSlot: string;
-    isBooked: boolean;
-  }[];
-  recordedSessions: {
-    id: string;
-    title: string;
-    description: string;
-    videoLink: string;
-    price: number;
-    isActive: boolean;
-  }[];
-  bookings: {
-    id: string;
-    duration: number;
-    amount: number;
-    status: string;
-    sessionType: 'RECORDED' | 'FACE_TO_FACE';
-    sessionDate: string | null;
-    videoLink: string | null;
-    meetingLink: string | null;
-    whatsappNumber: string | null;
-    studentNotes: string | null;
-    adminNotes: string | null;
-    createdAt: string;
-    mentor: {
-      name: string;
-    };
-  }[];
-}
 
 // --- CACHE IMPLEMENTATION ---
 class DataCache {
@@ -159,7 +54,7 @@ export default function DashboardPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmissionModal, setShowSubmissionModal] = useState(false)
   const [showTopUpModal, setShowTopUpModal] = useState(false)
-  const [showMentorshipModal, setShowMentorshipModal] = useState(false)
+  
 
   // --- DATA FETCHING ---
   const fetchData = useCallback(async () => {
@@ -264,10 +159,7 @@ export default function DashboardPage() {
     handleRefresh();
   }
 
-  const handleMentorshipSuccess = () => {
-    setShowMentorshipModal(false);
-    handleRefresh();
-  }
+  
 
   // --- RENDER LOGIC ---
   if (isPageLoading) {
@@ -286,8 +178,12 @@ export default function DashboardPage() {
             <StatsSection stats={stats} />
             <ExpirationNotifications enrollments={enrollments} />
             <WalletSection wallet={wallet} onTopUp={() => setShowTopUpModal(true)} />
+            <RecentTransactions transactions={transactions} />
             <EnrollmentsSection enrollments={enrollments} onEnrollmentRenewal={handleEnrollmentSuccess} />
-            <MentorshipSection mentorshipData={mentorshipData} onBookMentorship={() => setShowMentorshipModal(true)} />
+            
+            <MentorshipSection mentorshipData={mentorshipData} onRefresh={handleRefresh} />
+            <BookedSessionsSection mentorshipData={mentorshipData} transactions={transactions} />
+
             <div className="space-y-12 mt-10">
               {platforms.map((platform) => (
                 <PlatformCard key={platform.id} platform={platform} enrollments={enrollments} onTaskClick={handleTaskClick} onEnrollmentSuccess={handleEnrollmentSuccess} />
@@ -311,15 +207,73 @@ export default function DashboardPage() {
         onSuccess={handleTopUpSuccess} 
       />
 
-      <MentorshipModal 
-        isOpen={showMentorshipModal}
-        mentorshipData={mentorshipData}
-        userBalance={wallet?.balance || 0}
-        onClose={() => setShowMentorshipModal(false)} 
-        onSuccess={handleMentorshipSuccess} 
-      />
+      
     </div>
   )
+}
+
+const RecentTransactions: FC<{ transactions: Transaction[] }> = ({ transactions }) => {
+  if (!transactions || transactions.length === 0) {
+    return null;
+  }
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800';
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'DEPOSIT':
+        return 'إيداع';
+      case 'ENROLLMENT':
+        return 'تسجيل';
+      case 'MENTORSHIP':
+        return 'جلسة إرشادية';
+      default:
+        return type;
+    }
+  }
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-md mt-8">
+      <h3 className="text-xl font-bold text-gray-800 mb-4">أحدث المعاملات</h3>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">النوع</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {transactions.map((transaction) => (
+              <tr key={transaction.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{getTypeLabel(transaction.type)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Number(transaction.amount).toFixed(2)} جنيه</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusStyle(transaction.status)}`}>
+                    {transaction.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDateTime(transaction.createdAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 // --- CHILD COMPONENTS ---
@@ -369,7 +323,7 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
       <StatCard icon={<FileText />} title="إجمالي التسليمات" value={stats.totalSubmissions} color="blue" />
       <StatCard icon={<CheckCircle />} title="المقبولة" value={stats.approvedSubmissions} color="green" />
       <StatCard icon={<Clock />} title="قيد المراجعة" value={stats.pendingSubmissions} color="yellow" />
-      <StatCard icon={<Trophy />} title="متوسط الدرجات" value={stats.averageScore ? `${stats.averageScore.toFixed(1)}%` : 'N/A'} color="purple" />
+      <StatCard icon={<Trophy />} title="متوسط الدرجات" value={stats.averageScore ? `${Number(stats.averageScore).toFixed(1)}%` : 'N/A'} color="purple" />
     </div>
   );
 }
@@ -423,7 +377,8 @@ const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({
       </div>
     </div>
   );
-};
+}
+
 
 const ExpirationNotifications: FC<{ enrollments: Enrollment[] }> = ({ enrollments }) => {
   const expiredEnrollments = enrollments.filter(e => e.status === 'expired');
@@ -472,6 +427,249 @@ const ExpirationNotifications: FC<{ enrollments: Enrollment[] }> = ({ enrollment
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const BookedSessionsSection: FC<{ mentorshipData: MentorshipData | null; transactions: Transaction[]; }> = ({ mentorshipData, transactions }) => {
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  
+  if (!mentorshipData || mentorshipData.bookings.length === 0) return null;
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'confirmed': return <CheckCircle className="h-4 w-4" />;
+      case 'pending': return <Clock className="h-4 w-4" />;
+      case 'completed': return <Trophy className="h-4 w-4" />;
+      case 'cancelled': return <XCircle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const mentorshipTransactions = transactions.filter(t => 
+    t.type.includes('SESSION') || t.type.includes('MENTORSHIP')
+  );
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <div className="p-3 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white">
+            <BookOpen className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">جلسات الإرشاد المحجوزة</h2>
+            <p className="text-sm text-gray-600">{mentorshipData.bookings.length} جلسة محجوزة</p>
+          </div>
+        </div>
+        
+        {/* Transaction History Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowTransactionHistory(!showTransactionHistory)}
+            className="flex items-center space-x-2 space-x-reverse bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium"
+          >
+            <CreditCard className="h-4 w-4" />
+            <span>سجل المعاملات</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${showTransactionHistory ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {showTransactionHistory && (
+            <div className="absolute left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-800">سجل معاملات الإرشاد</h3>
+              </div>
+              <div className="p-2">
+                {mentorshipTransactions.length > 0 ? (
+                  mentorshipTransactions.map((transaction) => (
+                    <div key={transaction.id} className="p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-800">{transaction.description}</p>
+                          <p className="text-xs text-gray-500 mt-1">{formatDate(transaction.createdAt)}</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-gray-800">${Number(transaction.amount).toFixed(2)}</p>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            transaction.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {transaction.status === 'APPROVED' ? 'مكتمل' : 'معلق'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-gray-500">
+                    <p className="text-sm">لا توجد معاملات إرشاد</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {mentorshipData.bookings.map((booking) => (
+          <div key={booking.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center space-x-3 space-x-reverse">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-lg font-bold">
+                  {booking.mentor.name.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">{booking.mentor.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    {booking.sessionType === 'RECORDED' ? 'جلسة مسجلة' : 'جلسة مباشرة'}
+                  </p>
+                </div>
+              </div>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                {getStatusIcon(booking.status)}
+                <span className="mr-1">
+                  {booking.status === 'CONFIRMED' ? 'مؤكدة' :
+                   booking.status === 'PENDING' ? 'معلقة' :
+                   booking.status === 'COMPLETED' ? 'مكتملة' :
+                   booking.status === 'CANCELLED' ? 'ملغية' : booking.status}
+                </span>
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">المدة:</span>
+                <span className="text-sm font-medium text-gray-800">{booking.duration} دقيقة</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">المبلغ:</span>
+                <span className="text-sm font-bold text-orange-600">${Number(booking.amount).toFixed(2)}</span>
+              </div>
+
+              {booking.sessionDate && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">تاريخ الجلسة:</span>
+                  <span className="text-sm font-medium text-gray-800">{formatDate(booking.sessionDate)}</span>
+                </div>
+              )}
+
+              {booking.whatsappNumber && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">واتساب:</span>
+                  <span className="text-sm font-medium text-gray-800">{booking.whatsappNumber}</span>
+                </div>
+              )}
+
+              {booking.studentNotes && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-600 mb-1">ملاحظات الطالب:</p>
+                  <p className="text-sm text-gray-800">{booking.studentNotes}</p>
+                </div>
+              )}
+
+              {booking.adminNotes && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-blue-600 mb-1">ملاحظات المرشد:</p>
+                  <p className="text-sm text-blue-800">{booking.adminNotes}</p>
+                </div>
+              )}
+
+              {booking.videoLink && (
+                <div className="mt-4">
+                  <a
+                    href={booking.videoLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 space-x-reverse bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>مشاهدة الجلسة</span>
+                  </a>
+                </div>
+              )}
+
+              {booking.meetingLink && booking.status === 'CONFIRMED' && (
+                <div className="mt-4">
+                  <a
+                    href={booking.meetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 space-x-reverse bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    <Video className="h-4 w-4" />
+                    <span>انضمام للجلسة</span>
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500">تم الحجز في: {formatDate(booking.createdAt)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onRefresh: () => void; }> = ({ mentorshipData, onRefresh }) => {
+  if (!mentorshipData) return null;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
+      <div className="flex items-center space-x-3 space-x-reverse mb-6">
+        <div className="p-3 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white">
+          <Users className="h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">حجز جلسات الإرشاد</h2>
+          <p className="text-sm text-gray-600">احجز جلسة إرشاد مع المرشد</p>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Left Column: Mentor Info */}
+        <div className="md:col-span-1">
+          <div className="flex items-center space-x-4 space-x-reverse mb-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-4xl font-bold">
+              {mentorshipData.mentor.name.charAt(0)}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">{mentorshipData.mentor.name}</h2>
+              <p className="text-md text-gray-600">Mentor</p>
+            </div>
+          </div>
+          <p className="text-gray-700 mb-6">{mentorshipData.mentor.mentorBio}</p>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Recorded Session:</span>
+              <span className="font-bold text-lg text-orange-600">${Number(mentorshipData.pricing.recordedSession).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Live Session:</span>
+              <span className="font-bold text-lg text-orange-600">${Number(mentorshipData.pricing.faceToFaceSession).toFixed(2)}/hour</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Booking Options */}
+        <div className="md:col-span-2">
+          <RecordedSessionsList sessions={mentorshipData.recordedSessions} onPurchaseSuccess={onRefresh} />
+          <LiveSessionBooking availableDates={mentorshipData.availableDates} onBookingSuccess={onRefresh} />
+        </div>
+      </div>
     </div>
   );
 };
@@ -534,6 +732,7 @@ const EnrollmentsSection: FC<{ enrollments: Enrollment[]; onEnrollmentRenewal: (
               {/* Expiration Status */}
               {enrollment.expiresAt && (
                 <div className="mb-3">
+                  <p className="text-xs text-gray-500 mt-1">Expires on: {formatDate(enrollment.expiresAt)}</p>
                   <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                     enrollment.status === 'expired' ? 'bg-red-100 text-red-800' :
                     enrollment.status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800' :
@@ -594,175 +793,6 @@ const EnrollmentsSection: FC<{ enrollments: Enrollment[]; onEnrollmentRenewal: (
   );
 };
 
-const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onBookMentorship: () => void }> = ({ mentorshipData, onBookMentorship }) => {
-  if (!mentorshipData) return null;
-  
-  // Check if user has purchased any recorded sessions
-  const purchasedRecordedSessions = mentorshipData.bookings.filter(
-    booking => booking.sessionType === 'RECORDED' && booking.status === 'CONFIRMED'
-  );
-  
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <div className="p-3 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white">
-            <Users className="h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">جلسات الإرشاد</h2>
-            <p className="text-sm text-gray-600">احجز جلسة إرشاد مع المرشد</p>
-          </div>
-        </div>
-        <button
-          onClick={onBookMentorship}
-          className="flex items-center space-x-2 space-x-reverse bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-px text-sm font-medium"
-        >
-          <Users className="h-4 w-4" />
-          <span>احجز جلسة</span>
-        </button>
-      </div>
-      
-      {/* Recorded Sessions Section */}
-      {mentorshipData.recordedSessions.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">الجلسات المسجلة</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {mentorshipData.recordedSessions.map((session) => {
-              const isPurchased = purchasedRecordedSessions.some(
-                booking => booking.videoLink === session.videoLink
-              );
-              
-              return (
-                <div key={session.id} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800 mb-1">{session.title}</h4>
-                      <p className="text-sm text-gray-600 mb-2">{session.description}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-blue-600">${Number(session.price).toFixed(2)}</span>
-                        {isPurchased ? (
-                          <a
-                            href={session.videoLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-1 space-x-reverse bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm transition-colors"
-                          >
-                            <Play className="h-4 w-4" />
-                            <span>شاهد الآن</span>
-                          </a>
-                        ) : (
-                          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                            غير مشترى
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-4">
-          <h3 className="font-semibold text-gray-800 mb-2">المرشد: {mentorshipData.mentor.name}</h3>
-          <p className="text-sm text-gray-600 mb-3">{mentorshipData.mentor.mentorBio}</p>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">جلسة مسجلة:</span>
-              <span className="font-bold text-orange-600">${mentorshipData.pricing.recordedSession.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">جلسة مباشرة:</span>
-              <span className="font-bold text-orange-600">${mentorshipData.pricing.faceToFaceSession.toFixed(2)}/ساعة</span>
-            </div>
-          </div>
-        </div>
-        <div>
-          <h3 className="font-semibold text-gray-800 mb-3">جلساتك الأخيرة</h3>
-          {mentorshipData.bookings.length === 0 ? (
-            <p className="text-sm text-gray-500">لا توجد جلسات محجوزة</p>
-          ) : (
-            <div className="space-y-2">
-              {mentorshipData.bookings.slice(0, 3).map((booking) => (
-                <div key={booking.id} className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center space-x-2 space-x-reverse">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        booking.sessionType === 'RECORDED' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                      }`}>
-                        {booking.sessionType === 'RECORDED' ? 'مسجلة' : 'مباشرة'}
-                      </span>
-                      {booking.sessionType === 'FACE_TO_FACE' && (
-                        <span className="text-sm font-medium">{booking.duration} دقيقة</span>
-                      )}
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                      booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                      booking.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {booking.status === 'CONFIRMED' ? 'مؤكد' :
-                       booking.status === 'PENDING' ? 'في الانتظار' :
-                       booking.status === 'COMPLETED' ? 'مكتمل' : 'ملغي'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <span>المبلغ: ${Number(booking.amount).toFixed(2)}</span>
-                      <span>تاريخ الحجز: {new Date(booking.createdAt).toLocaleDateString('ar-SA')}</span>
-                    </div>
-                    {booking.sessionDate && (
-                      <div className="text-center">
-                        <span className="font-medium text-orange-600">
-                          موعد الجلسة: {new Date(booking.sessionDate).toLocaleDateString('ar-SA', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  {booking.videoLink && booking.status === 'COMPLETED' && (
-                    <div className="mt-2">
-                      <a 
-                        href={booking.videoLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-orange-600 hover:text-orange-800 underline"
-                      >
-                        مشاهدة الفيديو
-                      </a>
-                    </div>
-                  )}
-                  {booking.meetingLink && booking.status === 'CONFIRMED' && (
-                    <div className="mt-2">
-                      <a 
-                        href={booking.meetingLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-green-600 hover:text-green-800 underline"
-                      >
-                        رابط الاجتماع
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskClick: (task: Task) => void; onEnrollmentSuccess: () => void }> = ({ platform, enrollments, onTaskClick, onEnrollmentSuccess }) => {
   const enrollment = enrollments.find(e => e.platform.id === platform.id);
@@ -1108,7 +1138,7 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
   );
 };
 
-const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | null; userBalance: number; onClose: () => void; onSuccess: () => void }> = ({ isOpen, mentorshipData, userBalance, onClose, onSuccess }) => {
+  const MentorshipModal: FC<{ isOpen: boolean; userBalance: number; onClose: () => void; onSuccess: () => void }> = ({ isOpen, userBalance, onClose, onSuccess }) => {
   const [sessionType, setSessionType] = useState<'RECORDED' | 'FACE_TO_FACE'>('RECORDED');
   const duration = '60'; // Fixed 60 minutes for face-to-face sessions
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -1116,8 +1146,9 @@ const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | nu
   const [selectedRecordedSessionId, setSelectedRecordedSessionId] = useState('');
   const [studentNotes, setStudentNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
-  if (!isOpen || !mentorshipData) return null;
+    if (!isOpen || !mentorshipData) return null;
 
   // Check if user has purchased any recorded sessions
   const purchasedRecordedSessions = mentorshipData.bookings.filter(
@@ -1129,6 +1160,60 @@ const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | nu
     ? (selectedRecordedSession?.price || mentorshipData.pricing?.recordedSession || 100)
     : (mentorshipData.pricing?.faceToFaceSession || 500));
   const totalAmount = sessionType === 'RECORDED' ? sessionPrice : (parseInt(duration) / 60) * sessionPrice;
+
+  const handleBookTimeSlot = async (dateId: string, sessionType: 'RECORDED' | 'FACE_TO_FACE', whatsappNumber?: string) => {
+    if (sessionType === 'FACE_TO_FACE' && !whatsappNumber?.trim()) {
+      alert('يرجى إدخال رقم الواتساب');
+      return;
+    }
+
+    if (totalAmount > userBalance) {
+      alert('رصيدك غير كافي لحجز هذه الجلسة. يرجى شحن رصيدك أولاً.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const requestBody: any = {
+        sessionType,
+        studentNotes: studentNotes.trim() || undefined,
+        duration: parseInt(duration),
+        selectedDateId: dateId
+      };
+
+      if (sessionType === 'FACE_TO_FACE') {
+        requestBody.whatsappNumber = whatsappNumber?.trim();
+      }
+
+      const response = await fetch('/api/mentorship', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        onSuccess();
+        onClose();
+        // Reset form
+        setSessionType('RECORDED');
+        setWhatsappNumber('');
+        setSelectedDateId('');
+        setSelectedRecordedSessionId('');
+        setStudentNotes('');
+        setShowCalendar(false);
+        alert(result.message || 'تم حجز الجلسة بنجاح!');
+      } else {
+        const error = await response.json();
+        alert(`فشل في حجز الجلسة: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Mentorship booking error:', error);
+      alert('حدث خطأ أثناء حجز الجلسة.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1213,177 +1298,191 @@ const MentorshipModal: FC<{ isOpen: boolean; mentorshipData: MentorshipData | nu
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" dir="rtl">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-800">حجز جلسة إرشاد</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">نوع الجلسة</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setSessionType('RECORDED')}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  sessionType === 'RECORDED'
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-sm font-medium">جلسة مسجلة</div>
-                <div className="text-xs text-gray-500 mt-1">فيديو جاهز للمشاهدة</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSessionType('FACE_TO_FACE')}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  sessionType === 'FACE_TO_FACE'
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-sm font-medium">جلسة مباشرة</div>
-                <div className="text-xs text-gray-500 mt-1">لقاء مباشر مع المرشد</div>
-              </button>
-            </div>
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800">حجز جلسة إرشاد</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Session Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">نوع الجلسة</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSessionType('RECORDED')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    sessionType === 'RECORDED'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-center">
+                    <Play className="h-6 w-6 mx-auto mb-2" />
+                    <div className="font-medium">جلسة مسجلة</div>
+                    <div className="text-sm text-gray-500">شاهد الجلسات المسجلة</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSessionType('FACE_TO_FACE')}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    sessionType === 'FACE_TO_FACE'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-center">
+                    <Users className="h-6 w-6 mx-auto mb-2" />
+                    <div className="font-medium">جلسة مباشرة</div>
+                    <div className="text-sm text-gray-500">احجز جلسة مباشرة</div>
+                  </div>
+                </button>
+              </div>
+            </div>
 
-          {sessionType === 'RECORDED' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">اختر الجلسة المسجلة</label>
-              <select
-                value={selectedRecordedSessionId}
-                onChange={(e) => setSelectedRecordedSessionId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                required
-              >
-                <option value="">اختر الجلسة</option>
-                {mentorshipData.recordedSessions
-                  .filter(session => {
-                    const alreadyPurchased = purchasedRecordedSessions.some(
+            {/* Content based on session type */}
+            {sessionType === 'RECORDED' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">اختر الجلسة المسجلة</label>
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {mentorshipData.recordedSessions?.map((session) => {
+                    const isPurchased = purchasedRecordedSessions.some(
                       booking => booking.videoLink === session.videoLink
                     );
-                    return session.isActive && !alreadyPurchased;
-                  })
-                  .map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {session.title} - ${Number(session.price).toFixed(2)}
-                    </option>
-                  ))}
-              </select>
-              {selectedRecordedSession && (
-                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-gray-600">{selectedRecordedSession.description}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {sessionType === 'FACE_TO_FACE' && (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">مدة الجلسة</label>
-                <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-                  60 دقيقة (ثابت)
+                    
+                    return (
+                      <div
+                        key={session.id}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedRecordedSessionId === session.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : isPurchased
+                            ? 'border-green-200 bg-green-50 opacity-60'
+                            : 'border-gray-200 hover:border-gray-300'
+                        } ${isPurchased ? 'cursor-not-allowed' : ''}`}
+                        onClick={() => !isPurchased && setSelectedRecordedSessionId(session.id)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-800">{session.title}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{session.description}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-lg font-bold text-blue-600">${Number(session.price).toFixed(2)}</span>
+                              {isPurchased && (
+                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                  تم الشراء مسبقاً
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">رقم الواتساب</label>
-                <input
-                  type="tel"
-                  value={whatsappNumber}
-                  onChange={(e) => setWhatsappNumber(e.target.value)}
-                  placeholder="مثال: +966501234567"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  required
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">اختر التاريخ المتاح</label>
-                <select
-                  value={selectedDateId}
-                  onChange={(e) => setSelectedDateId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  required
-                >
-                  <option value="">اختر التاريخ</option>
-                  {mentorshipData.availableDates && mentorshipData.availableDates.length > 0 ? (
-                    mentorshipData.availableDates
-                      .filter(date => !date.isBooked)
-                      .map((date) => (
-                        <option key={date.id} value={date.id}>
-                          {date.timeSlot}
-                        </option>
-                      ))
-                  ) : (
-                    <option value="" disabled>لا توجد مواعيد متاحة حالياً</option>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">رقم الواتساب</label>
+                  <input
+                    type="tel"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="أدخل رقم الواتساب"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">اختر التاريخ والوقت</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCalendar(!showCalendar)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-right hover:bg-gray-50 transition-colors"
+                  >
+                    {selectedDateId ? 'تم اختيار التاريخ' : 'اختر التاريخ والوقت'}
+                  </button>
+                  
+                  {showCalendar && (
+                    <div className="mt-3 border rounded-lg p-4">
+                      <CalendlyStudentCalendar
+                        availableDates={mentorshipData.availableDates || []}
+                        onDateSelect={(dateId) => {
+                          setSelectedDateId(dateId);
+                          setShowCalendar(false);
+                        }}
+                      />
+                    </div>
                   )}
-                </select>
-              </div>
-            </>
-          )}
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">ملاحظات إضافية (اختياري)</label>
-            <textarea
-              value={studentNotes}
-              onChange={(e) => setStudentNotes(e.target.value)}
-              placeholder="أي ملاحظات أو أسئلة تريد مناقشتها..."
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
-            />
-          </div>
-          <div className="mb-4 p-3 bg-orange-50 rounded-lg">
-            <div className="flex justify-between text-sm">
-              <span>نوع الجلسة:</span>
-              <span>{sessionType === 'RECORDED' ? 'جلسة مسجلة' : 'جلسة مباشرة'}</span>
-            </div>
-            {sessionType === 'FACE_TO_FACE' && (
-              <div className="flex justify-between text-sm">
-                <span>المدة:</span>
-                <span>{duration} دقيقة</span>
+                </div>
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span>السعر:</span>
-              <span>
-                {sessionType === 'RECORDED' 
-                  ? `$${Number(sessionPrice || 0).toFixed(2)} (ثابت)`
-                : `$${Number(sessionPrice || 0).toFixed(2)}/ساعة`
-                }
-              </span>
+
+            {/* Student Notes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">ملاحظات إضافية (اختياري)</label>
+              <textarea
+                value={studentNotes}
+                onChange={(e) => setStudentNotes(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="أي ملاحظات أو متطلبات خاصة..."
+              />
             </div>
-            <div className="flex justify-between font-bold text-orange-600 border-t border-orange-200 pt-2 mt-2">
-              <span>المجموع:</span>
-              <span>${Number(totalAmount || 0).toFixed(2)}</span>
+
+            {/* Price Summary */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">سعر الجلسة:</span>
+                <span className="font-medium">${Number(sessionPrice).toFixed(2)}</span>
+              </div>
+              {sessionType === 'FACE_TO_FACE' && (
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">المدة:</span>
+                  <span className="font-medium">{duration} دقيقة</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
+                <span>المجموع:</span>
+                <span className="text-blue-600">${Number(totalAmount).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm text-gray-600 mt-1">
+                <span>رصيدك الحالي:</span>
+                <span className={userBalance >= totalAmount ? 'text-green-600' : 'text-red-600'}>
+                  ${Number(userBalance).toFixed(2)}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between text-sm text-gray-600 mt-1">
-              <span>رصيدك الحالي:</span>
-              <span className={Number(userBalance) >= totalAmount ? 'text-green-600' : 'text-red-600'}>${Number(userBalance).toFixed(2)}</span>
+
+            {/* Submit Button */}
+            <div className="flex space-x-3 space-x-reverse">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || totalAmount > userBalance}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'جاري الحجز...' : 'احجز الجلسة'}
+              </button>
             </div>
-          </div>
-          <div className="flex space-x-3 space-x-reverse">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || totalAmount > userBalance}
-              className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:bg-gray-400"
-            >
-              {isSubmitting ? 'جاري الحجز...' : 'احجز الآن'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
