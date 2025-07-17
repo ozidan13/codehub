@@ -318,7 +318,7 @@ export default function AdminPage() {
       let response;
       switch (tab) {
         case 'overview':
-          response = await fetch('/api/dashboard/stats');
+          response = await fetch('/api/admin/stats');
           if (response.ok) {
             const data = await response.json();
             setOverviewStats(data);
@@ -414,7 +414,7 @@ export default function AdminPage() {
       return;
     }
     if (session?.user?.role !== 'ADMIN') {
-      router.push('/dashboard');
+      router.push('/student');
       return;
     }
     setIsPageLoading(false);

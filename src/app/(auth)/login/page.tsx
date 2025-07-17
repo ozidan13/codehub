@@ -14,7 +14,7 @@ function LoginForm() {
   const [error, setError] = useState('')
   
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const callbackUrl = searchParams.get('callbackUrl') || '/student'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

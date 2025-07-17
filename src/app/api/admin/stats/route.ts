@@ -1,9 +1,27 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Role, SubmissionStatus, SessionType, BookingStatus } from '@prisma/client'
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+
     const [
       totalStudents,
       totalUsers,
@@ -65,7 +83,7 @@ export async function GET() {
       cancelledBookings,
     })
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error)
+    console.error('Error fetching admin stats:', error)
     return new NextResponse('Internal Server Error', { status: 500 })
   }
 }

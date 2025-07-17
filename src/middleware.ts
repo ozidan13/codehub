@@ -3,7 +3,7 @@ import { getToken } from 'next-auth/jwt'
 
 // Define protected routes that require authentication
 const protectedRoutes = [
-  '/dashboard',
+  '/student',
   '/platforms',
   '/tasks',
   '/submissions',
@@ -16,7 +16,7 @@ const adminRoutes = [
   '/admin'
 ]
 
-// Define public routes that should redirect to dashboard if already authenticated
+// Define public routes that should redirect to student dashboard if already authenticated
 const publicAuthRoutes = [
   '/login',
   '/signup'
@@ -48,19 +48,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
   
-  // If the route is admin-only and the user is authenticated but not an admin, redirect to dashboard
+  // If the route is admin-only and the user is authenticated but not an admin, redirect to student
   if (isAdminRoute && isAuthenticated && token?.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL('/student', request.url))
   }
   
-  // If the user is authenticated and trying to access login/signup, redirect to dashboard
+  // If the user is authenticated and trying to access login/signup, redirect to appropriate dashboard
   if (isPublicAuthRoute && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    const redirectUrl = token?.role === 'ADMIN' ? '/admin' : '/student'
+    return NextResponse.redirect(new URL(redirectUrl, request.url))
   }
   
-  // If the user is accessing the root path and is authenticated, redirect to dashboard
+  // If the user is accessing the root path and is authenticated, redirect to appropriate dashboard
   if (pathname === '/' && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    const redirectUrl = token?.role === 'ADMIN' ? '/admin' : '/student'
+    return NextResponse.redirect(new URL(redirectUrl, request.url))
   }
   
   return NextResponse.next()

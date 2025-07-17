@@ -63,7 +63,7 @@ export default function DashboardPage() {
     try {
       const [platformsRes, statsRes, walletRes, enrollmentsRes, transactionsRes, mentorshipRes, availableDatesRes] = await Promise.all([
         fetch('/api/platforms?include_tasks=true'),
-        fetch('/api/dashboard/student-stats'),
+        fetch('/api/student/stats'),
         fetch('/api/wallet'),
         fetch('/api/enrollments'),
         fetch('/api/transactions?limit=5'),
