@@ -7,7 +7,7 @@ import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, LogOut, RefreshCw, S
 import { CalendlyStudentCalendar } from '@/components/calendar';
 import RecordedSessionsList from '@/components/mentorship/RecordedSessionsList';
 import LiveSessionBooking from '@/components/mentorship/LiveSessionBooking';
-import { formatDate, formatDateTime } from '@/lib/dateUtils';
+import { formatDate, formatDateTime, formatTimeRange } from '@/lib/dateUtils';
 import { Platform, Task, Submission, StudentStats, WalletData, Enrollment, Transaction, MentorshipData } from '@/types';
 
 // --- INTERFACES ---
@@ -161,7 +161,9 @@ export default function DashboardPage() {
 
   
 
-  // --- RENDER LOGIC ---
+
+
+// --- RENDER LOGIC ---
   if (isPageLoading) {
     return <PageLoader />;
   }
@@ -181,7 +183,13 @@ export default function DashboardPage() {
             <RecentTransactions transactions={transactions} />
             <EnrollmentsSection enrollments={enrollments} onEnrollmentRenewal={handleEnrollmentSuccess} />
             
-            <MentorshipSection mentorshipData={mentorshipData} onRefresh={handleRefresh} />
+            <MentorshipSection 
+              mentorshipData={mentorshipData} 
+              onRefresh={handleRefresh} 
+              purchasedRecordedSessionIds={mentorshipData?.bookedSessions
+                ?.filter(s => s.sessionType === 'RECORDED' && s.recordedSessionId)
+                .map(s => s.recordedSessionId!) ?? []}
+            />
             <BookedSessionsSection mentorshipData={mentorshipData} transactions={transactions} />
 
             <div className="space-y-12 mt-10">
@@ -564,6 +572,13 @@ const BookedSessionsSection: FC<{ mentorshipData: MentorshipData | null; transac
                 </div>
               )}
 
+              {booking.sessionStartTime && booking.sessionEndTime && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">وقت الجلسة:</span>
+                  <span className="text-sm font-medium text-gray-800">{formatTimeRange(booking.sessionStartTime, booking.sessionEndTime)}</span>
+                </div>
+              )}
+
               {booking.whatsappNumber && (
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">واتساب:</span>
@@ -624,7 +639,10 @@ const BookedSessionsSection: FC<{ mentorshipData: MentorshipData | null; transac
   );
 };
 
-const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onRefresh: () => void; }> = ({ mentorshipData, onRefresh }) => {
+
+
+const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onRefresh: () => void; purchasedRecordedSessionIds: string[]; }> = ({ mentorshipData, onRefresh, purchasedRecordedSessionIds }) => {
+  const [activeTab, setActiveTab] = useState('live');
   if (!mentorshipData) return null;
 
   return (
@@ -652,23 +670,29 @@ const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onRefresh: 
             </div>
           </div>
           <p className="text-gray-700 mb-6">{mentorshipData.mentor.mentorBio}</p>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-              <span className="text-sm font-medium text-gray-600">Recorded Session:</span>
-              <span className="font-bold text-lg text-orange-600">${Number(mentorshipData.pricing.recordedSession).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-              <span className="text-sm font-medium text-gray-600">Live Session:</span>
-              <span className="font-bold text-lg text-orange-600">${Number(mentorshipData.pricing.faceToFaceSession).toFixed(2)}/hour</span>
-            </div>
-          </div>
+          
         </div>
 
         {/* Right Column: Booking Options */}
         <div className="md:col-span-2">
-          <RecordedSessionsList sessions={mentorshipData.recordedSessions} onPurchaseSuccess={onRefresh} />
-          <LiveSessionBooking availableDates={mentorshipData.availableDates} onBookingSuccess={onRefresh} />
-        </div>
+            <div className="flex border-b border-gray-200">
+              <button onClick={() => setActiveTab('live')} className={`px-6 py-3 font-semibold ${activeTab === 'live' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500'}`}>سيشن Live انا وانت</button>
+              <button onClick={() => setActiveTab('recorded')} className={`px-6 py-3 font-semibold ${activeTab === 'recorded' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500'}`}>سيشن مسجلة</button>
+            </div>
+
+            <div className="py-6">
+              {activeTab === 'live' && (
+                <LiveSessionBooking availableDates={mentorshipData.availableDates} onBookingSuccess={onRefresh} />
+              )}
+              {activeTab === 'recorded' && (
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-4">Available for Purchase</h3>
+                  <RecordedSessionsList sessions={mentorshipData.recordedSessions.filter(s => !purchasedRecordedSessionIds.includes(s.id))} onPurchaseSuccess={onRefresh} />
+
+                </div>
+              )}
+            </div>
+          </div>
       </div>
     </div>
   );

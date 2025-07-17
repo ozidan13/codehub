@@ -43,7 +43,21 @@ export async function GET() {
     // Get user's bookings
     const bookings = await prisma.mentorshipBooking.findMany({
       where: { studentId: session.user.id },
-      include: {
+      select: {
+        id: true,
+        duration: true,
+        amount: true,
+        status: true,
+        sessionType: true,
+        sessionDate: true,
+        sessionStartTime: true,
+        sessionEndTime: true,
+        videoLink: true,
+        meetingLink: true,
+        whatsappNumber: true,
+        studentNotes: true,
+        adminNotes: true,
+        createdAt: true,
         mentor: {
           select: {
             name: true

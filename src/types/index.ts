@@ -101,6 +101,8 @@ export interface MentorshipData {
     status: string;
     sessionType: 'RECORDED' | 'FACE_TO_FACE';
     sessionDate: string | null;
+    sessionStartTime: string | null;
+    sessionEndTime: string | null;
     videoLink: string | null;
     meetingLink: string | null;
     whatsappNumber: string | null;

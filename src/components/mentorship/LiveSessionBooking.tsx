@@ -24,7 +24,7 @@ const LiveSessionBooking: FC<LiveSessionBookingProps> = ({ availableDates, onBoo
 
     // Find the selected date/time combination to get the ID
     const selectedDateTimeSlot = availableDates.find(
-      (d) => new Date(d.date).toDateString() === selectedDate.toDateString() && d.startTime === selectedTime
+      (d) => new Date(d.date).toDateString() === selectedDate.toDateString() && d.timeSlot === selectedTime
     );
 
     if (!selectedDateTimeSlot) {
@@ -87,9 +87,9 @@ const LiveSessionBooking: FC<LiveSessionBookingProps> = ({ availableDates, onBoo
                 {availableTimesForSelectedDate.map((time) => (
                   <button 
                     key={time.id}
-                    onClick={() => setSelectedTime(time.startTime)}
-                    className={`p-2 rounded-lg text-center transition-colors ${selectedTime === time.startTime ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
-                    {new Date(`1970-01-01T${time.startTime}Z`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    onClick={() => setSelectedTime(time.timeSlot)}
+                    className={`p-2 rounded-lg text-center transition-colors ${selectedTime === time.timeSlot ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                    {time.timeSlot}
                   </button>
                 ))}
               </div>
