@@ -197,6 +197,7 @@ async function main() {
     create: {
       email: 'admin@codehub.com',
       name: 'Admin User',
+      phoneNumber: '01026454497',
       password: hashedPassword,
       role: 'ADMIN',
       balance: 1000.00,
@@ -217,6 +218,7 @@ async function main() {
     create: {
       email: 'student@codehub.com',
       name: 'Student User',
+      phoneNumber: '01234567890',
       password: studentPassword,
       role: 'STUDENT',
       balance: 500.00

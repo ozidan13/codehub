@@ -9,6 +9,7 @@ export default function SignupPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phoneNumber: '',
     password: '',
     confirmPassword: ''
   })
@@ -55,6 +56,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
+          phoneNumber: formData.phoneNumber,
           password: formData.password,
         }),
       })
@@ -145,6 +147,23 @@ export default function SignupPage() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-transparent transition-all duration-200 shadow-inner text-gray-900 placeholder-gray-500"
                   placeholder="أدخل بريدك الإلكتروني"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                  رقم الهاتف
+                </label>
+                <input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  autoComplete="tel"
+                  required
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-white/50 backdrop-blur-sm border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-transparent transition-all duration-200 shadow-inner text-gray-900 placeholder-gray-500"
+                  placeholder="أدخل رقم هاتفك"
                 />
               </div>
               

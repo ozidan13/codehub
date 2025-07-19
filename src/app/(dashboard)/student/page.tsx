@@ -1057,17 +1057,13 @@ const SubmissionModal: FC<SubmissionModalProps> = ({ task, onClose, onSuccess })
 
 const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => void }> = ({ isOpen, onClose, onSuccess }) => {
   const [amount, setAmount] = useState('');
-  const [senderWalletNumber, setSenderWalletNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: session } = useSession();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) {
       alert('يرجى إدخال مبلغ صحيح');
-      return;
-    }
-    if (!senderWalletNumber.trim()) {
-      alert('يرجى إدخال رقم المحفظة المرسل منها');
       return;
     }
 
@@ -1077,15 +1073,13 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          amount: parseFloat(amount),
-          senderWalletNumber: senderWalletNumber.trim()
+          amount: parseFloat(amount)
         }),
       });
       if (response.ok) {
         onSuccess();
         onClose();
         setAmount('');
-        setSenderWalletNumber('');
         alert('تم إرسال طلب الشحن بنجاح. سيتم مراجعته من قبل الإدارة.');
       } else {
         const error = await response.json();
@@ -1114,8 +1108,15 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
           <div className="mb-4 p-3 bg-blue-50 rounded-lg">
             <label className="block text-sm font-medium text-gray-700 mb-1">رقم المحفظة للتحويل إليها:</label>
             <div className="text-lg font-bold text-blue-600">01026454497</div>
-            <p className="text-xs text-gray-600 mt-1">قم بتحويل المبلغ إلى هذا الرقم ثم أدخل البيانات أدناه</p>
+            <p className="text-xs text-gray-600 mt-1">قم بتحويل المبلغ من رقمك المسجل إلى هذا الرقم</p>
           </div>
+          {session?.user?.phoneNumber && (
+            <div className="mb-4 p-3 bg-green-50 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 mb-1">رقمك المسجل:</label>
+              <div className="text-lg font-bold text-green-600">{session.user.phoneNumber}</div>
+              <p className="text-xs text-gray-600 mt-1">تأكد من التحويل من هذا الرقم</p>
+            </div>
+          )}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">المبلغ (جنيه مصري)</label>
             <input
@@ -1129,17 +1130,7 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
               required
             />
           </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">رقم المحفظة المرسل منها</label>
-            <input
-              type="text"
-              value={senderWalletNumber}
-              onChange={(e) => setSenderWalletNumber(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="أدخل رقم محفظتك التي حولت منها"
-              required
-            />
-          </div>
+
           <div className="flex space-x-3 space-x-reverse">
             <button
               type="button"

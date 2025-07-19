@@ -142,6 +142,7 @@ interface Transaction {
     id: string
     name: string
     email: string
+    phoneNumber?: string
   }
 }
 
@@ -752,7 +753,7 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, o
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المستخدم</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">النوع</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">محفظة المرسل</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">رقم الهاتف</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">محفظة الإدارة</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
@@ -771,7 +772,7 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, o
                   <td className="px-6 py-4 whitespace-nowrap">{getTypeBadge(transaction.type)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{Number(transaction.amount).toFixed(2)} جنيه</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {transaction.senderWalletNumber || '-'}
+                    {transaction.user.phoneNumber || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {transaction.adminWalletNumber || '-'}
@@ -1925,6 +1926,7 @@ const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData,
           <>
             <InputField name="name" label="الاسم" value={formData.name || ''} onChange={handleChange} />
             <InputField name="email" label="البريد الإلكتروني" type="email" value={formData.email || ''} onChange={handleChange} />
+            <InputField name="phoneNumber" label="رقم الهاتف" value={formData.phoneNumber || ''} onChange={handleChange} />
             {mode === 'create' && <InputField name="password" label="كلمة المرور" type="password" value={formData.password || ''} onChange={handleChange} />}
             <SelectField name="role" label="الدور" value={formData.role || ''} onChange={handleChange} options={[{value: 'STUDENT', label: 'طالب'}, {value: 'ADMIN', label: 'مدير'}]} />
           </>

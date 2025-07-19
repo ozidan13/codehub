@@ -7,21 +7,30 @@ const signupSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(1, 'Name is required'),
+  phoneNumber: z.string().min(1, 'Phone number is required'),
 })
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, name } = signupSchema.parse(body)
+    const { email, password, name, phoneNumber } = signupSchema.parse(body)
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    // Check if user already exists with email or phone number
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email },
+          { phoneNumber }
+        ]
+      }
     })
 
     if (existingUser) {
+      const errorMessage = existingUser.email === email 
+        ? 'User already exists with this email'
+        : 'User already exists with this phone number'
       return NextResponse.json(
-        { error: 'User already exists with this email' },
+        { error: errorMessage },
         { status: 400 }
       )
     }
@@ -37,6 +46,7 @@ export async function POST(request: NextRequest) {
           email,
           password: hashedPassword,
           name,
+          phoneNumber,
           role: 'STUDENT', // Default role
           balance: 500.00 // Starting balance of 500 EGP
         },

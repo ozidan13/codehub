@@ -7,12 +7,14 @@ import bcrypt from 'bcryptjs'
 
 const updateUserSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
+  phoneNumber: z.string().min(1, 'Phone number is required').optional(),
   role: z.enum(['STUDENT', 'ADMIN']).optional()
 })
 
 const createUserSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email format'),
+  phoneNumber: z.string().min(1, 'Phone number is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   role: z.enum(['STUDENT', 'ADMIN']).default('STUDENT')
 })
@@ -44,6 +46,7 @@ export async function GET(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        phoneNumber: true,
         role: true,
         createdAt: true,
         updatedAt: true,
@@ -152,6 +155,7 @@ export async function PUT(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        phoneNumber: true,
         role: true,
         createdAt: true,
         updatedAt: true
@@ -191,14 +195,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createUserSchema.parse(body)
 
-    // Check if user with this email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email }
+    // Check if user with this email or phone number already exists
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: validatedData.email },
+          { phoneNumber: validatedData.phoneNumber }
+        ]
+      }
     })
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User with this email already exists' },
+        { error: 'User with this email or phone number already exists' },
         { status: 400 }
       )
     }
@@ -210,6 +219,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: validatedData.name,
         email: validatedData.email,
+        phoneNumber: validatedData.phoneNumber,
         password: hashedPassword,
         role: validatedData.role
       },
@@ -217,6 +227,7 @@ export async function POST(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        phoneNumber: true,
         role: true,
         createdAt: true
       }

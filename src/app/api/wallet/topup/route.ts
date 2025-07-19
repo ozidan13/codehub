@@ -5,8 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 const topUpSchema = z.object({
-  amount: z.number().min(1, 'Amount must be at least 1 EGP'),
-  senderWalletNumber: z.string().min(1, 'Sender wallet number is required')
+  amount: z.number().min(1, 'Amount must be at least 1 EGP')
 })
 
 export async function POST(request: NextRequest) {
@@ -23,6 +22,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = topUpSchema.parse(body)
 
+    // Get user's phone number
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { phoneNumber: true }
+    })
+
+    if (!user?.phoneNumber) {
+      return NextResponse.json(
+        { error: 'Phone number not found. Please update your profile.' },
+        { status: 400 }
+      )
+    }
+
     // Create a pending transaction
     const transaction = await prisma.transaction.create({
       data: {
@@ -31,7 +43,7 @@ export async function POST(request: NextRequest) {
         amount: validatedData.amount,
         status: 'PENDING',
         description: `Balance top-up request - ${validatedData.amount} EGP`,
-        senderWalletNumber: validatedData.senderWalletNumber,
+        senderWalletNumber: user.phoneNumber,
         adminWalletNumber: '01026454497'
       }
     })

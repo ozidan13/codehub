@@ -11,13 +11,14 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(STUDENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  phoneNumber String?  @unique
+  password    String
+  role        Role     @default(STUDENT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
   // Monetizing feature fields
   balance           Decimal           @default(500.00) @db.Decimal(10,2)
