@@ -246,3 +246,110 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+// DELETE /api/users - Delete user (Admin only)
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Unauthorized - Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('id')
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true }
+    })
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    // Prevent admin from deleting themselves
+    if (userId === session.user.id) {
+      return NextResponse.json(
+        { error: 'Cannot delete your own account' },
+        { status: 400 }
+      )
+    }
+
+    // Check for existing submissions
+    const submissionCount = await prisma.submission.count({
+      where: { userId }
+    })
+
+    if (submissionCount > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete user with existing submissions. Please handle submissions first.' },
+        { status: 400 }
+      )
+    }
+
+    // Check for existing transactions
+    const transactionCount = await prisma.transaction.count({
+      where: { userId }
+    })
+
+    if (transactionCount > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete user with existing transactions. Please handle transactions first.' },
+        { status: 400 }
+      )
+    }
+
+    // Check for existing enrollments
+    const enrollmentCount = await prisma.enrollment.count({
+      where: { userId }
+    })
+
+    if (enrollmentCount > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete user with existing enrollments. Please handle enrollments first.' },
+        { status: 400 }
+      )
+    }
+
+    // Check for existing mentorship bookings
+    const bookingCount = await prisma.mentorshipBooking.count({
+      where: { studentId: userId }
+    })
+
+    if (bookingCount > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete user with existing mentorship bookings. Please handle bookings first.' },
+        { status: 400 }
+      )
+    }
+
+    // Delete user
+    await prisma.user.delete({
+      where: { id: userId }
+    })
+
+    return NextResponse.json({ message: 'User deleted successfully' })
+
+  } catch (error) {
+    console.error('User deletion error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

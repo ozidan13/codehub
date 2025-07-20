@@ -14,6 +14,7 @@ import {
   BarChart3,
   FileText,
   Download,
+  ChevronDown,
   Star,
   Award,
   Briefcase,
@@ -26,10 +27,13 @@ import {
   Wallet,
   CreditCard,
   Calendar,
-  Settings
+  Settings,
+  Edit,
+  Trash2
 } from 'lucide-react'
 import { CalendlyAdminCalendar } from '@/components/calendar'
 import { formatDate, formatDateTime } from '@/lib/dateUtils';
+import { ToastProvider, useToastHelpers } from '@/components/ui/Toast'
 
 // --- INTERFACES ---
 interface Student {
@@ -248,8 +252,9 @@ class DataCache {
 
 const dataCache = new DataCache()
 
-// --- MAIN ADMIN PAGE COMPONENT ---
-export default function AdminPage() {
+// --- ADMIN PAGE WITH TOAST PROVIDER ---
+function AdminPageContent() {
+  const { success: toastSuccess, error: toastError } = useToastHelpers()
   const { data: session, status } = useSession()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship' | 'dates'>('overview')
@@ -275,6 +280,17 @@ export default function AdminPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedEntity, setSelectedEntity] = useState<Platform | Task | User | null>(null)
   const [entityType, setEntityType] = useState<'platform' | 'task' | 'user'>('platform')
+  
+  // Confirmation dialog states
+  const [showTransactionConfirm, setShowTransactionConfirm] = useState(false)
+  const [showBookingConfirm, setShowBookingConfirm] = useState(false)
+  const [showTimeSlotConfirm, setShowTimeSlotConfirm] = useState(false)
+  const [pendingAction, setPendingAction] = useState<{
+    type: 'transaction' | 'booking' | 'timeSlot';
+    id: string;
+    action: string;
+    details?: string;
+  } | null>(null)
   const [formData, setFormData] = useState<FormData>({})
 
   const [pagination, setPagination] = useState<Record<string, { page: number; limit: number; total: number; totalPages: number }>>({
@@ -283,13 +299,35 @@ export default function AdminPage() {
     mentorship: { page: 1, limit: 10, total: 0, totalPages: 1 },
   });
 
-  // --- DATA FETCHING ---
-  const fetchAdminData = useCallback(async (tab: string, page: number = 1) => {
+  // --- DATA FETCHING WITH RETRY MECHANISM ---
+  const fetchWithRetry = async (url: string, options: RequestInit = {}, maxRetries: number = 3): Promise<Response> => {
+    let lastError: Error;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.ok) {
+          return response;
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      } catch (error) {
+        lastError = error as Error;
+        if (attempt === maxRetries) {
+          throw lastError;
+        }
+        // Exponential backoff: wait 1s, 2s, 4s
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+      }
+    }
+    throw lastError!;
+  };
+
+  const fetchAdminData = useCallback(async (tab: string, page: number = 1, useCache: boolean = true) => {
     if (status !== 'authenticated') return;
     setIsContentLoading(true);
     try {
       const cacheKey = `admin-${tab}-${page}`;
-      const cachedData = dataCache.get(cacheKey);
+      const cachedData = useCache ? dataCache.get(cacheKey) : null;
 
       if (cachedData) {
         if (tab === 'overview') setOverviewStats(cachedData as AdminStats);
@@ -319,93 +357,86 @@ export default function AdminPage() {
       let response;
       switch (tab) {
         case 'overview':
-          response = await fetch('/api/admin/stats');
-          if (response.ok) {
-            const data = await response.json();
-            setOverviewStats(data);
-            dataCache.set(cacheKey, data);
-          }
+          response = await fetchWithRetry('/api/admin/stats');
+          const overviewData = await response.json();
+          setOverviewStats(overviewData);
+          dataCache.set(cacheKey, overviewData, 2 * 60 * 1000); // 2 minutes cache
           break;
         case 'students':
-          response = await fetch('/api/users?role=STUDENT&includeProgress=true');
-          if (response.ok) {
-            const data = await response.json();
-            const formattedStudents = data.users.map((user: User) => ({
-              id: user.id,
-              name: user.name || 'Unknown',
-              email: user.email,
-              totalTasks: user.stats?.totalSubmissions || 0,
-              completedTasks: user.stats?.approvedSubmissions || 0,
-              pendingTasks: user.stats?.pendingSubmissions || 0,
-              averageScore: user.stats?.averageScore,
-              createdAt: user.createdAt,
-              stats: user.stats ? { ...user.stats } : undefined
-            }));
-            setStudents(formattedStudents);
-            dataCache.set(cacheKey, formattedStudents);
-          }
+          response = await fetchWithRetry('/api/users?role=STUDENT&includeProgress=true');
+          const studentsData = await response.json();
+          const formattedStudents = studentsData.users.map((user: User) => ({
+            id: user.id,
+            name: user.name || 'Unknown',
+            email: user.email,
+            totalTasks: user.stats?.totalSubmissions || 0,
+            completedTasks: user.stats?.approvedSubmissions || 0,
+            pendingTasks: user.stats?.pendingSubmissions || 0,
+            averageScore: user.stats?.averageScore,
+            createdAt: user.createdAt,
+            stats: user.stats ? { ...user.stats } : undefined
+          }));
+          setStudents(formattedStudents);
+          dataCache.set(cacheKey, formattedStudents, 5 * 60 * 1000); // 5 minutes cache
           break;
         case 'submissions':
           const limit = 10;
-          response = await fetch(`/api/submissions?page=${page}&limit=${limit}`);
-          if (response.ok) {
-            const data = await response.json();
-            setSubmissions(data.submissions || []);
-            setPagination(prev => ({ ...prev, submissions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
-            dataCache.set(cacheKey, data);
-          }
+          response = await fetchWithRetry(`/api/submissions?page=${page}&limit=${limit}`);
+          const submissionsData = await response.json();
+          setSubmissions(submissionsData.submissions || []);
+          setPagination(prev => ({ ...prev, submissions: submissionsData.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+          dataCache.set(cacheKey, submissionsData, 3 * 60 * 1000); // 3 minutes cache
           break;
         case 'platforms':
-          response = await fetch('/api/platforms');
-          if (response.ok) {
-            const data = await response.json();
-            setPlatforms(data.platforms || []);
-            dataCache.set(cacheKey, data.platforms || []);
-          }
+          response = await fetchWithRetry('/api/platforms');
+          const platformsData = await response.json();
+          setPlatforms(platformsData.platforms || []);
+          dataCache.set(cacheKey, platformsData.platforms || [], 10 * 60 * 1000); // 10 minutes cache
           break;
         case 'tasks':
-          response = await fetch('/api/tasks');
-          if (response.ok) {
-            const data = await response.json();
-            setTasks(data.tasks || []);
-            dataCache.set(cacheKey, data.tasks || []);
-          }
+          response = await fetchWithRetry('/api/tasks');
+          const tasksData = await response.json();
+          setTasks(tasksData.tasks || []);
+          dataCache.set(cacheKey, tasksData.tasks || [], 10 * 60 * 1000); // 10 minutes cache
           break;
         case 'users':
-          response = await fetch('/api/users?includeProgress=false');
-          if (response.ok) {
-            const data = await response.json();
-            setUsers(data.users || []);
-            dataCache.set(cacheKey, data.users || []);
-          }
+          response = await fetchWithRetry('/api/users?includeProgress=false');
+          const usersData = await response.json();
+          setUsers(usersData.users || []);
+          dataCache.set(cacheKey, usersData.users || [], 5 * 60 * 1000); // 5 minutes cache
           break;
         case 'transactions':
           const transactionLimit = 10;
-          response = await fetch(`/api/admin/transactions?page=${page}&limit=${transactionLimit}`);
-          if (response.ok) {
-            const data = await response.json();
-            setTransactions(data.transactions || []);
-            setPagination(prev => ({ ...prev, transactions: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
-            dataCache.set(cacheKey, data);
-          }
+          response = await fetchWithRetry(`/api/admin/transactions?page=${page}&limit=${transactionLimit}`);
+          const transactionsData = await response.json();
+          setTransactions(transactionsData.transactions || []);
+          setPagination(prev => ({ ...prev, transactions: transactionsData.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+          dataCache.set(cacheKey, transactionsData, 2 * 60 * 1000); // 2 minutes cache
           break;
         case 'mentorship':
           const mentorshipLimit = 10;
-          response = await fetch(`/api/admin/mentorship?page=${page}&limit=${mentorshipLimit}`);
-          if (response.ok) {
-            const data = await response.json();
-            setMentorshipBookings(data.bookings || []);
-            setPagination(prev => ({ ...prev, mentorship: data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
-            dataCache.set(cacheKey, data);
-          }
+          response = await fetchWithRetry(`/api/admin/mentorship?page=${page}&limit=${mentorshipLimit}`);
+          const mentorshipData = await response.json();
+          setMentorshipBookings(mentorshipData.bookings || []);
+          setPagination(prev => ({ ...prev, mentorship: mentorshipData.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 } }));
+          dataCache.set(cacheKey, mentorshipData, 2 * 60 * 1000); // 2 minutes cache
           break;
       }
     } catch (error) {
       console.error(`Error fetching ${tab} data:`, error);
+      // Show user-friendly error message
+      toastError(`فشل في تحميل بيانات ${tab === 'overview' ? 'الإحصائيات' : 
+                                    tab === 'students' ? 'الطلاب' :
+                                    tab === 'submissions' ? 'المشاريع' :
+                                    tab === 'platforms' ? 'المنصات' :
+                                    tab === 'tasks' ? 'المهام' :
+                                    tab === 'users' ? 'المستخدمين' :
+                                    tab === 'transactions' ? 'المعاملات' :
+                                    tab === 'mentorship' ? 'الإرشاد' : 'البيانات'}. يرجى المحاولة مرة أخرى.`);
     } finally {
       setIsContentLoading(false);
     }
-  }, [status]);
+  }, [status, toastError]);
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -432,13 +463,43 @@ export default function AdminPage() {
   }, [isPageLoading, activeTab, pagination.submissions.page, pagination.transactions.page, pagination.mentorship.page]);
 
   // --- HANDLERS ---
+  // Selective cache invalidation for better performance
+  const invalidateCache = (keys: string[]) => {
+    keys.forEach(key => {
+      // Remove all cache entries that start with the key
+      Array.from(dataCache['cache'].keys()).forEach(cacheKey => {
+        if (cacheKey.startsWith(key)) {
+          dataCache['cache'].delete(cacheKey);
+        }
+      });
+    });
+  };
+
   const refreshData = (tab: string) => {
     const page = tab === 'submissions' ? pagination.submissions.page :
                  tab === 'transactions' ? pagination.transactions.page :
                  tab === 'mentorship' ? pagination.mentorship.page : 1;
-    dataCache.clear(); // Consider more granular cache invalidation
+    
+    // Selective cache invalidation instead of clearing all
+    invalidateCache([`admin-${tab}`]);
     fetchAdminData(tab, page);
   }
+
+  // Optimized refresh functions for specific data types
+  const refreshTransactions = () => {
+    invalidateCache(['admin-transactions']);
+    fetchAdminData('transactions', pagination.transactions.page);
+  };
+
+  const refreshMentorshipBookings = () => {
+    invalidateCache(['admin-mentorship']);
+    fetchAdminData('mentorship', pagination.mentorship.page);
+  };
+
+  const refreshOverview = () => {
+    invalidateCache(['admin-overview']);
+    fetchAdminData('overview');
+  };
 
   const handleTabChange = (tab: 'overview' | 'students' | 'submissions' | 'platforms' | 'tasks' | 'users' | 'transactions' | 'mentorship' | 'dates') => {
     setActiveTab(tab);
@@ -475,35 +536,198 @@ export default function AdminPage() {
     setShowDeleteModal(true)
   }
 
-  const submitForm = async (method: 'POST' | 'PUT' | 'DELETE') => {
+  // Confirmation handlers
+  const handleTransactionStatusConfirm = (transactionId: string, status: 'APPROVED' | 'REJECTED', details?: string) => {
+    setPendingAction({
+      type: 'transaction',
+      id: transactionId,
+      action: status,
+      details
+    })
+    setShowTransactionConfirm(true)
+  }
+
+  const handleBookingStatusConfirm = (bookingId: string, status: 'CONFIRMED' | 'CANCELLED', details?: string) => {
+    setPendingAction({
+      type: 'booking',
+      id: bookingId,
+      action: status,
+      details
+    })
+    setShowBookingConfirm(true)
+  }
+
+  const handleTimeSlotDeleteConfirm = (dateId: string, details?: string) => {
+    setPendingAction({
+      type: 'timeSlot',
+      id: dateId,
+      action: 'DELETE',
+      details
+    })
+    setShowTimeSlotConfirm(true)
+  }
+
+  const executeConfirmedAction = async () => {
+    if (!pendingAction) return
+
     try {
-      let endpoint = ''
+      if (pendingAction.type === 'transaction') {
+        // Execute transaction status update
+        const response = await fetch('/api/admin/transactions', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            transactionId: pendingAction.id, 
+            status: pendingAction.action 
+          }),
+        })
+        if (response.ok) {
+          refreshTransactions()
+          toastSuccess(`تم ${pendingAction.action === 'APPROVED' ? 'قبول' : 'رفض'} المعاملة بنجاح`)
+        } else {
+          const error = await response.json()
+          toastError(`فشل في تحديث المعاملة: ${error.error}`)
+        }
+      } else if (pendingAction.type === 'booking') {
+        // Execute booking status update
+        const response = await fetch('/api/admin/mentorship', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            bookingId: pendingAction.id, 
+            status: pendingAction.action 
+          }),
+        })
+        if (response.ok) {
+          refreshMentorshipBookings()
+          toastSuccess(`تم ${pendingAction.action === 'CONFIRMED' ? 'تأكيد' : 'إلغاء'} الحجز بنجاح`)
+        } else {
+          const error = await response.json()
+          toastError(`فشل في تحديث الحجز: ${error.error}`)
+        }
+      } else if (pendingAction.type === 'timeSlot') {
+        // Execute time slot deletion
+        const response = await fetch(`/api/admin/available-dates?id=${pendingAction.id}`, {
+          method: 'DELETE'
+        })
+        if (response.ok) {
+          toastSuccess('تم حذف الموعد بنجاح')
+        } else {
+          const error = await response.json()
+          toastError(`فشل في حذف الموعد: ${error.error}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error executing confirmed action:', error)
+      toastError('حدث خطأ أثناء تنفيذ العملية')
+    } finally {
+      // Close all confirmation modals
+      setShowTransactionConfirm(false)
+      setShowBookingConfirm(false)
+      setShowTimeSlotConfirm(false)
+      setPendingAction(null)
+    }
+  }
+
+  const submitForm = async (method: 'POST' | 'PUT' | 'DELETE') => {
+    // Optimistic updates - update UI immediately
+    const optimisticUpdate = () => {
+      if (method === 'POST') {
+        const tempId = `temp-${Date.now()}`;
+        const newEntity = { ...formData, id: tempId };
+        if (entityType === 'platforms') {
+          setPlatforms(prev => [...prev, newEntity as Platform]);
+        } else if (entityType === 'tasks') {
+          setTasks(prev => [...prev, newEntity as Task]);
+        } else if (entityType === 'users') {
+          setUsers(prev => [...prev, newEntity as User]);
+        }
+      } else if (method === 'PUT' && selectedEntity) {
+        const updatedEntity = { ...selectedEntity, ...formData };
+        if (entityType === 'platforms') {
+          setPlatforms(prev => prev.map(p => p.id === selectedEntity.id ? updatedEntity as Platform : p));
+        } else if (entityType === 'tasks') {
+          setTasks(prev => prev.map(t => t.id === selectedEntity.id ? updatedEntity as Task : t));
+        } else if (entityType === 'users') {
+          setUsers(prev => prev.map(u => u.id === selectedEntity.id ? updatedEntity as User : u));
+        }
+      } else if (method === 'DELETE' && selectedEntity) {
+        if (entityType === 'platforms') {
+          setPlatforms(prev => prev.filter(p => p.id !== selectedEntity.id));
+        } else if (entityType === 'tasks') {
+          setTasks(prev => prev.filter(t => t.id !== selectedEntity.id));
+        } else if (entityType === 'users') {
+          setUsers(prev => prev.filter(u => u.id !== selectedEntity.id));
+        }
+      }
+    };
+
+    // Rollback function in case of error
+    const rollbackUpdate = () => {
+      // Invalidate cache and refetch data to restore correct state
+      invalidateCache([`admin-${entityType === 'platform' ? 'platforms' : entityType === 'task' ? 'tasks' : 'users'}`]);
+      fetchAdminData(entityType === 'platform' ? 'platforms' : entityType === 'task' ? 'tasks' : 'users', 1, false);
+    };
+
+    try {
+      // Apply optimistic update
+      optimisticUpdate();
+      
+      // Close modals immediately for better UX
+      setShowCreateModal(false);
+      setShowEditModal(false);
+      setShowDeleteModal(false);
+      
+      let endpoint = '';
       let body = method !== 'DELETE' ? JSON.stringify(formData) : undefined;
       
+      // Fix API endpoints to match backend structure
       switch (entityType) {
-        case 'platform': endpoint = `/api/platforms${method !== 'POST' ? `?id=${selectedEntity?.id}`: ''}`; break
-        case 'task': endpoint = `/api/tasks${method !== 'POST' ? `?id=${selectedEntity?.id}`: ''}`; break
-        case 'user': endpoint = `/api/users${method !== 'POST' ? `?id=${selectedEntity?.id}`: ''}`; break
+        case 'platform': 
+          if (method === 'POST') {
+            endpoint = '/api/platforms'
+          } else {
+            endpoint = `/api/platforms/${selectedEntity?.id}`
+          }
+          break
+        case 'task': 
+          if (method === 'POST') {
+            endpoint = '/api/tasks'
+          } else {
+            endpoint = `/api/tasks/${selectedEntity?.id}`
+          }
+          break
+        case 'user': 
+          if (method === 'POST') {
+            endpoint = '/api/users'
+          } else if (method === 'PUT') {
+            // For user updates, include ID in body as required by backend
+            const updatedFormData = { ...formData, id: selectedEntity?.id }
+            body = JSON.stringify(updatedFormData)
+            endpoint = '/api/users'
+          } else if (method === 'DELETE') {
+            // For user deletion, include ID in body as required by backend
+            body = JSON.stringify({ id: selectedEntity?.id })
+            endpoint = '/api/users'
+          }
+          break
       }
       
-      const response = await fetch(endpoint, {
+      const response = await fetchWithRetry(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body
-      })
+      });
       
-      if (response.ok) {
-        setShowCreateModal(false)
-        setShowEditModal(false)
-        setShowDeleteModal(false)
-        refreshData(activeTab)
-      } else {
-        const error = await response.json()
-        alert(error.error || `Failed to ${method.toLowerCase()} entity`)
-      }
+      // Success - invalidate cache and show success message
+      invalidateCache([`admin-${entityType === 'platform' ? 'platforms' : entityType === 'task' ? 'tasks' : 'users'}`]);
+      toastSuccess(`تم ${method === 'POST' ? 'إنشاء' : method === 'PUT' ? 'تحديث' : 'حذف'} العنصر بنجاح`);
+      
     } catch (error) {
-      console.error(`${method} error:`, error)
-      alert(`An error occurred while trying to ${method.toLowerCase()} the entity.`)
+      console.error(`${method} error:`, error);
+      // Rollback optimistic update on error
+      rollbackUpdate();
+      toastError(`فشل في ${method === 'POST' ? 'إنشاء' : method === 'PUT' ? 'تحديث' : 'حذف'} العنصر. يرجى المحاولة مرة أخرى.`);
     }
   }
 
@@ -543,17 +767,21 @@ export default function AdminPage() {
                                 pagination={pagination.transactions} 
                                 onPageChange={(page) => handlePageChange(page, 'transactions')} 
                                 onRefresh={() => refreshData('transactions')} 
+                                onTransactionStatusConfirm={handleTransactionStatusConfirm}
                               />
       case 'mentorship': return <MentorshipTab 
                                 bookings={mentorshipBookings} 
                                 pagination={pagination.mentorship} 
                                 onPageChange={(page) => handlePageChange(page, 'mentorship')} 
                                 onRefresh={() => refreshData('mentorship')} 
+                                onBookingStatusConfirm={handleBookingStatusConfirm}
+                                toastSuccess={toastSuccess}
+                                toastError={toastError}
                               />
-      case 'dates': return <DatesTab />
+      case 'dates': return <DatesTab onTimeSlotDeleteConfirm={handleTimeSlotDeleteConfirm} />
       case 'platforms': return <PlatformsTab platforms={platforms} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('platform')} />
       case 'tasks': return <TasksTab tasks={tasks} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('task')} />
-      case 'users': return <UsersTab users={users} onEdit={handleEdit} onCreate={() => handleCreate('user')} />
+      case 'users': return <UsersTab users={users} onEdit={handleEdit} onDelete={handleDelete} onCreate={() => handleCreate('user')} />
       default: return <div className="text-center p-8">الرجاء اختيار تبويب لعرض البيانات</div>;
     }
   }
@@ -636,6 +864,22 @@ export default function AdminPage() {
           onConfirm={() => submitForm('DELETE')}
         />
       )}
+
+      {/* Action Confirmation Modals */}
+      {(showTransactionConfirm || showBookingConfirm || showTimeSlotConfirm) && pendingAction && (
+        <ActionConfirmationModal
+          actionType={pendingAction.type}
+          action={pendingAction.action}
+          details={pendingAction.details}
+          onClose={() => {
+            setShowTransactionConfirm(false)
+            setShowBookingConfirm(false)
+            setShowTimeSlotConfirm(false)
+            setPendingAction(null)
+          }}
+          onConfirm={executeConfirmedAction}
+        />
+      )}
     </div>
   )
 }
@@ -645,15 +889,25 @@ export default function AdminPage() {
 const TabButton: FC<{ icon: React.ReactNode; label: string; active: boolean; onClick: () => void }> = ({ icon, label, active, onClick }) => (
   <button 
     onClick={onClick}
-    className={`w-full flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${active ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`}>
-    {icon}
-    <span className="mr-3">{label}</span>
+    className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${active ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl border-2 border-blue-300' : 'text-gray-300 hover:text-blue-400 hover:bg-gradient-to-r hover:from-gray-700 hover:to-gray-600 border-2 border-transparent hover:border-blue-400'}`}>
+    {active && (
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-20 animate-pulse"></div>
+    )}
+    <div className="relative flex items-center">
+      {icon}
+      <span className="mr-3">{label}</span>
+    </div>
   </button>
 );
 
 const PageHeader: FC<{ title: string; children?: React.ReactNode }> = ({ title, children }) => (
-    <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 capitalize">{title}</h2>
+    <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+        <div className="flex items-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center ml-4">
+                <Settings className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent capitalize">{title}</h2>
+        </div>
         <div className="flex items-center space-x-4 space-x-reverse">{children}</div>
     </div>
 );
@@ -671,6 +925,15 @@ const OverviewTab: FC<{ stats: AdminStats | null }> = ({ stats }) => {
       </div>
     </>
   );
+}
+
+// --- MAIN EXPORT WITH TOAST PROVIDER ---
+export default function AdminPage() {
+  return (
+    <ToastProvider>
+      <AdminPageContent />
+    </ToastProvider>
+  )
 };
 
 // --- TRANSACTIONS TAB ---
@@ -679,32 +942,11 @@ interface TransactionsTabProps {
   pagination: { page: number; limit: number; total: number; totalPages: number };
   onPageChange: (page: number) => void;
   onRefresh: () => void;
+  onTransactionStatusConfirm: (transactionId: string, status: 'APPROVED' | 'REJECTED', details?: string) => void;
 }
 
-const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, onPageChange, onRefresh }) => {
+const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, onPageChange, onRefresh, onTransactionStatusConfirm }) => {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
-
-  const handleStatusUpdate = async (transactionId: string, status: 'APPROVED' | 'REJECTED') => {
-    setIsUpdating(transactionId);
-    try {
-      const response = await fetch('/api/admin/transactions', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionId, status }),
-      });
-      if (response.ok) {
-        onRefresh();
-      } else {
-        const error = await response.json();
-        alert(`فشل في تحديث المعاملة: ${error.error}`);
-      }
-    } catch (error) {
-      console.error('Transaction update error:', error);
-      alert('حدث خطأ أثناء تحديث المعاملة.');
-    } finally {
-      setIsUpdating(null);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const statusMap = {
@@ -785,16 +1027,26 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, o
                     {transaction.status === 'PENDING' && (
                       <div className="flex space-x-2 space-x-reverse">
                         <button
-                          onClick={() => handleStatusUpdate(transaction.id, 'APPROVED')}
+                          onClick={() => onTransactionStatusConfirm(
+                            transaction.id, 
+                            'APPROVED',
+                            `المبلغ: ${Number(transaction.amount).toFixed(2)} جنيه - المستخدم: ${transaction.user.name}`
+                          )}
                           disabled={isUpdating === transaction.id}
                           className="text-green-600 hover:text-green-900 disabled:opacity-50"
+                          title="قبول المعاملة"
                         >
                           <CheckCircle className="h-5 w-5" />
                         </button>
                         <button
-                          onClick={() => handleStatusUpdate(transaction.id, 'REJECTED')}
+                          onClick={() => onTransactionStatusConfirm(
+                            transaction.id, 
+                            'REJECTED',
+                            `المبلغ: ${Number(transaction.amount).toFixed(2)} جنيه - المستخدم: ${transaction.user.name}`
+                          )}
                           disabled={isUpdating === transaction.id}
                           className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                          title="رفض المعاملة"
                         >
                           <XCircle className="h-5 w-5" />
                         </button>
@@ -879,9 +1131,11 @@ interface BookingUpdateModalProps {
   booking: MentorshipBooking;
   onClose: () => void;
   onUpdate: () => void;
+  toastSuccess: (message: string) => void;
+  toastError: (message: string) => void;
 }
 
-const BookingUpdateModal: FC<BookingUpdateModalProps> = ({ booking, onClose, onUpdate }) => {
+const BookingUpdateModal: FC<BookingUpdateModalProps> = ({ booking, onClose, onUpdate, toastSuccess, toastError }) => {
   const [status, setStatus] = useState(booking.status);
   const [videoLink, setVideoLink] = useState(booking.videoLink || '');
   const [meetingLink, setMeetingLink] = useState(booking.meetingLink || '');
@@ -944,14 +1198,15 @@ const BookingUpdateModal: FC<BookingUpdateModalProps> = ({ booking, onClose, onU
       });
 
       if (response.ok) {
-        onUpdate();
+          onUpdate();
+          toastSuccess('تم تحديث الحجز بنجاح');
       } else {
         const error = await response.json();
-        alert(`فشل في تحديث الحجز: ${error.error}`);
+        toastError(`فشل في تحديث الحجز: ${error.error}`);
       }
     } catch (error) {
       console.error('Booking update error:', error);
-      alert('حدث خطأ أثناء تحديث الحجز.');
+      toastError('حدث خطأ أثناء تحديث الحجز.');
     } finally {
       setIsUpdating(false);
     }
@@ -1134,6 +1389,9 @@ interface MentorshipTabProps {
   pagination: { page: number; limit: number; total: number; totalPages: number };
   onPageChange: (page: number) => void;
   onRefresh: () => void;
+  onBookingStatusConfirm: (bookingId: string, status: 'CONFIRMED' | 'CANCELLED', details?: string) => void;
+  toastSuccess: (message: string) => void;
+  toastError: (message: string) => void;
 }
 
 interface RecordedSession {
@@ -1149,9 +1407,11 @@ interface RecordedSession {
 
 interface RecordedSessionCardProps {
   onRefresh: () => void;
+  toastSuccess: (message: string) => void;
+  toastError: (message: string) => void;
 }
 
-const RecordedSessionCard: FC<RecordedSessionCardProps> = ({ onRefresh }) => {
+const RecordedSessionCard: FC<RecordedSessionCardProps> = ({ onRefresh, toastSuccess, toastError }) => {
   const [recordedSession, setRecordedSession] = useState<RecordedSession | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -1207,13 +1467,14 @@ const RecordedSessionCard: FC<RecordedSessionCardProps> = ({ onRefresh }) => {
         await fetchRecordedSession();
         setIsEditing(false);
         onRefresh();
+        toastSuccess('تم حفظ الجلسة المسجلة بنجاح');
       } else {
         const error = await response.json();
-        alert(`خطأ في حفظ الجلسة المسجلة: ${error.error}`);
+        toastError(`خطأ في حفظ الجلسة المسجلة: ${error.error}`);
       }
     } catch (error) {
       console.error('Error saving recorded session:', error);
-      alert('حدث خطأ أثناء حفظ الجلسة المسجلة');
+      toastError('حدث خطأ أثناء حفظ الجلسة المسجلة');
     }
   };
 
@@ -1371,32 +1632,10 @@ const RecordedSessionCard: FC<RecordedSessionCardProps> = ({ onRefresh }) => {
   );
 };
 
-const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageChange, onRefresh }) => {
+const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageChange, onRefresh, onBookingStatusConfirm, toastSuccess, toastError }) => {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<MentorshipBooking | null>(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-
-  const handleStatusUpdate = async (bookingId: string, status: 'CONFIRMED' | 'CANCELLED') => {
-    setIsUpdating(bookingId);
-    try {
-      const response = await fetch('/api/admin/mentorship', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId, status }),
-      });
-      if (response.ok) {
-        onRefresh();
-      } else {
-        const error = await response.json();
-        alert(`فشل في تحديث الحجز: ${error.error}`);
-      }
-    } catch (error) {
-      console.error('Booking update error:', error);
-      alert('حدث خطأ أثناء تحديث الحجز.');
-    } finally {
-      setIsUpdating(null);
-    }
-  };
 
   const handleUpdateBooking = (booking: MentorshipBooking) => {
     setSelectedBooking(booking);
@@ -1417,7 +1656,7 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
   return (
     <div>
       {/* Recorded Session Management */}
-      <RecordedSessionCard onRefresh={onRefresh} />
+      <RecordedSessionCard onRefresh={onRefresh} toastSuccess={toastSuccess} toastError={toastError} />
       
       <div className="flex justify-between items-center mb-6 mt-8">
         <div className="flex items-center space-x-3 space-x-reverse">
@@ -1500,7 +1739,7 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
                       {booking.status === 'PENDING' && (
                         <>
                           <button
-                            onClick={() => handleStatusUpdate(booking.id, 'CONFIRMED')}
+                            onClick={() => onBookingStatusConfirm(booking.id, 'CONFIRMED', `تأكيد حجز الإرشاد للطالب ${booking.user?.name || 'غير معروف'}${booking.sessionDate ? ` في ${formatDate(booking.sessionDate)}` : ''}`)}
                             disabled={isUpdating === booking.id}
                             className="text-green-600 hover:text-green-900 disabled:opacity-50"
                             title="تأكيد الحجز"
@@ -1508,7 +1747,7 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
                             <CheckCircle className="h-5 w-5" />
                           </button>
                           <button
-                            onClick={() => handleStatusUpdate(booking.id, 'CANCELLED')}
+                            onClick={() => onBookingStatusConfirm(booking.id, 'CANCELLED', `إلغاء حجز الإرشاد للطالب ${booking.user?.name || 'غير معروف'}${booking.sessionDate ? ` في ${formatDate(booking.sessionDate)}` : ''}`)}
                             disabled={isUpdating === booking.id}
                             className="text-red-600 hover:text-red-900 disabled:opacity-50"
                             title="إلغاء الحجز"
@@ -1601,6 +1840,8 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
             setSelectedBooking(null);
             onRefresh();
           }}
+          toastSuccess={toastSuccess}
+          toastError={toastError}
         />
       )}
     </div>
@@ -1608,11 +1849,16 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
 };
 
 const StatCard: FC<{ icon: React.ReactNode; title: string; value: number | string; color?: string }> = ({ icon, title, value, color = 'text-blue-500' }) => (
-  <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-    <div className={`p-3 rounded-full bg-blue-100 ${color}`}>{icon}</div>
-    <div className="mr-4">
-      <p className="text-sm font-medium text-gray-600">{title}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+  <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        <div className={`p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 ${color}`}>{icon}</div>
+        <div className="mr-4">
+          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
+        </div>
+      </div>
+      <div className="text-green-500 text-sm font-medium bg-green-50 px-2 py-1 rounded-full">+12%</div>
     </div>
   </div>
 );
@@ -1659,7 +1905,7 @@ const SubmissionsTab: FC<{
 const PlatformsTab: FC<{ platforms: Platform[]; onEdit: (p: Platform, t: 'platform') => void; onDelete: (p: Platform, t: 'platform') => void; onCreate: () => void; }> = ({ platforms, onEdit, onDelete, onCreate }) => (
   <>
     <PageHeader title="المنصات">
-      <button onClick={onCreate} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+      <button onClick={onCreate} className="flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
         <Plus className="ml-2 h-5 w-5" />
         إضافة منصة
       </button>
@@ -1680,7 +1926,7 @@ const PlatformsTab: FC<{ platforms: Platform[]; onEdit: (p: Platform, t: 'platfo
 const TasksTab: FC<{ tasks: Task[]; onEdit: (t: Task, type: 'task') => void; onDelete: (t: Task, type: 'task') => void; onCreate: () => void; }> = ({ tasks, onEdit, onDelete, onCreate }) => (
   <>
     <PageHeader title="المهام">
-        <button onClick={onCreate} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+        <button onClick={onCreate} className="flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
             <Plus className="ml-2 h-5 w-5" />
             إضافة مهمة
         </button>
@@ -1698,10 +1944,10 @@ const TasksTab: FC<{ tasks: Task[]; onEdit: (t: Task, type: 'task') => void; onD
   </>
 );
 
-const UsersTab: FC<{ users: User[]; onEdit: (u: User, type: 'user') => void; onCreate: () => void; }> = ({ users, onEdit, onCreate }) => (
+const UsersTab: FC<{ users: User[]; onEdit: (u: User, type: 'user') => void; onDelete: (u: User, type: 'user') => void; onCreate: () => void; }> = ({ users, onEdit, onDelete, onCreate }) => (
   <>
     <PageHeader title="المستخدمون">
-        <button onClick={onCreate} className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+        <button onClick={onCreate} className="flex items-center px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl">
             <Plus className="ml-2 h-5 w-5" />
             إضافة مستخدم
         </button>
@@ -1713,34 +1959,39 @@ const UsersTab: FC<{ users: User[]; onEdit: (u: User, type: 'user') => void; onC
         u.email,
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${u.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{u.role}</span>,
         new Date(u.createdAt).toLocaleDateString('ar-EG'),
-        <ActionButtons onEdit={() => onEdit(u, 'user')} />
+        <ActionButtons onEdit={() => onEdit(u, 'user')} onDelete={() => onDelete(u, 'user')} />
       ])}
     />
   </>
 );
 
 const Table: FC<{ headers: string[]; rows: (string | number | JSX.Element)[][] }> = ({ headers, rows }) => (
-  <div className="overflow-x-auto">
+  <div className="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-100">
     <table className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
+      <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
         <tr>
           {headers.map(header => (
-            <th key={header} scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th key={header} scope="col" className="px-6 py-4 text-right text-sm font-bold text-gray-700 uppercase tracking-wider">
               {header}
             </th>
           ))}
         </tr>
       </thead>
-      <tbody className="bg-white divide-y divide-gray-200">
+      <tbody className="bg-white divide-y divide-gray-100">
         {rows.length > 0 ? rows.map((row, i) => (
-          <tr key={i} className="hover:bg-gray-50">
+          <tr key={i} className="hover:bg-blue-50 transition-colors duration-200">
             {row.map((cell, j) => (
               <td key={j} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{cell}</td>
             ))}
           </tr>
         )) : (
           <tr>
-            <td colSpan={headers.length} className="px-6 py-4 text-center text-gray-500">لا توجد بيانات</td>
+            <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
+              <div className="flex flex-col items-center">
+                <FileText className="w-12 h-12 text-gray-300 mb-2" />
+                <span>لا توجد بيانات</span>
+              </div>
+            </td>
           </tr>
         )}
       </tbody>
@@ -1750,34 +2001,59 @@ const Table: FC<{ headers: string[]; rows: (string | number | JSX.Element)[][] }
 
 const StatusBadge: FC<{ status: 'PENDING' | 'APPROVED' | 'REJECTED' }> = ({ status }) => {
   const config = {
-    PENDING: { text: 'معلق', color: 'bg-yellow-100 text-yellow-800' },
-    APPROVED: { text: 'مقبول', color: 'bg-green-100 text-green-800' },
-    REJECTED: { text: 'مرفوض', color: 'bg-red-100 text-red-800' },
+    PENDING: { text: 'معلق', color: 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300', icon: Clock },
+    APPROVED: { text: 'مقبول', color: 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300', icon: CheckCircle },
+    REJECTED: { text: 'مرفوض', color: 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300', icon: XCircle },
   }
-  return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${config[status].color}`}>{config[status].text}</span>
+  const statusConfig = config[status]
+  const IconComponent = statusConfig.icon
+  return (
+    <span className={`px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full ${statusConfig.color}`}>
+      <IconComponent className="w-3 h-3 mr-1" />
+      {statusConfig.text}
+    </span>
+  )
 };
 
 const ActionButtons: FC<{ onEdit: () => void; onDelete?: () => void; }> = ({ onEdit, onDelete }) => (
   <div className="flex space-x-2 space-x-reverse">
-    <button onClick={onEdit} className="text-indigo-600 hover:text-indigo-900">تعديل</button>
-    {onDelete && <button onClick={onDelete} className="text-red-600 hover:text-red-900">حذف</button>}
+    <button onClick={onEdit} className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 hover:text-indigo-700 transition-all duration-200">
+      <Edit className="w-4 h-4 mr-1" />
+      تعديل
+    </button>
+    {onDelete && (
+      <button onClick={onDelete} className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 hover:text-red-700 transition-all duration-200">
+        <Trash2 className="w-4 h-4 mr-1" />
+        حذف
+      </button>
+    )}
   </div>
 );
 
 const PaginationControl: FC<{ page: number; totalPages: number; total: number; onPageChange: (page: number) => void; }> = ({ page, totalPages, total, onPageChange }) => {
   if (totalPages <= 1) return null;
   return (
-    <div className="mt-4 flex justify-between items-center">
+    <div className="mt-6 flex justify-between items-center bg-white p-4 rounded-lg border border-gray-200">
       <div>
         <span className="text-sm text-gray-700">
-          صفحة <span className="font-medium">{page}</span> من <span className="font-medium">{totalPages}</span> ({total} إجمالي التقديمات)
+          صفحة <span className="font-bold text-blue-600">{page}</span> من <span className="font-bold">{totalPages}</span> 
+          <span className="text-gray-500">({total} إجمالي العناصر)</span>
         </span>
       </div>
       <div className="flex space-x-2 space-x-reverse">
-        <button onClick={() => onPageChange(page - 1)} disabled={page <= 1} className="p-2 rounded-md bg-gray-200 disabled:opacity-50">
+        <button 
+          onClick={() => onPageChange(page - 1)} 
+          disabled={page <= 1} 
+          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
           <ChevronRight className="h-5 w-5" />
         </button>
-        <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} className="p-2 rounded-md bg-gray-200 disabled:opacity-50">
+        <span className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium">{page}</span>
+        <button 
+          onClick={() => onPageChange(page + 1)} 
+          disabled={page >= totalPages} 
+          className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        >
           <ChevronLeft className="h-5 w-5" />
         </button>
       </div>
@@ -1813,13 +2089,14 @@ const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate }) =>
       });
       if (response.ok) {
         onUpdate();
+        toastSuccess('تم تحديث التقديم بنجاح');
       } else {
         const error = await response.json();
-        alert(`Failed to update: ${error.error}`);
+        toastError(`Failed to update: ${error.error}`);
       }
     } catch (error) {
       console.error('Update error:', error);
-      alert('An error occurred while updating the submission.');
+      toastError('An error occurred while updating the submission.');
     } finally {
       setIsUpdating(false);
     }
@@ -1877,12 +2154,16 @@ interface CrudModalProps {
 }
 
 const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData, setFormData, platforms, onClose, onSubmit }) => {
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (mode === 'edit' && entityData) {
       setFormData(entityData);
     } else {
       setFormData({});
     }
+    setErrors({});
   }, [mode, entityData, setFormData]);
 
   const title = `${mode === 'create' ? 'إنشاء' : 'تعديل'} ${{
@@ -1891,14 +2172,95 @@ const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData,
     user: 'مستخدم'
   }[entityType]}`;
 
+  const validateForm = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    switch (entityType) {
+      case 'platform':
+        if (!formData.name?.trim()) {
+          newErrors.name = 'اسم المنصة مطلوب';
+        } else if (formData.name.length < 2) {
+          newErrors.name = 'اسم المنصة يجب أن يكون أكثر من حرفين';
+        }
+        if (!formData.url?.trim()) {
+          newErrors.url = 'رابط المنصة مطلوب';
+        } else if (!/^https?:\/\/.+/.test(formData.url)) {
+          newErrors.url = 'يجب أن يكون الرابط صحيحاً ويبدأ بـ http:// أو https://';
+        }
+        break;
+
+      case 'task':
+        if (!formData.title?.trim()) {
+          newErrors.title = 'عنوان المهمة مطلوب';
+        } else if (formData.title.length < 3) {
+          newErrors.title = 'عنوان المهمة يجب أن يكون أكثر من 3 أحرف';
+        }
+        if (!formData.platformId) {
+          newErrors.platformId = 'يجب اختيار منصة';
+        }
+        if (!formData.link?.trim()) {
+          newErrors.link = 'رابط المهمة مطلوب';
+        } else if (!/^https?:\/\/.+/.test(formData.link)) {
+          newErrors.link = 'يجب أن يكون الرابط صحيحاً ويبدأ بـ http:// أو https://';
+        }
+        if (formData.order && (isNaN(Number(formData.order)) || Number(formData.order) < 1)) {
+          newErrors.order = 'الترتيب يجب أن يكون رقماً موجباً';
+        }
+        break;
+
+      case 'user':
+        if (!formData.name?.trim()) {
+          newErrors.name = 'اسم المستخدم مطلوب';
+        } else if (formData.name.length < 2) {
+          newErrors.name = 'الاسم يجب أن يكون أكثر من حرفين';
+        }
+        if (!formData.email?.trim()) {
+          newErrors.email = 'البريد الإلكتروني مطلوب';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          newErrors.email = 'البريد الإلكتروني غير صحيح';
+        }
+        if (!formData.phoneNumber?.trim()) {
+          newErrors.phoneNumber = 'رقم الهاتف مطلوب';
+        } else if (!/^[0-9+\-\s()]{10,}$/.test(formData.phoneNumber)) {
+          newErrors.phoneNumber = 'رقم الهاتف غير صحيح';
+        }
+        if (mode === 'create' && !formData.password?.trim()) {
+          newErrors.password = 'كلمة المرور مطلوبة';
+        } else if (mode === 'create' && formData.password && formData.password.length < 6) {
+          newErrors.password = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+        }
+        if (!formData.role) {
+          newErrors.role = 'يجب اختيار دور المستخدم';
+        }
+        break;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
   };
 
-  const handleFormSubmit = (e: FormEvent) => {
+  const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    onSubmit();
+    if (!validateForm()) {
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onSubmit();
+    } catch (error) {
+      console.error('Form submission error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const renderFields = () => {
@@ -1906,29 +2268,29 @@ const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData,
       case 'platform':
         return (
           <>
-            <InputField name="name" label="الاسم" value={formData.name || ''} onChange={handleChange} />
-            <InputField name="url" label="الرابط" value={formData.url || ''} onChange={handleChange} />
-            <TextAreaField name="description" label="الوصف" value={formData.description || ''} onChange={handleChange} />
+            <InputField name="name" label="الاسم" value={formData.name || ''} onChange={handleChange} error={errors.name} />
+            <InputField name="url" label="الرابط" value={formData.url || ''} onChange={handleChange} error={errors.url} />
+            <TextAreaField name="description" label="الوصف" value={formData.description || ''} onChange={handleChange} error={errors.description} />
           </>
         );
       case 'task':
         return (
           <>
-            <InputField name="title" label="العنوان" value={formData.title || ''} onChange={handleChange} />
-            <SelectField name="platformId" label="المنصة" value={formData.platformId || ''} onChange={handleChange} options={platforms?.map(p => ({ value: p.id, label: p.name })) || []} />
-            <InputField name="link" label="رابط المهمة" value={formData.link || ''} onChange={handleChange} />
-            <InputField name="order" label="الترتيب" type="number" value={formData.order || ''} onChange={handleChange} />
-            <TextAreaField name="description" label="الوصف" value={formData.description || ''} onChange={handleChange} />
+            <InputField name="title" label="العنوان" value={formData.title || ''} onChange={handleChange} error={errors.title} />
+            <SelectField name="platformId" label="المنصة" value={formData.platformId || ''} onChange={handleChange} options={platforms?.map(p => ({ value: p.id, label: p.name })) || []} error={errors.platformId} />
+            <InputField name="link" label="رابط المهمة" value={formData.link || ''} onChange={handleChange} error={errors.link} />
+            <InputField name="order" label="الترتيب" type="number" value={formData.order || ''} onChange={handleChange} error={errors.order} />
+            <TextAreaField name="description" label="الوصف" value={formData.description || ''} onChange={handleChange} error={errors.description} />
           </>
         );
       case 'user':
         return (
           <>
-            <InputField name="name" label="الاسم" value={formData.name || ''} onChange={handleChange} />
-            <InputField name="email" label="البريد الإلكتروني" type="email" value={formData.email || ''} onChange={handleChange} />
-            <InputField name="phoneNumber" label="رقم الهاتف" value={formData.phoneNumber || ''} onChange={handleChange} />
-            {mode === 'create' && <InputField name="password" label="كلمة المرور" type="password" value={formData.password || ''} onChange={handleChange} />}
-            <SelectField name="role" label="الدور" value={formData.role || ''} onChange={handleChange} options={[{value: 'STUDENT', label: 'طالب'}, {value: 'ADMIN', label: 'مدير'}]} />
+            <InputField name="name" label="الاسم" value={formData.name || ''} onChange={handleChange} error={errors.name} />
+            <InputField name="email" label="البريد الإلكتروني" type="email" value={formData.email || ''} onChange={handleChange} error={errors.email} />
+            <InputField name="phoneNumber" label="رقم الهاتف" value={formData.phoneNumber || ''} onChange={handleChange} error={errors.phoneNumber} />
+            {mode === 'create' && <InputField name="password" label="كلمة المرور" type="password" value={formData.password || ''} onChange={handleChange} error={errors.password} />}
+            <SelectField name="role" label="الدور" value={formData.role || ''} onChange={handleChange} options={[{value: 'STUDENT', label: 'طالب'}, {value: 'ADMIN', label: 'مدير'}]} error={errors.role} />
           </>
         );
       default: return null;
@@ -1945,8 +2307,10 @@ const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData,
         <form onSubmit={handleFormSubmit} className="space-y-4">
           {renderFields()}
           <div className="flex justify-end space-x-3 pt-4 border-t mt-4 space-x-reverse">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">إلغاء</button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">حفظ</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300" disabled={isSubmitting}>إلغاء</button>
+            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed" disabled={isSubmitting}>
+              {isSubmitting ? 'جاري الحفظ...' : 'حفظ'}
+            </button>
           </div>
         </form>
       </div>
@@ -1954,17 +2318,32 @@ const CrudModal: FC<CrudModalProps> = ({ mode, entityType, entityData, formData,
   )
 }
 
-const InputField: FC<{ name: string, label: string, value: string | number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string }> = ({ name, label, value, onChange, type = 'text' }) => (
+const InputField: FC<{ name: string, label: string, value: string | number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string, error?: string }> = ({ name, label, value, onChange, type = 'text', error }) => (
   <div>
     <label className="block text-sm font-medium text-gray-700">{label}</label>
-    <input type={type} name={name} value={value} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+    <input 
+      type={type} 
+      name={name} 
+      value={value} 
+      onChange={onChange} 
+      className={`mt-1 block w-full p-2 border rounded-md ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'}`}
+    />
+    {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
   </div>
 );
 
-const TextAreaField: FC<{ name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }> = ({ name, label, value, onChange }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700">{label}</label>
-    <textarea name={name} value={value} onChange={onChange} rows={4} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+const TextAreaField: FC<{ name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void, error?: string }> = ({ name, label, value, onChange, error }) => (
+  <div className="space-y-2">
+    <label className="block text-sm font-semibold text-gray-700">{label}</label>
+    <textarea 
+      name={name} 
+      value={value} 
+      onChange={onChange} 
+      rows={4} 
+      className={`block w-full px-4 py-3 border rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 resize-none ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200 hover:border-gray-400'}`}
+      placeholder={`أدخل ${label}`}
+    />
+    {error && <p className="text-sm text-red-600 flex items-center"><AlertCircle className="w-4 h-4 mr-1" />{error}</p>}
   </div>
 );
 
@@ -1986,7 +2365,11 @@ interface AvailableDate {
   }
 }
 
-const DatesTab: FC = () => {
+interface DatesTabProps {
+  onTimeSlotDeleteConfirm: (dateId: string, details: string) => void;
+}
+
+const DatesTab: FC<DatesTabProps> = ({ onTimeSlotDeleteConfirm }) => {
   const [availableDates, setAvailableDates] = useState<AvailableDate[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -2038,21 +2421,9 @@ const DatesTab: FC = () => {
     }
   }
 
-  // Handle deleting a time slot
-  const handleDeleteTimeSlot = async (dateId: string) => {
-    try {
-      const response = await fetch(`/api/admin/available-dates?id=${dateId}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to delete time slot')
-      }
-    } catch (error) {
-      console.error('Error deleting time slot:', error)
-      throw error
-    }
+  // Handle deleting a time slot with confirmation
+  const handleDeleteTimeSlot = (dateId: string, dateInfo?: string) => {
+    onTimeSlotDeleteConfirm(dateId, dateInfo || 'حذف الفترة الزمنية المحددة');
   }
 
   // Handle bulk creating time slots
@@ -2218,45 +2589,272 @@ const DatesTab: FC = () => {
   )
 }
 
-const SelectField: FC<{ name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: {value: string, label: string}[] }> = ({ name, label, value, onChange, options }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700">{label}</label>
-    <select name={name} value={value} onChange={onChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required>
-      <option value="">اختر...</option>
-      {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-    </select>
+const SelectField: FC<{ name: string, label: string, value: string, onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void, options: {value: string, label: string}[], error?: string }> = ({ name, label, value, onChange, options, error }) => (
+  <div className="space-y-2">
+    <label className="block text-sm font-semibold text-gray-700">{label}</label>
+    <div className="relative">
+      <select 
+        name={name} 
+        value={value} 
+        onChange={onChange} 
+        className={`block w-full px-4 py-3 border rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 appearance-none bg-white ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-200 bg-red-50' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-200 hover:border-gray-400'}`}
+      >
+        <option value="">اختر {label}...</option>
+        {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+      </select>
+      <ChevronDown className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+    </div>
+    {error && <p className="text-sm text-red-600 flex items-center"><AlertCircle className="w-4 h-4 mr-1" />{error}</p>}
   </div>
 );
+
+interface ActionConfirmationModalProps {
+  actionType: 'transaction' | 'booking' | 'timeSlot';
+  action: string;
+  details?: string;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading?: boolean;
+}
+
+const ActionConfirmationModal: FC<ActionConfirmationModalProps> = ({ 
+  actionType, 
+  action, 
+  details,
+  onClose, 
+  onConfirm,
+  isLoading = false 
+}) => {
+  const getActionInfo = () => {
+    switch (actionType) {
+      case 'transaction':
+        return {
+          title: action === 'APPROVED' ? 'تأكيد قبول المعاملة' : 'تأكيد رفض المعاملة',
+          message: action === 'APPROVED' 
+            ? 'هل أنت متأكد من قبول هذه المعاملة المالية؟'
+            : 'هل أنت متأكد من رفض هذه المعاملة المالية؟',
+          warning: action === 'APPROVED'
+            ? 'سيتم إضافة المبلغ إلى رصيد المستخدم فوراً.'
+            : 'لن يتم إضافة المبلغ إلى رصيد المستخدم.',
+          confirmText: action === 'APPROVED' ? 'تأكيد القبول' : 'تأكيد الرفض',
+          color: action === 'APPROVED' ? 'green' : 'red'
+        }
+      case 'booking':
+        return {
+          title: action === 'CONFIRMED' ? 'تأكيد الحجز' : 'إلغاء الحجز',
+          message: action === 'CONFIRMED'
+            ? 'هل أنت متأكد من تأكيد هذا الحجز؟'
+            : 'هل أنت متأكد من إلغاء هذا الحجز؟',
+          warning: action === 'CONFIRMED'
+            ? 'سيتم إرسال تأكيد الحجز للمستخدم.'
+            : 'سيتم إشعار المستخدم بإلغاء الحجز.',
+          confirmText: action === 'CONFIRMED' ? 'تأكيد الحجز' : 'إلغاء الحجز',
+          color: action === 'CONFIRMED' ? 'green' : 'red'
+        }
+      case 'timeSlot':
+        return {
+          title: 'حذف الموعد المتاح',
+          message: 'هل أنت متأكد من حذف هذا الموعد المتاح؟',
+          warning: 'سيؤثر هذا على جميع الحجوزات المرتبطة بهذا الموعد.',
+          confirmText: 'حذف الموعد',
+          color: 'red'
+        }
+      default:
+        return {
+          title: 'تأكيد العملية',
+          message: 'هل أنت متأكد من تنفيذ هذه العملية؟',
+          warning: 'هذا الإجراء لا يمكن التراجع عنه.',
+          confirmText: 'تأكيد',
+          color: 'red'
+        }
+    }
+  }
+
+  const actionInfo = getActionInfo()
+  const isDestructive = actionInfo.color === 'red'
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" dir="rtl">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all">
+        {/* Header with icon */}
+        <div className="flex items-center mb-4">
+          <div className="flex-shrink-0">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+              isDestructive ? 'bg-red-100' : 'bg-green-100'
+            }`}>
+              {isDestructive ? (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+          </div>
+          <div className="mr-4">
+            <h3 className="text-lg font-bold text-gray-900">{actionInfo.title}</h3>
+            <p className="text-sm text-gray-500">تأكيد العملية</p>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="mb-6">
+          <p className="text-gray-700 mb-3">{actionInfo.message}</p>
+          {details && (
+            <div className="bg-gray-50 rounded-lg p-3 mb-3">
+              <p className="text-sm text-gray-600">{details}</p>
+            </div>
+          )}
+          <div className={`border rounded-lg p-3 ${
+            isDestructive ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+          }`}>
+            <p className={`text-sm ${
+              isDestructive ? 'text-red-700' : 'text-green-700'
+            }`}>
+              {actionInfo.warning}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end space-x-3 space-x-reverse">
+          <button 
+            type="button" 
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
+          >
+            إلغاء
+          </button>
+          <button 
+            type="button" 
+            onClick={onConfirm}
+            disabled={isLoading}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex items-center ${
+              isDestructive 
+                ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-400'
+                : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400'
+            }`}
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                جاري التنفيذ...
+              </>
+            ) : (
+              actionInfo.confirmText
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 interface DeleteConfirmationModalProps {
   entityType: string;
   entityName: string;
+  entityDetails?: string;
   onClose: () => void;
   onConfirm: () => void;
+  isLoading?: boolean;
 }
 
-const DeleteConfirmationModal: FC<DeleteConfirmationModalProps> = ({ entityType, entityName, onClose, onConfirm }) => {
+const DeleteConfirmationModal: FC<DeleteConfirmationModalProps> = ({ 
+  entityType, 
+  entityName, 
+  entityDetails,
+  onClose, 
+  onConfirm,
+  isLoading = false 
+}) => {
   const typeMap: { [key: string]: string } = {
     platform: 'المنصة',
     task: 'المهمة',
     user: 'المستخدم'
   };
 
+  const getWarningMessage = (type: string) => {
+    switch (type) {
+      case 'user':
+        return 'تحذير: حذف المستخدم سيؤثر على جميع التقديمات والمعاملات المرتبطة به.';
+      case 'platform':
+        return 'تحذير: حذف المنصة سيؤثر على جميع المهام المرتبطة بها.';
+      case 'task':
+        return 'تحذير: حذف المهمة سيؤثر على جميع التقديمات المرتبطة بها.';
+      default:
+        return 'تحذير: هذا الإجراء لا يمكن التراجع عنه.';
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50" dir="rtl">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
-        <h3 className="text-lg font-bold text-gray-900">تأكيد الحذف</h3>
-        <div className="mt-2">
-          <p className="text-sm text-gray-600">
-            هل أنت متأكد أنك تريد حذف {typeMap[entityType] || 'العنصر'} "{entityName}"؟ لا يمكن التراجع عن هذا الإجراء.
-          </p>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" dir="rtl">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all">
+        {/* Header with warning icon */}
+        <div className="flex items-center mb-4">
+          <div className="flex-shrink-0">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+          </div>
+          <div className="mr-4">
+            <h3 className="text-lg font-bold text-gray-900">تأكيد الحذف</h3>
+            <p className="text-sm text-gray-500">هذا الإجراء لا يمكن التراجع عنه</p>
+          </div>
         </div>
-        <div className="mt-6 flex justify-end space-x-3 space-x-reverse">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+
+        {/* Content */}
+        <div className="mb-6">
+          <p className="text-gray-700 mb-3">
+            هل أنت متأكد أنك تريد حذف {typeMap[entityType] || 'العنصر'}:
+          </p>
+          <div className="bg-gray-50 rounded-lg p-3 mb-3">
+            <p className="font-semibold text-gray-900">"{entityName}"</p>
+            {entityDetails && (
+              <p className="text-sm text-gray-600 mt-1">{entityDetails}</p>
+            )}
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p className="text-sm text-red-700">
+              {getWarningMessage(entityType)}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end space-x-3 space-x-reverse">
+          <button 
+            type="button" 
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
+          >
             إلغاء
           </button>
-          <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-            حذف
+          <button 
+            type="button" 
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-red-400 transition-colors flex items-center"
+          >
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                جاري الحذف...
+              </>
+            ) : (
+              'تأكيد الحذف'
+            )}
           </button>
         </div>
       </div>

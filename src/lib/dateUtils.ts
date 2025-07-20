@@ -1,11 +1,25 @@
 import { format } from 'date-fns';
 
-export const formatDate = (date: string | Date): string => {
-  return format(new Date(date), 'MMMM d, yyyy');
+export const formatDate = (date: string | Date | null | undefined): string => {
+  if (!date) return 'غير محدد';
+  try {
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return 'تاريخ غير صحيح';
+    return format(dateObj, 'MMMM d, yyyy');
+  } catch (error) {
+    return 'تاريخ غير صحيح';
+  }
 };
 
-export const formatDateTime = (date: string | Date): string => {
-  return format(new Date(date), 'MMMM d, yyyy, h:mm:ss a');
+export const formatDateTime = (date: string | Date | null | undefined): string => {
+  if (!date) return 'غير محدد';
+  try {
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return 'تاريخ غير صحيح';
+    return format(dateObj, 'MMMM d, yyyy, h:mm:ss a');
+  } catch (error) {
+    return 'تاريخ غير صحيح';
+  }
 };
 
 export const formatTime = (time: string): string => {
