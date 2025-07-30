@@ -12,35 +12,35 @@ async function main() {
       name: 'Algorithms & Data Structures',
       description: 'Learn fundamental algorithms and data structures',
       url: 'https://ozidan13.github.io/algorithms/',
-      price: 400.00,
+      price: 20000.00,
       isPaid: true
     },
     {
       name: 'Object-Oriented Programming (OOP)',
       description: 'Master object-oriented programming concepts',
       url: 'https://oop-pi.vercel.app/',
-      price: 400.00,
+      price: 20000.00,
       isPaid: true
     },
     {
       name: 'SOLID & Design Patterns',
       description: 'Learn SOLID principles and design patterns',
       url: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/',
-      price: 400.00,
-      isPaid: true
-    },
-    {
-      name: 'JavaScript Interview Questions',
-      description: 'Prepare for JavaScript technical interviews',
-      url: 'https://javascriptinterview-kappa.vercel.app/',
-      price: 400.00,
-      isPaid: true
-    },
-    {
-      name: 'JavaScript Tasks',
-      description: 'Practice JavaScript programming tasks',
-      url: 'https://ozidan13.github.io/js-tasks/',
-      price: 400.00,
+      price: 20000.00,
+        isPaid: true
+      },
+      {
+        name: 'JavaScript Interview Questions',
+        description: 'Prepare for JavaScript technical interviews',
+        url: 'https://javascriptinterview-kappa.vercel.app/',
+        price: 20000.00,
+        isPaid: true
+      },
+      {
+        name: 'JavaScript Tasks',
+        description: 'Practice JavaScript programming tasks',
+        url: 'https://ozidan13.github.io/js-tasks/',
+        price: 20000.00,
       isPaid: true
     }
   ]
@@ -200,10 +200,10 @@ async function main() {
       phoneNumber: '01026454497',
       password: hashedPassword,
       role: 'ADMIN',
-      balance: 1000.00,
+      balance: 50000.00,
       isMentor: true,
       mentorBio: 'Experienced software developer and mentor with 10+ years in the industry.',
-      mentorRate: 50.00
+      mentorRate: 2500.00
     }
   })
   console.log('✅ Created admin user: admin@codehub.com (password: admin123)')
@@ -214,14 +214,16 @@ async function main() {
   
   const studentUser = await prisma.user.upsert({
     where: { email: 'student@codehub.com' },
-    update: {},
+    update: {
+      balance: 25000.00  // Reset balance to ensure sufficient funds
+    },
     create: {
       email: 'student@codehub.com',
       name: 'Student User',
       phoneNumber: '01234567890',
       password: studentPassword,
       role: 'STUDENT',
-      balance: 500.00
+      balance: 25000.00
     }
   })
   console.log('✅ Created student user: student@codehub.com (password: student123)')
@@ -232,7 +234,7 @@ async function main() {
     data: {
       userId: studentUser.id,
       type: 'TOP_UP',
-      amount: 500.00,
+      amount: 25000.00,
       status: 'APPROVED',
       description: 'Initial wallet top-up',
       adminWalletNumber: '01026454497',
@@ -250,7 +252,7 @@ async function main() {
       title: 'Complete React Development Masterclass',
       description: 'A comprehensive recorded session covering React fundamentals, hooks, state management, and best practices. Perfect for beginners and intermediate developers.',
       videoLink: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      price: 150.00,
+      price: 7500.00,
       isActive: true
     },
     create: {
@@ -274,7 +276,7 @@ async function main() {
       mentorId: adminUser.id,
       sessionType: 'RECORDED',
       duration: 60,
-      amount: 100.00,
+      amount: 5000.00,
       status: 'CONFIRMED',
       sessionDate: new Date(),
       studentNotes: 'Looking for help with React basics',
@@ -290,7 +292,7 @@ async function main() {
       mentorId: adminUser.id,
       sessionType: 'FACE_TO_FACE',
       duration: 60,
-      amount: 500.00,
+      amount: 25000.00,
       status: 'PENDING',
       sessionDate: new Date('2025-01-15T10:00:00Z'),
       originalSessionDate: new Date('2025-01-15T10:00:00Z'),
@@ -300,6 +302,58 @@ async function main() {
     }
   })
   console.log('✅ Created sample mentorship bookings')
+
+  // Create available dates for mentorship booking
+  console.log('📅 Creating available dates...')
+  
+  const today = new Date()
+  const availableDates = []
+  
+  // Create available dates for the next 30 days
+  for (let i = 1; i <= 30; i++) {
+    const date = new Date(today)
+    date.setDate(today.getDate() + i)
+    
+    // Skip weekends (Friday = 5, Saturday = 6)
+    if (date.getDay() === 5 || date.getDay() === 6) continue
+    
+    // Create time slots for each day
+    const timeSlots = [
+      { start: '09:00', end: '10:00' },
+      { start: '10:00', end: '11:00' },
+      { start: '11:00', end: '12:00' },
+      { start: '14:00', end: '15:00' },
+      { start: '15:00', end: '16:00' },
+      { start: '16:00', end: '17:00' }
+    ]
+    
+    for (const slot of timeSlots) {
+      availableDates.push({
+        date: date,
+        startTime: slot.start,
+        endTime: slot.end,
+        timeSlot: `${slot.start} - ${slot.end}`,
+        isBooked: false,
+        isRecurring: false
+      })
+    }
+  }
+  
+  // Create all available dates
+  for (const dateData of availableDates) {
+    try {
+      await prisma.availableDate.create({
+        data: dateData
+      })
+    } catch (error) {
+      // Skip if date already exists (unique constraint)
+      if (error.code !== 'P2002') {
+        console.error('Error creating available date:', error)
+      }
+    }
+  }
+  
+  console.log(`✅ Created ${availableDates.length} available date slots`)
 
   // Note: Students will enroll themselves through the application
 

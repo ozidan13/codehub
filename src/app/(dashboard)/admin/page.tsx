@@ -1251,7 +1251,7 @@ const BookingUpdateModal: FC<BookingUpdateModalProps> = ({ booking, onClose, onU
               )}
               <div>
                 <span className="text-gray-600">المبلغ:</span>
-                <span className="font-medium mr-2">${Number(booking.amount).toFixed(2)}</span>
+                <span className="font-medium mr-2">{Number(booking.amount).toFixed(2)} جنية</span>
               </div>
               <div>
                 <span className="text-gray-600">تاريخ الحجز:</span>
@@ -1592,7 +1592,7 @@ const RecordedSessionCard: FC<RecordedSessionCardProps> = ({ onRefresh, toastSuc
                   )}
                 </div>
                 <div className="text-left">
-                  <span className="text-2xl font-bold text-purple-600">${Number(recordedSession.price).toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-purple-600">{Number(recordedSession.price).toFixed(2)} جنية</span>
                   <div className="mt-1">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       recordedSession.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -1722,7 +1722,7 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${Number(booking.amount || 0).toFixed(2)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{Number(booking.amount || 0).toFixed(2)} جنية</td>
                   <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(booking.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(booking.createdAt).toLocaleDateString('ar-SA')}

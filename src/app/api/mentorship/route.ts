@@ -123,6 +123,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log('📥 Received booking request:', body)
+    
+    try {
+      const { sessionType, duration, studentNotes, whatsappNumber, selectedDateId, recordedSessionId } = bookingSchema.parse(body)
+      console.log('✅ Schema validation passed:', { sessionType, duration, studentNotes, whatsappNumber, selectedDateId, recordedSessionId })
+    } catch (validationError) {
+      console.error('❌ Schema validation failed:', validationError)
+      return NextResponse.json({ error: 'Invalid request data', details: validationError }, { status: 400 })
+    }
+    
     const { sessionType, duration, studentNotes, whatsappNumber, selectedDateId, recordedSessionId } = bookingSchema.parse(body)
 
     // Validate session type specific requirements
@@ -191,9 +201,23 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
       select: { balance: true }
     })
+    
+    console.log('💰 User balance check:', {
+      userId: session.user.id,
+      userBalance: user?.balance?.toNumber(),
+      sessionCost,
+      hasUser: !!user
+    })
 
     if (!user || user.balance.toNumber() < sessionCost) {
-      return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 })
+      console.log('❌ Insufficient balance or user not found');
+      return NextResponse.json({ 
+        error: 'Insufficient balance', 
+        details: {
+          required: sessionCost,
+          available: user?.balance?.toNumber() || 0
+        }
+      }, { status: 400 })
     }
 
     // Process booking with payment in a transaction
