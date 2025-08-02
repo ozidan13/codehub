@@ -57,7 +57,7 @@ async function main() {
       },
       create: platform
     })
-    console.log(`✅ Created/Updated platform: ${platform.name} - $${platform.price}`)
+    console.log(`✅ Created/Updated platform: ${platform.name} - ${platform.price} جنية`)
   }
 
   // Create sample tasks for each platform

@@ -1,6 +1,7 @@
 import { FC, useState } from 'react';
 import { MentorshipData } from '@/types';
 import CalendlyStudentCalendar from '@/components/calendar/CalendlyStudentCalendar';
+import { formatTimeRange } from '@/lib/dateUtils';
 
 interface LiveSessionBookingProps {
   availableDates: MentorshipData['availableDates'];
@@ -24,7 +25,8 @@ const LiveSessionBooking: FC<LiveSessionBookingProps> = ({ availableDates, onBoo
 
     // Find the selected date/time combination to get the ID
     const selectedDateTimeSlot = availableDates.find(
-      (d) => new Date(d.date).toDateString() === selectedDate.toDateString() && d.timeSlot === selectedTime
+      (d) => new Date(d.date).toDateString() === selectedDate.toDateString() && 
+            formatTimeRange(d.startTime, d.endTime) === selectedTime
     );
 
     if (!selectedDateTimeSlot) {
@@ -84,14 +86,17 @@ const LiveSessionBooking: FC<LiveSessionBookingProps> = ({ availableDates, onBoo
             <div>
               <h5 className="font-semibold text-gray-700 mb-3">Available Times for {selectedDate.toLocaleDateString()}</h5>
               <div className="grid grid-cols-3 gap-2">
-                {availableTimesForSelectedDate.map((time) => (
-                  <button 
-                    key={time.id}
-                    onClick={() => setSelectedTime(time.timeSlot)}
-                    className={`p-2 rounded-lg text-center transition-colors ${selectedTime === time.timeSlot ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
-                    {time.timeSlot}
-                  </button>
-                ))}
+                {availableTimesForSelectedDate.map((time) => {
+                  const formattedTime = formatTimeRange(time.startTime, time.endTime);
+                  return (
+                    <button 
+                      key={time.id}
+                      onClick={() => setSelectedTime(formattedTime)}
+                      className={`p-2 rounded-lg text-center transition-colors ${selectedTime === formattedTime ? 'bg-orange-500 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                      {formattedTime}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

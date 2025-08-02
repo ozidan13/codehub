@@ -380,7 +380,7 @@ const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({
       <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4">
         <div className="text-center">
           <p className="text-sm text-gray-600 mb-1">الرصيد الحالي</p>
-          <p className="text-3xl font-bold text-gray-800">$ {Number(wallet.balance).toFixed(2)}</p>
+          <p className="text-3xl font-bold text-gray-800"> {Number(wallet.balance).toFixed(2)} جنية</p>
         </div>
       </div>
     </div>
@@ -507,7 +507,7 @@ const BookedSessionsSection: FC<{ mentorshipData: MentorshipData | null; transac
                           <p className="text-xs text-gray-500 mt-1">{formatDate(transaction.createdAt)}</p>
                         </div>
                         <div className="text-left">
-                          <p className="text-sm font-bold text-gray-800">${Number(transaction.amount).toFixed(2)}</p>
+                          <p className="text-sm font-bold text-gray-800">{Number(transaction.amount).toFixed(2)} جنية</p>
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             transaction.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                           }`}>
@@ -562,7 +562,7 @@ const BookedSessionsSection: FC<{ mentorshipData: MentorshipData | null; transac
               
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">المبلغ:</span>
-                <span className="text-sm font-bold text-orange-600">${Number(booking.amount).toFixed(2)}</span>
+                <span className="text-sm font-bold text-orange-600">{Number(booking.amount).toFixed(2)} جنية</span>
               </div>
 
               {booking.sessionDate && (
@@ -774,7 +774,7 @@ const EnrollmentsSection: FC<{ enrollments: Enrollment[]; onEnrollmentRenewal: (
                 <span className={`px-2 py-1 rounded-full font-medium ${
                   enrollment.platform.isPaid ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
                 }`}>
-                  {enrollment.platform.isPaid ? `$${enrollment.platform.price}` : 'مجاني'}
+                  {enrollment.platform.isPaid ? `${enrollment.platform.price} جنية` : 'مجاني'}
                 </span>
                 {enrollment.status !== 'expired' && (
                   <a
@@ -883,7 +883,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
           <div className="flex items-center space-x-2 space-x-reverse">
             {platform.isPaid && (
               <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                ${platform.price}
+                {platform.price} جنية
               </span>
             )}
             
@@ -1390,7 +1390,7 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
                             <h4 className="font-medium text-gray-800">{session.title}</h4>
                             <p className="text-sm text-gray-600 mt-1">{session.description}</p>
                             <div className="flex items-center justify-between mt-2">
-                              <span className="text-lg font-bold text-blue-600">${Number(session.price).toFixed(2)}</span>
+                              <span className="text-lg font-bold text-blue-600">{Number(session.price).toFixed(2)} جنية</span>
                               {isPurchased && (
                                 <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                                   تم الشراء مسبقاً
@@ -1459,7 +1459,7 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-gray-600">سعر الجلسة:</span>
-                <span className="font-medium">${Number(sessionPrice).toFixed(2)}</span>
+                <span className="font-medium">{Number(sessionPrice).toFixed(2)} جنية</span>
               </div>
               {sessionType === 'FACE_TO_FACE' && (
                 <div className="flex justify-between items-center mb-2">
@@ -1469,12 +1469,12 @@ const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => vo
               )}
               <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                 <span>المجموع:</span>
-                <span className="text-blue-600">${Number(totalAmount).toFixed(2)}</span>
+                <span className="text-blue-600">{Number(totalAmount).toFixed(2)} جنية</span>
               </div>
               <div className="flex justify-between items-center text-sm text-gray-600 mt-1">
                 <span>رصيدك الحالي:</span>
                 <span className={userBalance >= totalAmount ? 'text-green-600' : 'text-red-600'}>
-                  ${Number(userBalance).toFixed(2)}
+                  {Number(userBalance).toFixed(2)} جنية
                 </span>
               </div>
             </div>

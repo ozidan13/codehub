@@ -48,7 +48,7 @@ const RecordedSessionsList: FC<RecordedSessionsListProps> = ({ sessions, onPurch
             onClick={() => handlePurchase(session.id)}
             disabled={isPurchasing === session.id}
             className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors disabled:bg-gray-400">
-            {isPurchasing === session.id ? 'Purchasing...' : `Purchase for $${Number(session.price).toFixed(2)}`}
+            {isPurchasing === session.id ? 'Purchasing...' : `Purchase for ${Number(session.price).toFixed(2)} جنية`}
           </button>
         </div>
       ))}

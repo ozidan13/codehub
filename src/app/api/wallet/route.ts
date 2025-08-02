@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         type: 'TOP_UP',
         amount: amount.toString(),
         status: 'PENDING',
-        description: `Wallet top-up request for $${amount}`
+        description: `Wallet top-up request for ${amount} جنية`
       }
     })
 
