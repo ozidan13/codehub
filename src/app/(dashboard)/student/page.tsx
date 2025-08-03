@@ -957,6 +957,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
 const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) => {
   const taskStatus = getTaskStatus(task);
   const StatusIcon = taskStatus.icon;
+  const submission = task.submissions?.[0];
   const difficultyMap = { EASY: 'سهل', MEDIUM: 'متوسط', HARD: 'صعب' };
   const difficultyColors = {
     EASY: 'bg-green-100 text-green-800',
@@ -971,6 +972,30 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
         <StatusIcon className={`h-5 w-5 transition-colors ${taskStatus.color}`} />
       </div>
       <p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10">{task.description}</p>
+      
+      {/* Score Display */}
+      {submission?.score !== null && submission?.score !== undefined && (
+        <div className="mb-3 flex items-center space-x-2 space-x-reverse">
+          <Trophy className="w-4 h-4 text-yellow-500" />
+          <span className="text-sm font-medium text-gray-700">
+            الدرجة: <span className={`font-bold ${submission.score >= 70 ? 'text-green-600' : submission.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+              {submission.score}/100
+            </span>
+          </span>
+        </div>
+      )}
+      
+      {/* Feedback Display */}
+      {submission?.feedback && (submission.status === 'APPROVED' || submission.status === 'REJECTED') && (
+        <div className="mb-3 p-3 bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center space-x-2 space-x-reverse mb-2">
+            <FileText className="w-4 h-4 text-blue-500" />
+            <span className="text-sm font-semibold text-gray-700">ملاحظات المدرب:</span>
+          </div>
+          <p className="text-sm text-gray-600 leading-relaxed">{submission.feedback}</p>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center text-xs pt-3 border-t border-gray-200">
         <span className={`px-2.5 py-1 rounded-full font-medium ${difficultyColors[task.difficulty]}`}>
           {difficultyMap[task.difficulty]}

@@ -831,6 +831,8 @@ function AdminPageContent() {
             setShowReviewModal(false);
             refreshData('submissions');
           }}
+          toastSuccess={toastSuccess}
+          toastError={toastError}
         />
       )}
       {showCreateModal && (
@@ -1887,18 +1889,74 @@ const SubmissionsTab: FC<{
 }> = ({ submissions, pagination, onPageChange, onReview }) => (
   <>
     <PageHeader title="التقديمات" />
-    <Table
-      headers={['الطالب', 'المهمة', 'الحالة', 'الدرجة', 'تاريخ التقديم', 'الإجراءات']}
-      rows={submissions.map(s => [
-        s.user?.name || 'غير معروف',
-        s.task?.title || 'غير معروف',
-        <StatusBadge status={s.status} />,
-        s.score ?? 'لم تقيم',
-        formatDate(s.createdAt),
-        <button onClick={() => onReview(s)} className="px-3 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600">مراجعة</button>
-      ])}
-    />
-    <PaginationControl {...pagination} onPageChange={onPageChange} />
+    <div className="space-y-6">
+      {submissions.length > 0 ? (
+        submissions.map((submission) => (
+          <div key={submission.id} className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-4 mb-3">
+                    <div className="flex items-center gap-2">
+                      <UserIcon className="w-5 h-5 text-blue-500" />
+                      <span className="font-semibold text-gray-900">{submission.user?.name || 'غير معروف'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-green-500" />
+                      <span className="text-gray-700">{submission.task?.title || 'غير معروف'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                    <span>تاريخ التقديم: {formatDate(submission.createdAt)}</span>
+                    <span>الدرجة: {submission.score ?? 'لم تقيم'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={submission.status} />
+                  <button 
+                    onClick={() => onReview(submission)} 
+                    className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
+                  >
+                    مراجعة
+                  </button>
+                </div>
+              </div>
+              
+              {submission.content && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm font-semibold text-gray-700">محتوى التقديم:</span>
+                  </div>
+                  <div className="text-sm text-gray-800 leading-relaxed max-h-32 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap font-sans">{submission.content}</pre>
+                  </div>
+                </div>
+              )}
+              
+              {submission.feedback && (
+                <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clipboard className="w-4 h-4 text-yellow-600" />
+                    <span className="text-sm font-semibold text-yellow-700">ملاحظات المراجع:</span>
+                  </div>
+                  <p className="text-sm text-yellow-800">{submission.feedback}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12 text-center">
+          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">لا توجد تقديمات</h3>
+          <p className="text-gray-500">لم يتم العثور على أي تقديمات حتى الآن</p>
+        </div>
+      )}
+    </div>
+    <div className="mt-8">
+      <PaginationControl {...pagination} onPageChange={onPageChange} />
+    </div>
   </>
 );
 
@@ -2067,9 +2125,11 @@ interface ReviewModalProps {
   submission: Submission
   onClose: () => void
   onUpdate: () => void
+  toastSuccess: (message: string) => void
+  toastError: (message: string) => void
 }
 
-const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate }) => {
+const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate, toastSuccess, toastError }) => {
   const [feedback, setFeedback] = useState(submission.feedback || '')
   const [score, setScore] = useState<number | string>(submission.score || '')
   const [status, setStatus] = useState(submission.status)
@@ -2090,52 +2150,197 @@ const ReviewModal: FC<ReviewModalProps> = ({ submission, onClose, onUpdate }) =>
       if (response.ok) {
         onUpdate();
         toastSuccess('تم تحديث التقديم بنجاح');
+        onClose();
       } else {
         const error = await response.json();
-        toastError(`Failed to update: ${error.error}`);
+        toastError(`فشل في التحديث: ${error.error}`);
       }
     } catch (error) {
       console.error('Update error:', error);
-      toastError('An error occurred while updating the submission.');
+      toastError('حدث خطأ أثناء تحديث التقديم.');
     } finally {
       setIsUpdating(false);
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'APPROVED': return 'text-green-600 bg-green-50 border-green-200'
+      case 'REJECTED': return 'text-red-600 bg-red-50 border-red-200'
+      default: return 'text-yellow-600 bg-yellow-50 border-yellow-200'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'APPROVED': return <CheckCircle className="w-5 h-5" />
+      case 'REJECTED': return <XCircle className="w-5 h-5" />
+      default: return <Clock className="w-5 h-5" />
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" dir="rtl">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
-        <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h2 className="text-xl font-bold">مراجعة التقديم</h2>
-          <button onClick={onClose}><X className="h-6 w-6" /></button>
-        </div>
-        <div className="space-y-4">
-          <p><strong>الطالب:</strong> {submission.user?.name}</p>
-          <p><strong>المهمة:</strong> {submission.task?.title}</p>
-          {submission.content && <div className="p-2 bg-gray-100 rounded"><strong>المحتوى:</strong> <pre className="whitespace-pre-wrap font-sans">{submission.content}</pre></div>}
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700">الحالة</label>
-            <select value={status} onChange={e => setStatus(e.target.value as 'PENDING' | 'APPROVED' | 'REJECTED')} className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
-              <option value="PENDING">معلق</option>
-              <option value="APPROVED">مقبول</option>
-              <option value="REJECTED">مرفوض</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">الدرجة (من 100)</label>
-            <input type="number" value={score} onChange={e => setScore(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">ملاحظات</label>
-            <textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={4} className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <div className="w-10 h-10 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">مراجعة التقديم</h2>
+                <p className="text-blue-100 text-sm">تقييم وإضافة ملاحظات للطالب</p>
+              </div>
+            </div>
+            <button 
+              onClick={onClose}
+              className="w-10 h-10 bg-white bg-opacity-20 rounded-xl flex items-center justify-center hover:bg-opacity-30 transition-all duration-200"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
-        <div className="flex justify-end space-x-3 pt-4 mt-4 border-t space-x-reverse">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">إلغاء</button>
-          <button onClick={handleSubmit} disabled={isUpdating} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-300">
-            {isUpdating ? 'جاري التحديث...' : 'تحديث'}
-          </button>
+
+        <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className="p-6 space-y-6">
+            {/* Student & Task Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                  <UserIcon className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-semibold text-gray-800">معلومات الطالب</h3>
+                </div>
+                <p className="text-gray-700 font-medium">{submission.user?.name}</p>
+                <p className="text-gray-500 text-sm">{submission.user?.email}</p>
+              </div>
+              
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                <div className="flex items-center space-x-3 space-x-reverse mb-2">
+                  <BookOpen className="w-5 h-5 text-green-600" />
+                  <h3 className="font-semibold text-gray-800">معلومات المهمة</h3>
+                </div>
+                <p className="text-gray-700 font-medium">{submission.task?.title}</p>
+                <p className="text-gray-500 text-sm">{submission.task?.platform?.name}</p>
+              </div>
+            </div>
+
+            {/* Current Status */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 space-x-reverse">
+                  <h3 className="font-semibold text-gray-800">الحالة الحالية</h3>
+                  <div className={`flex items-center space-x-2 space-x-reverse px-3 py-1 rounded-full border ${getStatusColor(submission.status)}`}>
+                    {getStatusIcon(submission.status)}
+                    <span className="text-sm font-medium">
+                      {submission.status === 'PENDING' ? 'معلق' : submission.status === 'APPROVED' ? 'مقبول' : 'مرفوض'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500">
+                  تاريخ التقديم: {formatDateTime(submission.createdAt)}
+                </div>
+              </div>
+            </div>
+
+            {/* Submission Content */}
+            {submission.summary && (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="font-semibold text-gray-800 flex items-center space-x-2 space-x-reverse">
+                    <Clipboard className="w-5 h-5 text-gray-600" />
+                    <span>محتوى التقديم</span>
+                  </h3>
+                </div>
+                <div className="p-4 max-h-60 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap font-sans text-gray-700 leading-relaxed">{submission.summary}</pre>
+                </div>
+              </div>
+            )}
+
+            {/* Review Form */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Status Selection */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2 space-x-reverse">
+                  <Settings className="w-4 h-4" />
+                  <span>تحديث الحالة</span>
+                </label>
+                <select 
+                  value={status} 
+                  onChange={e => setStatus(e.target.value as 'PENDING' | 'APPROVED' | 'REJECTED')} 
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
+                >
+                  <option value="PENDING">⏳ معلق</option>
+                  <option value="APPROVED">✅ مقبول</option>
+                  <option value="REJECTED">❌ مرفوض</option>
+                </select>
+              </div>
+
+              {/* Score Input */}
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2 space-x-reverse">
+                  <Star className="w-4 h-4" />
+                  <span>الدرجة (من 100)</span>
+                </label>
+                <input 
+                  type="number" 
+                  value={score} 
+                  onChange={e => setScore(e.target.value)} 
+                  min="0" 
+                  max="100"
+                  placeholder="أدخل الدرجة..."
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            {/* Feedback */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 flex items-center space-x-2 space-x-reverse">
+                <FileText className="w-4 h-4" />
+                <span>ملاحظات وتوجيهات للطالب</span>
+              </label>
+              <textarea 
+                value={feedback} 
+                onChange={e => setFeedback(e.target.value)} 
+                rows={4} 
+                placeholder="اكتب ملاحظاتك وتوجيهاتك للطالب هنا..."
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+          <div className="flex justify-end space-x-3 space-x-reverse">
+            <button 
+              onClick={onClose} 
+              className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center space-x-2 space-x-reverse"
+            >
+              <X className="w-4 h-4" />
+              <span>إلغاء</span>
+            </button>
+            <button 
+              onClick={handleSubmit} 
+              disabled={isUpdating} 
+              className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:from-blue-300 disabled:to-indigo-300 transition-all duration-200 flex items-center space-x-2 space-x-reverse shadow-lg hover:shadow-xl"
+            >
+              {isUpdating ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>جاري التحديث...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  <span>حفظ التحديثات</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
