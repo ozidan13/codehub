@@ -68,106 +68,440 @@ async function main() {
   const platformTasks = {
     'Algorithms & Data Structures': [
       {
-        title: 'Array Algorithms',
-        description: 'Learn and implement basic array algorithms',
-        link: 'https://ozidan13.github.io/algorithms/#arrays',
+        title: 'Binary Search Algorithm',
+        description: 'Learn and implement binary search algorithm with interactive visualization',
+        link: 'https://ozidan13.github.io/algorithms/Week1/binary_search.html',
         order: 1
       },
       {
-        title: 'Sorting Algorithms',
-        description: 'Understand and implement various sorting algorithms',
-        link: 'https://ozidan13.github.io/algorithms/#sorting',
+        title: 'Selection Sort Algorithm',
+        description: 'Understand and implement selection sort with step-by-step visualization',
+        link: 'https://ozidan13.github.io/algorithms/Week1/selection_sort.html',
         order: 2
       },
       {
-        title: 'Binary Search Trees',
-        description: 'Master binary search tree operations',
-        link: 'https://ozidan13.github.io/algorithms/#trees',
+        title: 'Recursion Examples',
+        description: 'Master recursion concepts through interactive examples',
+        link: 'https://ozidan13.github.io/algorithms/Week1/recursion_examples.html',
         order: 3
+      },
+      {
+        title: 'Big O Notation Visualization',
+        description: 'Visualize and understand time complexity analysis',
+        link: 'https://ozidan13.github.io/algorithms/Week1/big_o_visualization.html',
+        order: 4
+      },
+      {
+        title: 'Array Operations Visualization',
+        description: 'Learn array operations with interactive demonstrations',
+        link: 'https://ozidan13.github.io/algorithms/Week2/array_operations.html',
+        order: 5
+      },
+      {
+        title: 'Linked List Visualization',
+        description: 'Understand linked list data structure and operations',
+        link: 'https://ozidan13.github.io/algorithms/Week2/linked_list.html',
+        order: 6
+      },
+      {
+        title: 'Merge Sort Visualization',
+        description: 'Learn divide and conquer with merge sort algorithm',
+        link: 'https://ozidan13.github.io/algorithms/Week2/recursive_divide_conquer.html',
+        order: 7
+      },
+      {
+        title: 'Memory Visualization',
+        description: 'Compare arrays vs linked lists memory management',
+        link: 'https://ozidan13.github.io/algorithms/Week2/memory_visualization.html',
+        order: 8
+      },
+      {
+        title: 'Quicksort Visualization',
+        description: 'Master the quicksort algorithm with interactive demo',
+        link: 'https://ozidan13.github.io/algorithms/Week3/quicksort_visualization.html',
+        order: 9
+      },
+      {
+        title: 'Hash Table Visualization',
+        description: 'Understand hash tables and collision resolution',
+        link: 'https://ozidan13.github.io/algorithms/Week3/hash_table.html',
+        order: 10
+      },
+      {
+        title: 'Graph Representation',
+        description: 'Learn different ways to represent graphs',
+        link: 'https://ozidan13.github.io/algorithms/Week3/graph_representation.html',
+        order: 11
+      },
+      {
+        title: 'Graph Traversal',
+        description: 'Master BFS and DFS graph traversal algorithms',
+        link: 'https://ozidan13.github.io/algorithms/Week3/graph_traversal.html',
+        order: 12
+      },
+      {
+        title: 'Greedy Algorithms',
+        description: 'Learn greedy algorithm design technique',
+        link: 'https://ozidan13.github.io/algorithms/Week4/greedy_algorithms.html',
+        order: 13
+      },
+      {
+        title: 'Dynamic Programming',
+        description: 'Master dynamic programming optimization technique',
+        link: 'https://ozidan13.github.io/algorithms/Week4/dynamic_programming.html',
+        order: 14
+      },
+      {
+        title: 'Knapsack Problem',
+        description: 'Solve the classic knapsack problem',
+        link: 'https://ozidan13.github.io/algorithms/Week4/knapsack_problem.html',
+        order: 15
+      },
+      {
+        title: 'K-Nearest Neighbors',
+        description: 'Implement KNN classification algorithm',
+        link: 'https://ozidan13.github.io/algorithms/Week4/knn_classifier.html',
+        order: 16
       }
     ],
     'Object-Oriented Programming (OOP)': [
       {
-        title: 'Classes and Objects',
-        description: 'Learn the fundamentals of classes and objects',
-        link: 'https://oop-pi.vercel.app/#classes',
+        title: 'Introduction to OOP',
+        description: 'Learn the fundamentals of object-oriented programming',
+        link: 'https://oop-pi.vercel.app/module1_classes_objects',
         order: 1
       },
       {
-        title: 'Inheritance and Polymorphism',
-        description: 'Master inheritance and polymorphism concepts',
-        link: 'https://oop-pi.vercel.app/#inheritance',
+        title: 'Encapsulation',
+        description: 'Master data hiding and encapsulation principles',
+        link: 'https://oop-pi.vercel.app/module2_encapsulation',
         order: 2
       },
       {
-        title: 'Encapsulation and Abstraction',
-        description: 'Understand encapsulation and abstraction principles',
-        link: 'https://oop-pi.vercel.app/#encapsulation',
+        title: 'Inheritance',
+        description: 'Understand inheritance and code reuse',
+        link: 'https://oop-pi.vercel.app/module3_inheritance',
         order: 3
+      },
+      {
+        title: 'Polymorphism',
+        description: 'Learn different forms of polymorphism',
+        link: 'https://oop-pi.vercel.app/module4_polymorphism',
+        order: 4
+      },
+      {
+        title: 'Abstraction',
+        description: 'Master abstract classes and interfaces',
+        link: 'https://oop-pi.vercel.app/module5_abstraction',
+        order: 5
+      },
+      {
+        title: 'TypeScript Classes',
+        description: 'Learn advanced class features in TypeScript',
+        link: 'https://www.typescriptlang.org/docs/handbook/2/classes.html',
+        order: 6
       }
     ],
     'SOLID & Design Patterns': [
       {
         title: 'Single Responsibility Principle',
         description: 'Learn and apply the Single Responsibility Principle',
-        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/#srp',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/solid/01_single_responsibility/index.html',
         order: 1
       },
       {
-        title: 'Open/Closed Principle',
-        description: 'Understand the Open/Closed Principle',
-        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/#ocp',
+        title: 'Open-Closed Principle',
+        description: 'Understand and implement the Open-Closed Principle',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/solid/02_open_closed/index.html',
         order: 2
       },
       {
-        title: 'Design Patterns',
-        description: 'Implement common design patterns',
-        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/#patterns',
+        title: 'Liskov Substitution Principle',
+        description: 'Master the Liskov Substitution Principle',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/solid/03_liskov_substitution/index.html',
         order: 3
-      }
-    ],
-    'JavaScript Interview Questions': [
-      {
-        title: 'JavaScript Fundamentals',
-        description: 'Master JavaScript fundamental concepts for interviews',
-        link: 'https://javascriptinterview-kappa.vercel.app/#fundamentals',
-        order: 1
       },
       {
-        title: 'Async JavaScript',
-        description: 'Understand promises, async/await, and callbacks',
-        link: 'https://javascriptinterview-kappa.vercel.app/#async',
-        order: 2
+        title: 'Interface Segregation Principle',
+        description: 'Apply the Interface Segregation Principle',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/solid/04_interface_segregation/index.html',
+        order: 4
       },
       {
-        title: 'Advanced JavaScript',
-        description: 'Learn advanced JavaScript concepts and patterns',
-        link: 'https://javascriptinterview-kappa.vercel.app/#advanced',
-        order: 3
+        title: 'Dependency Inversion Principle',
+        description: 'Implement the Dependency Inversion Principle',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/solid/05_dependency_inversion/index.html',
+        order: 5
+      },
+      {
+        title: 'Singleton Pattern',
+        description: 'Learn the Singleton creational pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/creational/singleton/index.html',
+        order: 6
+      },
+      {
+        title: 'Factory Method Pattern',
+        description: 'Implement the Factory Method pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/creational/factory_method/index.html',
+        order: 7
+      },
+      {
+        title: 'Abstract Factory Pattern',
+        description: 'Master the Abstract Factory pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/creational/abstract_factory/index.html',
+        order: 8
+      },
+      {
+        title: 'Builder Pattern',
+        description: 'Learn the Builder creational pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/creational/builder/index.html',
+        order: 9
+      },
+      {
+        title: 'Prototype Pattern',
+        description: 'Implement the Prototype pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/creational/prototype/index.html',
+        order: 10
+      },
+      {
+        title: 'Adapter Pattern',
+        description: 'Learn the Adapter structural pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/structural/adapter/index.html',
+        order: 11
+      },
+      {
+        title: 'Bridge Pattern',
+        description: 'Master the Bridge structural pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/structural/bridge/index.html',
+        order: 12
+      },
+      {
+        title: 'Composite Pattern',
+        description: 'Implement the Composite pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/structural/composite/index.html',
+        order: 13
+      },
+      {
+        title: 'Decorator Pattern',
+        description: 'Learn the Decorator structural pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/structural/decorator/index.html',
+        order: 14
+      },
+      {
+        title: 'Facade Pattern',
+        description: 'Master the Facade structural pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/structural/facade/index.html',
+        order: 15
+      },
+      {
+        title: 'Flyweight Pattern',
+        description: 'Implement the Flyweight pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/structural/flyweight/index.html',
+        order: 16
+      },
+      {
+        title: 'Proxy Pattern',
+        description: 'Learn the Proxy structural pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/structural/proxy/index.html',
+        order: 17
+      },
+      {
+        title: 'Strategy Pattern',
+        description: 'Master the Strategy behavioral pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/strategy/index.html',
+        order: 18
+      },
+      {
+        title: 'Observer Pattern',
+        description: 'Implement the Observer pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/observer/index.html',
+        order: 19
+      },
+      {
+        title: 'Command Pattern',
+        description: 'Learn the Command behavioral pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/command/index.html',
+        order: 20
+      },
+      {
+        title: 'Template Method Pattern',
+        description: 'Master the Template Method pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/template_method/index.html',
+        order: 21
+      },
+      {
+        title: 'Iterator Pattern',
+        description: 'Implement the Iterator pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/iterator/index.html',
+        order: 22
+      },
+      {
+        title: 'State Pattern',
+        description: 'Learn the State behavioral pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/state/index.html',
+        order: 23
+      },
+      {
+        title: 'Chain of Responsibility',
+        description: 'Master the Chain of Responsibility pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/chain_of_responsibility/index.html',
+        order: 24
+      },
+      {
+        title: 'Mediator Pattern',
+        description: 'Implement the Mediator pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/mediator/index.html',
+        order: 25
+      },
+      {
+        title: 'Memento Pattern',
+        description: 'Learn the Memento behavioral pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/memento/index.html',
+        order: 26
+      },
+      {
+        title: 'Visitor Pattern',
+        description: 'Master the Visitor behavioral pattern',
+        link: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/design_patterns/behavioral/visitor/index.html',
+        order: 27
       }
     ],
     'JavaScript Tasks': [
       {
-        title: 'Basic JavaScript Exercises',
-        description: 'Complete basic JavaScript programming exercises',
-        link: 'https://ozidan13.github.io/js-tasks/#basic',
+        title: 'Task 1',
+        description: 'Complete JavaScript programming task 1',
+        link: 'https://ozidan13.github.io/js-tasks/#task1',
         order: 1
       },
       {
-        title: 'DOM Manipulation Tasks',
-        description: 'Practice DOM manipulation and event handling',
-        link: 'https://ozidan13.github.io/js-tasks/#dom',
+        title: 'Task 2',
+        description: 'Complete JavaScript programming task 2',
+        link: 'https://ozidan13.github.io/js-tasks/#task2',
         order: 2
       },
       {
-        title: 'Advanced JavaScript Challenges',
-        description: 'Solve advanced JavaScript programming challenges',
-        link: 'https://ozidan13.github.io/js-tasks/#advanced',
+        title: 'Task 3',
+        description: 'Complete JavaScript programming task 3',
+        link: 'https://ozidan13.github.io/js-tasks/#task3',
         order: 3
+      },
+      {
+        title: 'Task 4',
+        description: 'Complete JavaScript programming task 4',
+        link: 'https://ozidan13.github.io/js-tasks/#task4',
+        order: 4
+      },
+      {
+        title: 'Task 5',
+        description: 'Complete JavaScript programming task 5',
+        link: 'https://ozidan13.github.io/js-tasks/#task5',
+        order: 5
+      },
+      {
+        title: 'Task 6',
+        description: 'Complete JavaScript programming task 6',
+        link: 'https://ozidan13.github.io/js-tasks/#task6',
+        order: 6
+      },
+      {
+        title: 'Task 7',
+        description: 'Complete JavaScript programming task 7',
+        link: 'https://ozidan13.github.io/js-tasks/#task7',
+        order: 7
+      },
+      {
+        title: 'Task 8',
+        description: 'Complete JavaScript programming task 8',
+        link: 'https://ozidan13.github.io/js-tasks/#task8',
+        order: 8
+      },
+      {
+        title: 'Task 9',
+        description: 'Complete JavaScript programming task 9',
+        link: 'https://ozidan13.github.io/js-tasks/#task9',
+        order: 9
+      },
+      {
+        title: 'Task 10',
+        description: 'Complete JavaScript programming task 10',
+        link: 'https://ozidan13.github.io/js-tasks/#task10',
+        order: 10
+      },
+      {
+        title: 'Task 11',
+        description: 'Complete JavaScript programming task 11',
+        link: 'https://ozidan13.github.io/js-tasks/#task11',
+        order: 11
+      },
+      {
+        title: 'Task 12',
+        description: 'Complete JavaScript programming task 12',
+        link: 'https://ozidan13.github.io/js-tasks/#task12',
+        order: 12
+      },
+      {
+        title: 'Task 13',
+        description: 'Complete JavaScript programming task 13',
+        link: 'https://ozidan13.github.io/js-tasks/#task13',
+        order: 13
+      },
+      {
+        title: 'Task 14',
+        description: 'Complete JavaScript programming task 14',
+        link: 'https://ozidan13.github.io/js-tasks/#task14',
+        order: 14
+      },
+      {
+        title: 'Task 15',
+        description: 'Complete JavaScript programming task 15',
+        link: 'https://ozidan13.github.io/js-tasks/#task15',
+        order: 15
+      },
+      {
+        title: 'Task 16',
+        description: 'Complete JavaScript programming task 16',
+        link: 'https://ozidan13.github.io/js-tasks/#task16',
+        order: 16
+      },
+      {
+        title: 'Task 17',
+        description: 'Complete JavaScript programming task 17',
+        link: 'https://ozidan13.github.io/js-tasks/#task17',
+        order: 17
+      },
+      {
+        title: 'Task 18',
+        description: 'Complete JavaScript programming task 18',
+        link: 'https://ozidan13.github.io/js-tasks/#task18',
+        order: 18
+      },
+      {
+        title: 'Task 19',
+        description: 'Complete JavaScript programming task 19',
+        link: 'https://ozidan13.github.io/js-tasks/#task19',
+        order: 19
+      },
+      {
+        title: 'Task 20',
+        description: 'Complete JavaScript programming task 20',
+        link: 'https://ozidan13.github.io/js-tasks/#task20',
+        order: 20
+      },
+      {
+        title: 'Task 21',
+        description: 'Complete JavaScript programming task 21',
+        link: 'https://ozidan13.github.io/js-tasks/#task21',
+        order: 21
+      },
+      {
+        title: 'Task 22',
+        description: 'Complete JavaScript programming task 22',
+        link: 'https://ozidan13.github.io/js-tasks/#task22',
+        order: 22
       }
     ]
   }
-  
+
   for (const platform of createdPlatforms) {
     const tasks = platformTasks[platform.name] || []
     

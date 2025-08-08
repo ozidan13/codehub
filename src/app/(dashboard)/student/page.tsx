@@ -181,7 +181,6 @@ export default function DashboardPage() {
             <ExpirationNotifications enrollments={enrollments} />
             <WalletSection wallet={wallet} onTopUp={() => setShowTopUpModal(true)} />
             <RecentTransactions transactions={transactions} />
-            <EnrollmentsSection enrollments={enrollments} onEnrollmentRenewal={handleEnrollmentSuccess} />
             
             <MentorshipSection 
               mentorshipData={mentorshipData} 
@@ -698,124 +697,7 @@ const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onRefresh: 
   );
 };
 
-const EnrollmentsSection: FC<{ enrollments: Enrollment[]; onEnrollmentRenewal: () => void }> = ({ enrollments, onEnrollmentRenewal }) => {
-  const [renewingEnrollments, setRenewingEnrollments] = useState<Set<string>>(new Set());
-
-  const handleRenewEnrollment = async (enrollmentId: string) => {
-    setRenewingEnrollments(prev => new Set(prev).add(enrollmentId));
-    try {
-      const response = await fetch('/api/enrollments', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enrollmentId }),
-      });
-      
-      if (response.ok) {
-        onEnrollmentRenewal(); // Refresh data
-      } else {
-        const error = await response.json();
-        alert(error.error || 'فشل في تجديد الاشتراك');
-      }
-    } catch (error) {
-      console.error('Renewal error:', error);
-      alert('حدث خطأ أثناء تجديد الاشتراك');
-    } finally {
-      setRenewingEnrollments(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(enrollmentId);
-        return newSet;
-      });
-    }
-  };
-
-  if (enrollments.length === 0) return null;
-  
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
-      <div className="flex items-center space-x-3 space-x-reverse mb-6">
-        <div className="p-3 rounded-lg bg-gradient-to-br from-purple-400 to-purple-600 text-white">
-          <BookOpen className="h-6 w-6" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">المنصات المشترك بها</h2>
-          <p className="text-sm text-gray-600">المنصات التي اشتركت بها</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {enrollments.map((enrollment) => {
-          const isRenewing = renewingEnrollments.has(enrollment.id);
-          const statusColor = enrollment.status === 'expired' ? 'border-red-200 bg-red-50' : 
-                             enrollment.status === 'expiring_soon' ? 'border-yellow-200 bg-yellow-50' : 
-                             'border-gray-200 bg-gray-50';
-          
-          return (
-            <div key={enrollment.id} className={`border rounded-xl p-4 ${statusColor}`}>
-              <h3 className="font-semibold text-gray-800 mb-2">{enrollment.platform.name}</h3>
-              <p className="text-sm text-gray-600 mb-3">{enrollment.platform.description}</p>
-              
-              {/* Expiration Status */}
-              {enrollment.expiresAt && (
-                <div className="mb-3">
-                  <p className="text-xs text-gray-500 mt-1">Expires on: {formatDate(enrollment.expiresAt)}</p>
-                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    enrollment.status === 'expired' ? 'bg-red-100 text-red-800' :
-                    enrollment.status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    <Clock className="h-3 w-3 mr-1" />
-                    {enrollment.status === 'expired' ? 'منتهي الصلاحية' :
-                     enrollment.status === 'expiring_soon' ? `${enrollment.daysRemaining} أيام متبقية` :
-                     `${enrollment.daysRemaining} يوم متبقي`}
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex justify-between items-center text-xs mb-3">
-                <span className={`px-2 py-1 rounded-full font-medium ${
-                  enrollment.platform.isPaid ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                }`}>
-                  {enrollment.platform.isPaid ? `${enrollment.platform.price} جنية` : 'مجاني'}
-                </span>
-                {enrollment.status !== 'expired' && (
-                  <a
-                    href={enrollment.platform.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline font-medium"
-                  >
-                    زيارة المنصة
-                  </a>
-                )}
-              </div>
-              
-              {/* Renewal Button */}
-              {(enrollment.status === 'expired' || enrollment.status === 'expiring_soon') && (
-                <button
-                  onClick={() => handleRenewEnrollment(enrollment.id)}
-                  disabled={isRenewing}
-                  className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    enrollment.status === 'expired' 
-                      ? 'bg-red-500 hover:bg-red-600 text-white' 
-                      : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                  } disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center`}
-                >
-                  {isRenewing ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      {enrollment.status === 'expired' ? 'تجديد الاشتراك' : 'تجديد مبكر'}
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+// EnrollmentsSection removed - functionality merged into PlatformCard
 
 
 const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskClick: (task: Task) => void; onEnrollmentSuccess: () => void }> = ({ platform, enrollments, onTaskClick, onEnrollmentSuccess }) => {
@@ -876,13 +758,58 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
       <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
         <div className="flex justify-between items-start">
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-800">{platform.name}</h2>
             <p className="text-sm text-gray-600 mt-1">{platform.description}</p>
+            
+            {/* Enrollment Details */}
+            {isEnrolled && enrollment && (
+              <div className="mt-3 space-y-2">
+                {/* Expiration Date */}
+                {enrollment.expiresAt && (
+                  <div className="flex items-center space-x-2 space-x-reverse text-sm">
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-600">تاريخ الانتهاء:</span>
+                    <span className="font-medium text-gray-800">{formatDate(enrollment.expiresAt)}</span>
+                  </div>
+                )}
+                
+                {/* Days Remaining */}
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  enrollment.status === 'expired' ? 'bg-red-100 text-red-800' :
+                  enrollment.status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-green-100 text-green-800'
+                }`}>
+                  <Clock className="h-4 w-4 ml-1" />
+                  {enrollment.status === 'expired' ? 'منتهي الصلاحية' :
+                   enrollment.status === 'expiring_soon' ? `${enrollment.daysRemaining} أيام متبقية` :
+                   `${enrollment.daysRemaining} يوم متبقي`}
+                </div>
+                
+                {/* Platform URL for active enrollments */}
+                {enrollment.status !== 'expired' && platform.url && (
+                  <div className="mt-2">
+                    <a
+                      href={platform.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
+                    >
+                      <span>زيارة المنصة</span>
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex items-center space-x-2 space-x-reverse">
+          
+          <div className="flex flex-col items-end space-y-2">
+            {/* Price */}
             {platform.isPaid && (
-              <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+              <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
                 {platform.price} جنية
               </span>
             )}
@@ -892,37 +819,32 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
               <button
                 onClick={handleEnroll}
                 disabled={isEnrolling}
-                className="flex items-center space-x-1 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:bg-gray-400"
+                className="flex items-center space-x-2 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400"
               >
-                <ShoppingCart className="h-3 w-3" />
-                <span>{isEnrolling ? 'جاري...' : 'اشترك'}</span>
+                <ShoppingCart className="h-4 w-4" />
+                <span>{isEnrolling ? 'جاري الاشتراك...' : 'اشترك الآن'}</span>
               </button>
             ) : enrollment?.status === 'expired' ? (
               <button
                 onClick={handleRenewEnrollment}
                 disabled={isRenewing}
-                className="flex items-center space-x-1 space-x-reverse bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:bg-gray-400"
+                className="flex items-center space-x-2 space-x-reverse bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400"
               >
-                <RefreshCw className={`h-3 w-3 ${isRenewing ? 'animate-spin' : ''}`} />
-                <span>{isRenewing ? 'جاري...' : 'تجديد'}</span>
+                <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : ''}`} />
+                <span>{isRenewing ? 'جاري التجديد...' : 'تجديد الاشتراك'}</span>
               </button>
             ) : enrollment?.status === 'expiring_soon' ? (
-              <div className="flex items-center space-x-2 space-x-reverse">
-                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                  {enrollment.daysRemaining} أيام
-                </span>
-                <button
-                  onClick={handleRenewEnrollment}
-                  disabled={isRenewing}
-                  className="flex items-center space-x-1 space-x-reverse bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors disabled:bg-gray-400"
-                >
-                  <RefreshCw className={`h-3 w-3 ${isRenewing ? 'animate-spin' : ''}`} />
-                  <span>{isRenewing ? 'جاري...' : 'تجديد مبكر'}</span>
-                </button>
-              </div>
+              <button
+                onClick={handleRenewEnrollment}
+                disabled={isRenewing}
+                className="flex items-center space-x-2 space-x-reverse bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : ''}`} />
+                <span>{isRenewing ? 'جاري التجديد...' : 'تجديد مبكر'}</span>
+              </button>
             ) : (
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                مشترك
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                مشترك ونشط
               </span>
             )}
           </div>
