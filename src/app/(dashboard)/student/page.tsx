@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, FC, ReactNode } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, LogOut, RefreshCw, Star, Wallet, CreditCard, Users, ShoppingCart, XCircle, Play, Video, ChevronDown } from 'lucide-react'
+import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, RefreshCw, Star, Wallet, CreditCard, Users, ShoppingCart, XCircle, Play, Video, ChevronDown } from 'lucide-react'
 import { CalendlyStudentCalendar } from '@/components/calendar';
 import RecordedSessionsList from '@/components/mentorship/RecordedSessionsList';
 import LiveSessionBooking from '@/components/mentorship/LiveSessionBooking';
@@ -169,18 +169,30 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50" dir="rtl">
-      <DashboardHeader userName={session?.user?.name || ''} onRefresh={handleRefresh} />
+    <div className="space-y-8" dir="rtl">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-4 space-x-reverse">
+          <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+            <BookOpen className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">لوحة التعلم</h1>
+            <p className="text-sm text-gray-500">أهلاً بك مجدداً، <span className="font-semibold text-gray-700">{session?.user?.name || 'الطالب'}</span>!</p>
+          </div>
+        </div>
+        <button onClick={handleRefresh} className="p-2 text-gray-600 hover:bg-gray-200/80 rounded-full transition-colors">
+          <RefreshCw className="h-5 w-5" />
+        </button>
+      </div>
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isContentLoading ? (
-          <div className="text-center py-16"><div className="loader h-12 w-12 mx-auto"></div></div>
-        ) : (
-          <>
-            <StatsSection stats={stats} />
+      {isContentLoading ? (
+        <div className="text-center py-16"><div className="loader h-12 w-12 mx-auto"></div></div>
+      ) : (
+        <>
+          <StatsSection stats={stats} />
             <ExpirationNotifications enrollments={enrollments} />
             <WalletSection wallet={wallet} onTopUp={() => setShowTopUpModal(true)} />
-            <RecentTransactions transactions={transactions} />
+            {/* RecentTransactions moved to /student/recenttransactions */}
             
             <MentorshipSection 
               mentorshipData={mentorshipData} 
@@ -198,7 +210,6 @@ export default function DashboardPage() {
             </div>
           </>
         )}
-      </main>
 
       {showSubmissionModal && selectedTask && (
         <SubmissionModal 
@@ -219,69 +230,7 @@ export default function DashboardPage() {
   )
 }
 
-const RecentTransactions: FC<{ transactions: Transaction[] }> = ({ transactions }) => {
-  if (!transactions || transactions.length === 0) {
-    return null;
-  }
-
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-        return 'bg-green-100 text-green-800';
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'REJECTED':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'DEPOSIT':
-        return 'إيداع';
-      case 'ENROLLMENT':
-        return 'تسجيل';
-      case 'MENTORSHIP':
-        return 'جلسة إرشادية';
-      default:
-        return type;
-    }
-  }
-
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-md mt-8">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">أحدث المعاملات</h3>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">النوع</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {transactions.map((transaction) => (
-              <tr key={transaction.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{getTypeLabel(transaction.type)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{Number(transaction.amount).toFixed(2)} جنيه</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusStyle(transaction.status)}`}>
-                    {transaction.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDateTime(transaction.createdAt)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+// RecentTransactions component moved to /student/recenttransactions/page.tsx
 
 // --- CHILD COMPONENTS ---
 
@@ -295,33 +244,7 @@ const PageLoader: FC = () => (
   </div>
 );
 
-const DashboardHeader: FC<{ userName: string; onRefresh: () => void; }> = ({ userName, onRefresh }) => (
-  <header className="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-40">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-center py-4">
-        <div className="flex items-center space-x-4 space-x-reverse">
-          <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-            <BookOpen className="h-7 w-7 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">لوحة التعلم</h1>
-            <p className="text-sm text-gray-500">أهلاً بك مجدداً، <span className="font-semibold text-gray-700">{userName}</span>!</p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3 space-x-reverse">
-            <button onClick={onRefresh} className="p-2 text-gray-600 hover:bg-gray-200/80 rounded-full transition-colors"><RefreshCw className="h-5 w-5" /></button>
-            <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              className="flex items-center space-x-2 space-x-reverse bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-px text-sm font-medium"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>تسجيل الخروج</span>
-            </button>
-        </div>
-      </div>
-    </div>
-  </header>
-);
+// DashboardHeader component removed - now handled by layout.tsx
 
 const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
   if (!stats) return null;
