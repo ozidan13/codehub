@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
+import { usePathname } from 'next/navigation'
 import { 
   Users, 
   BookOpen, 
@@ -14,7 +15,8 @@ import {
   Calendar,
   Settings,
   Menu,
-  X
+  X,
+  ChevronLeft
 } from 'lucide-react'
 import { FC } from 'react'
 
@@ -28,18 +30,35 @@ interface TabButtonProps {
 const TabButton: FC<TabButtonProps> = ({ icon, label, active, onClick }) => (
   <button 
     onClick={onClick}
-    className={`w-full flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${
+    className={`group w-full flex items-center px-4 py-3.5 text-sm font-medium rounded-2xl transition-all duration-300 relative overflow-hidden mb-1 ${
       active 
-        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl border-2 border-blue-300' 
-        : 'text-gray-300 hover:text-blue-400 hover:bg-gradient-to-r hover:from-gray-700 hover:to-gray-600 border-2 border-transparent hover:border-blue-400'
+        ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 text-white shadow-2xl shadow-blue-500/25 transform scale-105' 
+        : 'text-gray-400 hover:text-white hover:bg-gradient-to-r hover:from-gray-700/50 hover:to-gray-600/50 hover:shadow-lg hover:shadow-gray-900/20 hover:scale-102'
     }`}
   >
+    {/* Active indicator */}
     {active && (
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 opacity-20 animate-pulse"></div>
+      <>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/30 to-indigo-500/30 animate-pulse"></div>
+        <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-white rounded-l-full shadow-lg"></div>
+      </>
     )}
-    <div className="relative flex items-center">
-      {icon}
-      <span className="mr-3">{label}</span>
+    
+    {/* Hover glow effect */}
+    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-indigo-600/0 group-hover:from-blue-500/10 group-hover:to-indigo-600/10 transition-all duration-300 rounded-2xl"></div>
+    
+    <div className="relative flex items-center w-full">
+      <div className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-300 ${
+        active 
+          ? 'bg-white/20 text-white shadow-lg' 
+          : 'bg-gray-700/50 text-gray-400 group-hover:bg-gray-600/50 group-hover:text-white'
+      }`}>
+        {icon}
+      </div>
+      <span className="mr-4 font-medium tracking-wide">{label}</span>
+      <ChevronLeft className={`w-4 h-4 mr-auto transition-all duration-300 ${
+        active ? 'text-white/80 rotate-180' : 'text-gray-500 group-hover:text-gray-300 group-hover:translate-x-1'
+      }`} />
     </div>
   </button>
 )
@@ -67,11 +86,23 @@ export default function StudentLayout({
   children: React.ReactNode
 }) {
   const { data: session } = useSession()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Determine active tab based on current pathname
+  const getActiveTab = () => {
+    if (pathname === '/student') return 'dashboard'
+    if (pathname.includes('/student/recenttransactions')) return 'transactions'
+    if (pathname.includes('/student/platforms')) return 'platforms'
+    if (pathname.includes('/student/tasks')) return 'tasks'
+    if (pathname.includes('/student/mentorship')) return 'mentorship'
+    if (pathname.includes('/student/profile')) return 'profile'
+    return 'dashboard'
+  }
+
+  const activeTab = getActiveTab()
+
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab)
     setSidebarOpen(false)
     
     // Navigate to different routes based on tab
@@ -102,20 +133,30 @@ export default function StudentLayout({
       {/* Sidebar */}
       <aside className={`${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } fixed lg:relative lg:translate-x-0 w-64 bg-gray-800 text-white flex flex-col shrink-0 z-50 transition-transform duration-300 ease-in-out lg:transition-none`}>
-        <div className="p-4 border-b border-gray-700">
+      } fixed lg:relative lg:translate-x-0 w-72 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col shrink-0 z-50 transition-transform duration-300 ease-in-out lg:transition-none shadow-2xl`}>
+        {/* Header */}
+        <div className="p-6 border-b border-gray-700/50 bg-gradient-to-r from-gray-800/50 to-gray-700/30 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">لوحة الطالب</h1>
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">لوحة الطالب</h1>
+                <p className="text-xs text-gray-400 mt-0.5">نظام إدارة التعلم</p>
+              </div>
+            </div>
             <button 
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-white"
+              className="lg:hidden text-gray-400 hover:text-white hover:bg-gray-700/50 p-2 rounded-xl transition-all duration-200"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
         
-        <nav className="flex-1 p-2 space-y-2">
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
           <TabButton 
             icon={<BarChart3 />} 
             label="لوحة التحكم" 
@@ -167,51 +208,66 @@ export default function StudentLayout({
         
         {/* User Info Section */}
         {session?.user && (
-          <div className="p-4 border-t border-gray-700">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center ml-3">
-                <UserIcon className="w-5 h-5 text-white" />
+          <div className="p-4 border-t border-gray-700/50 bg-gradient-to-r from-gray-800/30 to-gray-700/20 backdrop-blur-sm">
+            <div className="flex items-center mb-4 p-3 bg-gray-800/50 rounded-2xl border border-gray-700/30">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center ml-3 shadow-lg ring-2 ring-blue-500/20">
+                <UserIcon className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
+                <p className="text-sm font-semibold text-white truncate mb-1">
                   {session.user.name}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
                   {session.user.email}
                 </p>
+                <div className="flex items-center mt-1">
+                  <div className="w-2 h-2 bg-green-400 rounded-full ml-2 animate-pulse"></div>
+                  <span className="text-xs text-green-400 font-medium">متصل</span>
+                </div>
               </div>
             </div>
             <button 
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors duration-200"
+              className="w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-red-600 to-red-700 rounded-2xl hover:from-red-700 hover:to-red-800 transition-all duration-300 shadow-lg hover:shadow-red-500/25 hover:scale-105 group"
             >
-              <LogOut className="ml-2 h-5 w-5" />
-              تسجيل الخروج
+              <LogOut className="ml-2 h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="font-semibold">تسجيل الخروج</span>
             </button>
           </div>
         )}
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Mobile Header */}
-        <header className="lg:hidden bg-white shadow-sm border-b border-gray-200 p-4">
+        <header className="lg:hidden bg-white/80 backdrop-blur-md shadow-lg border-b border-gray-200/50 p-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-xl transition-all duration-200"
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-semibold text-gray-900">لوحة الطالب</h1>
-            <div className="w-6 h-6" /> {/* Spacer */}
+            <div className="flex items-center space-x-2 space-x-reverse">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-white" />
+              </div>
+              <h1 className="text-lg font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">لوحة الطالب</h1>
+            </div>
+            <div className="w-10 h-10" /> {/* Spacer */}
           </div>
         </header>
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-md p-6 min-h-full">
-            {children}
+          <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-8 min-h-full relative overflow-hidden">
+            {/* Decorative background elements */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-indigo-600/10 rounded-full -translate-y-16 translate-x-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-500/10 to-pink-600/10 rounded-full translate-y-12 -translate-x-12"></div>
+            
+            <div className="relative z-10">
+              {children}
+            </div>
           </div>
         </main>
       </div>
