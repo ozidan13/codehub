@@ -151,6 +151,13 @@ export default function StudentLayout({
             */
           }
           <TabButton 
+            icon={<Calendar />} 
+            label="جلسات الإرشاد" 
+            active={activeTab === 'mentorship'} 
+            onClick={() => handleTabChange('mentorship')} 
+          />
+          
+          <TabButton 
             icon={<UserIcon />} 
             label="الملف الشخصي" 
             active={activeTab === 'profile'} 
