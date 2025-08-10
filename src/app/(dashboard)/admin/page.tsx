@@ -29,7 +29,13 @@ import {
   Calendar,
   Settings,
   Edit,
-  Trash2
+  Trash2,
+  Filter,
+  Search,
+  TrendingUp,
+  DollarSign,
+  Eye,
+  AlertCircle
 } from 'lucide-react'
 import { CalendlyAdminCalendar } from '@/components/calendar'
 import { formatDate, formatDateTime } from '@/lib/dateUtils';
@@ -949,96 +955,423 @@ interface TransactionsTabProps {
 
 const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, onPageChange, onRefresh, onTransactionStatusConfirm }) => {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    status: '',
+    type: '',
+    dateFrom: '',
+    dateTo: '',
+    minAmount: '',
+    maxAmount: '',
+    search: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filteredTransactions, setFilteredTransactions] = useState(transactions);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+
+  // Fetch all transactions for statistics and filtering
+  useEffect(() => {
+    const fetchAllTransactions = async () => {
+      try {
+        const response = await fetch('/api/admin/transactions?limit=1000'); // Get more transactions for stats
+        if (response.ok) {
+          const data = await response.json();
+          setAllTransactions(data.transactions || []);
+        }
+      } catch (error) {
+        console.error('Error fetching all transactions:', error);
+      }
+    };
+    fetchAllTransactions();
+  }, []);
+
+  // Filter transactions based on current filters (using all transactions for filtering)
+  useEffect(() => {
+    let filtered = allTransactions.length > 0 ? allTransactions : transactions;
+
+    if (filters.status) {
+      filtered = filtered.filter(t => t.status === filters.status);
+    }
+    if (filters.type) {
+      filtered = filtered.filter(t => t.type === filters.type);
+    }
+    if (filters.search) {
+      filtered = filtered.filter(t => 
+        t.user.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+        t.user.email.toLowerCase().includes(filters.search.toLowerCase()) ||
+        (t.user.phoneNumber && t.user.phoneNumber.includes(filters.search)) ||
+        (t.adminWalletNumber && t.adminWalletNumber.includes(filters.search))
+      );
+    }
+    if (filters.dateFrom) {
+      filtered = filtered.filter(t => new Date(t.createdAt) >= new Date(filters.dateFrom));
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(t => new Date(t.createdAt) <= new Date(filters.dateTo));
+    }
+    if (filters.minAmount) {
+      filtered = filtered.filter(t => Number(t.amount) >= Number(filters.minAmount));
+    }
+    if (filters.maxAmount) {
+      filtered = filtered.filter(t => Number(t.amount) <= Number(filters.maxAmount));
+    }
+
+    setFilteredTransactions(filtered);
+  }, [transactions, allTransactions, filters]);
+
+  const clearFilters = () => {
+    setFilters({
+      status: '',
+      type: '',
+      dateFrom: '',
+      dateTo: '',
+      minAmount: '',
+      maxAmount: '',
+      search: ''
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     const statusMap = {
-      PENDING: { label: 'في الانتظار', class: 'bg-yellow-100 text-yellow-800' },
-      APPROVED: { label: 'موافق عليه', class: 'bg-green-100 text-green-800' },
-      REJECTED: { label: 'مرفوض', class: 'bg-red-100 text-red-800' }
+      PENDING: { label: 'في الانتظار', class: 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300', icon: '⏳' },
+      APPROVED: { label: 'موافق عليه', class: 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300', icon: '✅' },
+      REJECTED: { label: 'مرفوض', class: 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300', icon: '❌' }
     };
-    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, class: 'bg-gray-100 text-gray-800' };
-    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo.class}`}>{statusInfo.label}</span>;
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, class: 'bg-gray-100 text-gray-800', icon: '❓' };
+    return (
+      <span className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1 ${statusInfo.class} shadow-sm`}>
+        <span>{statusInfo.icon}</span>
+        {statusInfo.label}
+      </span>
+    );
   };
 
   const getTypeBadge = (type: string) => {
     const typeMap = {
-      TOP_UP: { label: 'شحن رصيد', class: 'bg-blue-100 text-blue-800' },
-      PLATFORM_PURCHASE: { label: 'شراء منصة', class: 'bg-purple-100 text-purple-800' },
-      MENTORSHIP_PAYMENT: { label: 'دفع إرشاد', class: 'bg-orange-100 text-orange-800' }
+      TOP_UP: { label: 'شحن رصيد', class: 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300', icon: '💰' },
+      PLATFORM_PURCHASE: { label: 'شراء منصة', class: 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-300', icon: '🛒' },
+      MENTORSHIP_PAYMENT: { label: 'دفع إرشاد', class: 'bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-800 border border-indigo-300', icon: '🎓' }
     };
-    const typeInfo = typeMap[type as keyof typeof typeMap] || { label: type, class: 'bg-gray-100 text-gray-800' };
-    return <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeInfo.class}`}>{typeInfo.label}</span>;
+    const typeInfo = typeMap[type as keyof typeof typeMap] || { label: type, class: 'bg-gray-100 text-gray-800', icon: '❓' };
+    return (
+      <span className={`px-3 py-1.5 rounded-full text-xs font-semibold inline-flex items-center gap-1 ${typeInfo.class} shadow-sm`}>
+        <span>{typeInfo.icon}</span>
+        {typeInfo.label}
+      </span>
+    );
   };
 
+  // Calculate statistics (using all transactions, not filtered ones)
+  const allTransactionsForStats = allTransactions.length > 0 ? allTransactions : transactions;
+  const stats = {
+    total: allTransactionsForStats.length,
+    pending: allTransactionsForStats.filter(t => t.status === 'PENDING').length,
+    approved: allTransactionsForStats.filter(t => t.status === 'APPROVED').length,
+    rejected: allTransactionsForStats.filter(t => t.status === 'REJECTED').length,
+    totalAmount: allTransactionsForStats.reduce((sum, t) => sum + Number(t.amount), 0),
+    approvedAmount: allTransactionsForStats.filter(t => t.status === 'APPROVED').reduce((sum, t) => sum + Number(t.amount), 0)
+  };
+  
+
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <Wallet className="h-8 w-8 text-blue-600" />
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">إدارة المعاملات المالية</h2>
-            <p className="text-gray-600">مراجعة وإدارة جميع المعاملات المالية</p>
+    <div className="space-y-6">
+      {/* Header with Statistics */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+              <Wallet className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">إدارة المعاملات المالية</h2>
+              <p className="text-gray-600">مراجعة وإدارة جميع المعاملات المالية مع فلاتر متقدمة</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center space-x-2 space-x-reverse px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${
+                showFilters 
+                  ? 'bg-blue-500 text-white shadow-lg' 
+                  : 'bg-white text-blue-600 border border-blue-200 hover:bg-blue-50'
+              }`}
+            >
+              <Filter className="h-4 w-4" />
+              <span>الفلاتر</span>
+            </button>
+            <button
+              onClick={onRefresh}
+              className="flex items-center space-x-2 space-x-reverse bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>تحديث</span>
+            </button>
           </div>
         </div>
-        <button
-          onClick={onRefresh}
-          className="flex items-center space-x-2 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          <RefreshCw className="h-4 w-4" />
-          <span>تحديث</span>
-        </button>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">إجمالي المعاملات</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">في الانتظار</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+              </div>
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Clock className="w-5 h-5 text-yellow-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">مقبولة</p>
+                <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+              </div>
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">مرفوضة</p>
+                <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+              </div>
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <XCircle className="w-5 h-5 text-red-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">إجمالي المبلغ</p>
+                <p className="text-xl font-bold text-gray-900">{stats.totalAmount.toFixed(2)} ج</p>
+              </div>
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">المبلغ المقبول</p>
+                <p className="text-xl font-bold text-green-600">{stats.approvedAmount.toFixed(2)} ج</p>
+              </div>
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      {/* Advanced Filters */}
+      {showFilters && (
+        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <Filter className="w-5 h-5 text-blue-600" />
+              فلاتر البحث المتقدمة
+            </h3>
+            <button
+              onClick={clearFilters}
+              className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+            >
+              <X className="w-4 h-4" />
+              مسح الفلاتر
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">البحث</label>
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="اسم المستخدم، البريد، رقم الهاتف..."
+                  value={filters.search}
+                  onChange={(e) => setFilters({...filters, search: e.target.value})}
+                  className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">الحالة</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              >
+                <option value="">جميع الحالات</option>
+                <option value="PENDING">في الانتظار</option>
+                <option value="APPROVED">مقبول</option>
+                <option value="REJECTED">مرفوض</option>
+              </select>
+            </div>
+
+            {/* Type Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">نوع المعاملة</label>
+              <select
+                value={filters.type}
+                onChange={(e) => setFilters({...filters, type: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              >
+                <option value="">جميع الأنواع</option>
+                <option value="TOP_UP">شحن رصيد</option>
+                <option value="PLATFORM_PURCHASE">شراء منصة</option>
+                <option value="MENTORSHIP_PAYMENT">دفع إرشاد</option>
+              </select>
+            </div>
+
+            {/* Date From */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">من تاريخ</label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            {/* Date To */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">إلى تاريخ</label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            {/* Min Amount */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">أقل مبلغ</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={filters.minAmount}
+                onChange={(e) => setFilters({...filters, minAmount: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            {/* Max Amount */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">أعلى مبلغ</label>
+              <input
+                type="number"
+                placeholder="∞"
+                value={filters.maxAmount}
+                onChange={(e) => setFilters({...filters, maxAmount: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Table */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
               <tr>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المستخدم</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">النوع</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المبلغ</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">رقم الهاتف</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">المستخدم</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">النوع</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">المبلغ</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">رقم الهاتف</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">محفظة الإدارة</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{transaction.user.name}</div>
-                      <div className="text-sm text-gray-500">{transaction.user.email}</div>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {filteredTransactions.map((transaction, index) => (
+                <tr key={transaction.id} className={`hover:bg-blue-50 transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                  <td className="px-6 py-5 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-12 w-12">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                          <span className="text-sm font-bold text-white">
+                            {transaction.user.name.charAt(0)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mr-4">
+                        <div className="text-sm font-semibold text-gray-900">{transaction.user.name}</div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <span>📧</span>
+                          {transaction.user.email}
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{getTypeBadge(transaction.type)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{Number(transaction.amount).toFixed(2)} جنيه</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {transaction.user.phoneNumber || '-'}
+                  <td className="px-6 py-5 whitespace-nowrap">{getTypeBadge(transaction.type)}</td>
+                  <td className="px-6 py-5 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-bold text-gray-900">{Number(transaction.amount).toFixed(2)}</span>
+                      <span className="text-xs text-gray-500">جنيه</span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {transaction.adminWalletNumber || '-'}
+                  <td className="px-6 py-5 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span>📱</span>
+                      <span className="text-sm text-gray-900 font-medium">{transaction.user.phoneNumber || '-'}</span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(transaction.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(transaction.createdAt).toLocaleDateString('ar-SA')}
+                  <td className="px-6 py-5 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span>💳</span>
+                      <span className="text-sm text-gray-900 font-medium">{transaction.adminWalletNumber || '-'}</span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {transaction.status === 'PENDING' && (
-                      <div className="flex space-x-2 space-x-reverse">
+                  <td className="px-6 py-5 whitespace-nowrap">{getStatusBadge(transaction.status)}</td>
+                  <td className="px-6 py-5 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span>📅</span>
+                      <span className="text-sm text-gray-600">
+                        {new Date(transaction.createdAt).toLocaleDateString('en-US')}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 whitespace-nowrap">
+                    {transaction.status === 'PENDING' ? (
+                      <div className="flex gap-2">
                         <button
                           onClick={() => onTransactionStatusConfirm(
                             transaction.id, 
                             'APPROVED',
                             `المبلغ: ${Number(transaction.amount).toFixed(2)} جنيه - المستخدم: ${transaction.user.name}`
                           )}
-                          disabled={isUpdating === transaction.id}
-                          className="text-green-600 hover:text-green-900 disabled:opacity-50"
-                          title="قبول المعاملة"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 shadow-sm"
                         >
-                          <CheckCircle className="h-5 w-5" />
+                          ✓ قبول
                         </button>
                         <button
                           onClick={() => onTransactionStatusConfirm(
@@ -1046,84 +1379,208 @@ const TransactionsTab: FC<TransactionsTabProps> = ({ transactions, pagination, o
                             'REJECTED',
                             `المبلغ: ${Number(transaction.amount).toFixed(2)} جنيه - المستخدم: ${transaction.user.name}`
                           )}
-                          disabled={isUpdating === transaction.id}
-                          className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                          title="رفض المعاملة"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 shadow-sm"
                         >
-                          <XCircle className="h-5 w-5" />
+                          ✗ رفض
                         </button>
                       </div>
+                    ) : (
+                      <button 
+                        onClick={() => {
+                          setSelectedTransaction(transaction);
+                          setShowTransactionModal(true);
+                        }}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                      >
+                        <Eye className="w-3 h-3" />
+                        عرض
+                      </button>
                     )}
                   </td>
                 </tr>
               ))}
+              {filteredTransactions.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Search className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد معاملات</h3>
+                        <p className="text-gray-500">لم يتم العثور على معاملات تطابق معايير البحث المحددة</p>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
         
-        {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => onPageChange(pagination.page - 1)}
-                disabled={pagination.page <= 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                السابق
-              </button>
-              <button
-                onClick={() => onPageChange(pagination.page + 1)}
-                disabled={pagination.page >= pagination.totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                التالي
-              </button>
+        {/* Results Summary */}
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 flex items-center justify-center border-t border-gray-200">
+          <div className="text-sm text-gray-700 font-medium">
+            عرض <span className="font-bold text-blue-600">{filteredTransactions.length}</span> من إجمالي{' '}
+            <span className="font-bold text-green-600">{allTransactionsForStats.length}</span> معاملة
+          </div>
+        </div>
+      </div>
+      
+      {/* Transaction Details Modal */}
+      {showTransactionModal && selectedTransaction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">تفاصيل المعاملة</h3>
+                <button
+                  onClick={() => {
+                    setShowTransactionModal(false);
+                    setSelectedTransaction(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
             </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  عرض <span className="font-medium">{((pagination.page - 1) * pagination.limit) + 1}</span> إلى{' '}
-                  <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> من{' '}
-                  <span className="font-medium">{pagination.total}</span> نتيجة
-                </p>
+            
+            <div className="p-6 space-y-6">
+              {/* Transaction Status */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <span className="text-sm font-medium text-gray-600">حالة المعاملة</span>
+                {getStatusBadge(selectedTransaction.status)}
               </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button
-                    onClick={() => onPageChange(pagination.page - 1)}
-                    disabled={pagination.page <= 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => onPageChange(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        page === pagination.page
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => onPageChange(pagination.page + 1)}
-                    disabled={pagination.page >= pagination.totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                </nav>
+              
+              {/* Transaction Type */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <span className="text-sm font-medium text-gray-600">نوع المعاملة</span>
+                {getTypeBadge(selectedTransaction.type)}
               </div>
+              
+              {/* Amount */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                <span className="text-sm font-medium text-gray-600">المبلغ</span>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-green-600" />
+                  <span className="text-lg font-bold text-green-700">
+                    {Number(selectedTransaction.amount).toFixed(2)} جنيه
+                  </span>
+                </div>
+              </div>
+              
+              {/* User Information */}
+              <div className="space-y-3">
+                <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">معلومات المستخدم</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <span className="text-xs text-blue-600 font-medium">الاسم</span>
+                    <p className="text-sm font-semibold text-gray-900">{selectedTransaction.user.name}</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <span className="text-xs text-blue-600 font-medium">البريد الإلكتروني</span>
+                    <p className="text-sm font-semibold text-gray-900">{selectedTransaction.user.email}</p>
+                  </div>
+                  {selectedTransaction.user.phoneNumber && (
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <span className="text-xs text-blue-600 font-medium">رقم الهاتف</span>
+                      <p className="text-sm font-semibold text-gray-900">{selectedTransaction.user.phoneNumber}</p>
+                    </div>
+                  )}
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <span className="text-xs text-blue-600 font-medium">معرف المستخدم</span>
+                    <p className="text-sm font-semibold text-gray-900 font-mono">{selectedTransaction.userId}</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Transaction Details */}
+              <div className="space-y-3">
+                <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">تفاصيل المعاملة</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <span className="text-xs text-gray-600 font-medium">معرف المعاملة</span>
+                    <p className="text-sm font-semibold text-gray-900 font-mono">{selectedTransaction.id}</p>
+                  </div>
+                  {selectedTransaction.adminWalletNumber && (
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <span className="text-xs text-gray-600 font-medium">رقم محفظة الإدارة</span>
+                      <p className="text-sm font-semibold text-gray-900">{selectedTransaction.adminWalletNumber}</p>
+                    </div>
+                  )}
+                  {selectedTransaction.senderWalletNumber && (
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <span className="text-xs text-gray-600 font-medium">رقم محفظة المرسل</span>
+                      <p className="text-sm font-semibold text-gray-900">{selectedTransaction.senderWalletNumber}</p>
+                    </div>
+                  )}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <span className="text-xs text-gray-600 font-medium">تاريخ الإنشاء</span>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {new Date(selectedTransaction.createdAt).toLocaleDateString('en-US')} - 
+                      {new Date(selectedTransaction.createdAt).toLocaleTimeString('ar-SA')}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <span className="text-xs text-gray-600 font-medium">تاريخ التحديث</span>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {new Date(selectedTransaction.updatedAt).toLocaleDateString('en-US')} - 
+                      {new Date(selectedTransaction.updatedAt).toLocaleTimeString('ar-SA')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Description */}
+              {selectedTransaction.description && (
+                <div className="space-y-3">
+                  <h4 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">الوصف</h4>
+                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <p className="text-sm text-gray-700">{selectedTransaction.description}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Action Buttons for Pending Transactions */}
+              {selectedTransaction.status === 'PENDING' && (
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      onTransactionStatusConfirm(
+                        selectedTransaction.id, 
+                        'APPROVED',
+                        `المبلغ: ${Number(selectedTransaction.amount).toFixed(2)} جنيه - المستخدم: ${selectedTransaction.user.name}`
+                      );
+                      setShowTransactionModal(false);
+                      setSelectedTransaction(null);
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 shadow-sm"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    قبول المعاملة
+                  </button>
+                  <button
+                    onClick={() => {
+                      onTransactionStatusConfirm(
+                        selectedTransaction.id, 
+                        'REJECTED',
+                        `المبلغ: ${Number(selectedTransaction.amount).toFixed(2)} جنيه - المستخدم: ${selectedTransaction.user.name}`
+                      );
+                      setShowTransactionModal(false);
+                      setSelectedTransaction(null);
+                    }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors duration-200 shadow-sm"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    رفض المعاملة
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
-
+        </div>
+      )}
     </div>
   );
 };
@@ -1258,7 +1715,7 @@ const BookingUpdateModal: FC<BookingUpdateModalProps> = ({ booking, onClose, onU
               <div>
                 <span className="text-gray-600">تاريخ الحجز:</span>
                 <span className="font-medium mr-2">
-                  {new Date(booking.createdAt).toLocaleDateString('ar-SA')}
+                  {new Date(booking.createdAt).toLocaleDateString('en-US')}
                 </span>
               </div>
             </div>
@@ -1326,7 +1783,7 @@ const BookingUpdateModal: FC<BookingUpdateModalProps> = ({ booking, onClose, onU
                 )}
                 {booking.sessionDate && (
                   <p className="text-sm text-gray-600 mt-1">
-                    الموعد الحالي: {new Date(booking.sessionDate).toLocaleDateString('ar-SA', {
+                    الموعد الحالي: {new Date(booking.sessionDate).toLocaleDateString('en-US', {
                       weekday: 'long',
                       year: 'numeric',
                       month: 'long',
@@ -1716,7 +2173,7 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
                       )}
                       {booking.sessionDate && (
                         <div className="text-gray-500">
-                          {new Date(booking.sessionDate).toLocaleDateString('ar-SA')}
+                          {new Date(booking.sessionDate).toLocaleDateString('en-US')}
                         </div>
                       )}
                       {booking.whatsappNumber && (
@@ -1727,7 +2184,7 @@ const MentorshipTab: FC<MentorshipTabProps> = ({ bookings, pagination, onPageCha
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{Number(booking.amount || 0).toFixed(2)} جنية</td>
                   <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(booking.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(booking.createdAt).toLocaleDateString('ar-SA')}
+                    {new Date(booking.createdAt).toLocaleDateString('en-US')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2 space-x-reverse">
@@ -1974,7 +2431,7 @@ const PlatformsTab: FC<{ platforms: Platform[]; onEdit: (p: Platform, t: 'platfo
         p.name,
         p.description,
         <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">زيارة</a>,
-        new Date(p.createdAt).toLocaleDateString('ar-EG'),
+        new Date(p.createdAt).toLocaleDateString('en-US'),
         <ActionButtons onEdit={() => onEdit(p, 'platform')} onDelete={() => onDelete(p, 'platform')} />
       ])}
     />
@@ -1995,7 +2452,7 @@ const TasksTab: FC<{ tasks: Task[]; onEdit: (t: Task, type: 'task') => void; onD
         t.title,
         t.platform?.name || 'N/A',
         t.order,
-        new Date(t.createdAt).toLocaleDateString('ar-EG'),
+        new Date(t.createdAt).toLocaleDateString('en-US'),
         <ActionButtons onEdit={() => onEdit(t, 'task')} onDelete={() => onDelete(t, 'task')} />
       ])}
     />
@@ -2016,7 +2473,7 @@ const UsersTab: FC<{ users: User[]; onEdit: (u: User, type: 'user') => void; onD
         u.name,
         u.email,
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${u.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>{u.role}</span>,
-        new Date(u.createdAt).toLocaleDateString('ar-EG'),
+        new Date(u.createdAt).toLocaleDateString('en-US'),
         <ActionButtons onEdit={() => onEdit(u, 'user')} onDelete={() => onDelete(u, 'user')} />
       ])}
     />
@@ -2768,7 +3225,7 @@ const DatesTab: FC<DatesTabProps> = ({ onTimeSlotDeleteConfirm }) => {
           
           <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200">
             <span className="text-gray-600 text-sm">
-              آخر تحديث: {new Date().toLocaleString('ar-SA')}
+              آخر تحديث: {new Date().toLocaleString('en-US')}
             </span>
           </div>
           

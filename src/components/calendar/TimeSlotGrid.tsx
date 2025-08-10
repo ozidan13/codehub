@@ -176,7 +176,7 @@ export const TimeSlotGrid: React.FC<TimeSlotGridProps> = ({
           <div>
             <h3 className="text-lg font-semibold text-gray-800">إدارة الأوقات المتاحة</h3>
             <p className="text-sm text-gray-600">
-              {selectedDate.toLocaleDateString('ar-SA', {
+              {selectedDate.toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
