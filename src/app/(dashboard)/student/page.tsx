@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback, FC, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Clock, CheckCircle, X, FileText, Trophy, RefreshCw, Star, Wallet, CreditCard, ShoppingCart } from 'lucide-react'
+import { 
+  BookOpen, Clock, CheckCircle, X, FileText, Trophy, RefreshCw, Star, 
+  Wallet, CreditCard, ShoppingCart, TrendingUp, Award, Target, 
+  BarChart3, Activity, Zap, Calendar, Users, Play, XCircle,
+  ArrowUp, ArrowDown, Sparkles, GraduationCap, Medal
+} from 'lucide-react'
 
 import { formatDate, formatDateTime, formatTimeRange } from '@/lib/dateUtils';
 import { Platform, Task, Submission, StudentStats, WalletData, Enrollment, Transaction } from '@/types';
@@ -51,7 +56,6 @@ export default function DashboardPage() {
   const [isContentLoading, setIsContentLoading] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showSubmissionModal, setShowSubmissionModal] = useState(false)
-  const [showTopUpModal, setShowTopUpModal] = useState(false)
   
 
   // --- DATA FETCHING ---
@@ -137,7 +141,6 @@ export default function DashboardPage() {
   }
 
   const handleTopUpSuccess = () => {
-    setShowTopUpModal(false);
     handleRefresh();
   }
 
@@ -155,40 +158,90 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8" dir="rtl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4 space-x-reverse">
-          <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-            <BookOpen className="h-7 w-7 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">لوحة التعلم</h1>
-            <p className="text-sm text-gray-500">أهلاً بك مجدداً، <span className="font-semibold text-gray-700">{session?.user?.name || 'الطالب'}</span>!</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100" dir="rtl">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        {/* Enhanced Header */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4 space-x-reverse">
+              <div className="relative">
+                <div className="h-16 w-16 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg">
+                  <BookOpen className="h-8 w-8 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 h-6 w-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                  <Sparkles className="h-3 w-3 text-white" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                  لوحة التعلم الذكية
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                  أهلاً بك مجدداً، <span className="font-bold text-blue-600">{session?.user?.name || 'الطالب'}</span>! 🎯
+                </p>
+                <div className="flex items-center space-x-2 space-x-reverse mt-2">
+                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-600 font-medium">متصل الآن</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3 space-x-reverse">
+              <button 
+                onClick={handleRefresh} 
+                className="group relative p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
+                <RefreshCw className={`h-5 w-5 transition-transform duration-300 ${isContentLoading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+                <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              </button>
+            </div>
           </div>
         </div>
-        <button onClick={handleRefresh} className="p-2 text-gray-600 hover:bg-gray-200/80 rounded-full transition-colors">
-          <RefreshCw className="h-5 w-5" />
-        </button>
-      </div>
-      
-      {isContentLoading ? (
-        <div className="text-center py-16"><div className="loader h-12 w-12 mx-auto"></div></div>
-      ) : (
-        <>
-          <StatsSection stats={stats} />
+        
+        {isContentLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="relative">
+                <div className="h-16 w-16 mx-auto mb-4">
+                  <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-0 border-4 border-blue-600 rounded-full animate-spin border-t-transparent"></div>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">جاري تحميل البيانات...</h3>
+              <p className="text-gray-500">يتم تجهيز المحتوى الخاص بك</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <StatsSection stats={stats} />
             <ExpirationNotifications enrollments={enrollments} />
-            <WalletSection wallet={wallet} onTopUp={() => setShowTopUpModal(true)} />
-            {/* RecentTransactions moved to /student/recenttransactions */}
+            <WalletSection wallet={wallet} onTopUp={handleTopUpSuccess} />
             
-
-
-            <div className="space-y-12 mt-10">
-              {platforms.map((platform) => (
-                <PlatformCard key={platform.id} platform={platform} enrollments={enrollments} onTaskClick={handleTaskClick} onEnrollmentSuccess={handleEnrollmentSuccess} />
+            {/* Enhanced Platforms Section */}
+            <div className="space-y-8">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
+                  منصات التعلم المتاحة
+                </h2>
+                <p className="text-gray-600">اختر المنصة التي تريد التعلم منها وابدأ رحلتك التعليمية</p>
+              </div>
+              {platforms.map((platform, index) => (
+                <div 
+                  key={platform.id} 
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <PlatformCard 
+                    platform={platform} 
+                    enrollments={enrollments} 
+                    onTaskClick={handleTaskClick} 
+                    onEnrollmentSuccess={handleEnrollmentSuccess} 
+                  />
+                </div>
               ))}
             </div>
           </>
         )}
+      </div>
 
       {showSubmissionModal && selectedTask && (
         <SubmissionModal 
@@ -198,11 +251,7 @@ export default function DashboardPage() {
         />
       )}
 
-      <TopUpModal 
-        isOpen={showTopUpModal}
-        onClose={() => setShowTopUpModal(false)} 
-        onSuccess={handleTopUpSuccess} 
-      />
+
 
       
     </div>
@@ -227,61 +276,403 @@ const PageLoader: FC = () => (
 
 const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
   if (!stats) return null;
+  
+  const totalTasks = stats.totalSubmissions;
+  const completionRate = totalTasks > 0 ? (stats.approvedSubmissions / totalTasks) * 100 : 0;
+  const averageScore = stats.averageScore ? Number(stats.averageScore) : 0;
+  
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-      <StatCard icon={<FileText />} title="إجمالي التسليمات" value={stats.totalSubmissions} color="blue" />
-      <StatCard icon={<CheckCircle />} title="المقبولة" value={stats.approvedSubmissions} color="green" />
-      <StatCard icon={<Clock />} title="قيد المراجعة" value={stats.pendingSubmissions} color="yellow" />
-      <StatCard icon={<Trophy />} title="متوسط الدرجات" value={stats.averageScore ? `${Number(stats.averageScore).toFixed(1)}%` : 'N/A'} color="purple" />
+    <div className="space-y-6">
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <EnhancedStatCard 
+          icon={<FileText />} 
+          title="إجمالي التسليمات" 
+          value={stats.totalSubmissions} 
+          color="blue"
+          trend={stats.totalSubmissions > 0 ? 'up' : 'neutral'}
+          subtitle="مهمة مكتملة"
+        />
+        <EnhancedStatCard 
+          icon={<CheckCircle />} 
+          title="المقبولة" 
+          value={stats.approvedSubmissions} 
+          color="green"
+          trend={stats.approvedSubmissions > 0 ? 'up' : 'neutral'}
+          subtitle="تم قبولها"
+          progress={completionRate}
+        />
+        <EnhancedStatCard 
+          icon={<Clock />} 
+          title="قيد المراجعة" 
+          value={stats.pendingSubmissions} 
+          color="yellow"
+          trend={stats.pendingSubmissions > 0 ? 'up' : 'neutral'}
+          subtitle="في انتظار المراجعة"
+        />
+        <EnhancedStatCard 
+          icon={<Trophy />} 
+          title="متوسط الدرجات" 
+          value={averageScore > 0 ? `${averageScore.toFixed(1)}%` : 'لا يوجد'} 
+          color="purple"
+          trend={averageScore >= 70 ? 'up' : averageScore >= 50 ? 'neutral' : 'down'}
+          subtitle="من إجمالي الدرجات"
+          progress={averageScore}
+        />
+      </div>
+      
+      {/* Progress Overview */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-600" />
+            نظرة عامة على الأداء
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Activity className="h-4 w-4" />
+            تحديث مباشر
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Completion Rate */}
+          <div className="text-center">
+            <div className="relative w-20 h-20 mx-auto mb-3">
+              <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
+                <path
+                  className="text-gray-200"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path
+                  className="text-green-500"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeDasharray={`${completionRate}, 100`}
+                  strokeLinecap="round"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg font-bold text-gray-800">{completionRate.toFixed(0)}%</span>
+              </div>
+            </div>
+            <p className="text-sm font-medium text-gray-700">معدل الإنجاز</p>
+            <p className="text-xs text-gray-500">من المهام المقبولة</p>
+          </div>
+          
+          {/* Average Score */}
+          <div className="text-center">
+            <div className="relative w-20 h-20 mx-auto mb-3">
+              <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
+                <path
+                  className="text-gray-200"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path
+                  className={`${averageScore >= 70 ? 'text-green-500' : averageScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeDasharray={`${averageScore}, 100`}
+                  strokeLinecap="round"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg font-bold text-gray-800">{averageScore.toFixed(0)}</span>
+              </div>
+            </div>
+            <p className="text-sm font-medium text-gray-700">متوسط الدرجات</p>
+            <p className="text-xs text-gray-500">من 100 درجة</p>
+          </div>
+          
+          {/* Performance Level */}
+          <div className="text-center">
+            <div className="w-20 h-20 mx-auto mb-3 flex items-center justify-center">
+              {averageScore >= 90 ? (
+                <div className="relative">
+                  <Medal className="h-12 w-12 text-yellow-500" />
+                  <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-400 animate-pulse" />
+                </div>
+              ) : averageScore >= 70 ? (
+                <Award className="h-12 w-12 text-green-500" />
+              ) : averageScore >= 50 ? (
+                <Target className="h-12 w-12 text-yellow-500" />
+              ) : (
+                <TrendingUp className="h-12 w-12 text-blue-500" />
+              )}
+            </div>
+            <p className="text-sm font-medium text-gray-700">
+              {averageScore >= 90 ? 'ممتاز' : averageScore >= 70 ? 'جيد جداً' : averageScore >= 50 ? 'جيد' : 'يحتاج تحسين'}
+            </p>
+            <p className="text-xs text-gray-500">مستوى الأداء</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-const StatCard: FC<{ icon: ReactNode; title: string; value: number | string; color: 'blue' | 'green' | 'yellow' | 'purple' }> = ({ icon, title, value, color }) => {
+const EnhancedStatCard: FC<{ 
+  icon: ReactNode; 
+  title: string; 
+  value: number | string; 
+  color: 'blue' | 'green' | 'yellow' | 'purple';
+  trend?: 'up' | 'down' | 'neutral';
+  subtitle?: string;
+  progress?: number;
+}> = ({ icon, title, value, color, trend = 'neutral', subtitle, progress }) => {
   const colors = {
-    blue: 'from-blue-400 to-blue-600',
-    green: 'from-green-400 to-green-600',
-    yellow: 'from-yellow-400 to-yellow-600',
-    purple: 'from-purple-400 to-purple-600',
+    blue: {
+      gradient: 'from-blue-500 to-blue-600',
+      bg: 'bg-blue-50',
+      text: 'text-blue-600',
+      border: 'border-blue-200'
+    },
+    green: {
+      gradient: 'from-green-500 to-green-600',
+      bg: 'bg-green-50',
+      text: 'text-green-600',
+      border: 'border-green-200'
+    },
+    yellow: {
+      gradient: 'from-yellow-500 to-yellow-600',
+      bg: 'bg-yellow-50',
+      text: 'text-yellow-600',
+      border: 'border-yellow-200'
+    },
+    purple: {
+      gradient: 'from-purple-500 to-purple-600',
+      bg: 'bg-purple-50',
+      text: 'text-purple-600',
+      border: 'border-purple-200'
+    },
   };
 
+  const TrendIcon = trend === 'up' ? ArrowUp : trend === 'down' ? ArrowDown : Activity;
+  const trendColor = trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
+
   return (
-    <div className={`bg-white p-5 rounded-xl shadow-md flex items-center transition-all duration-300 hover:shadow-lg hover:scale-105`}>
-      <div className={`p-3 rounded-lg bg-gradient-to-br ${colors[color]} text-white shadow-sm`}>{icon}</div>
-      <div className="mr-4">
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <p className="text-2xl font-bold text-gray-800">{value}</p>
+    <div className={`group relative bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border ${colors[color].border} transition-all duration-300 hover:shadow-xl hover:scale-105 hover:-translate-y-1`}>
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <div className={`p-3 rounded-xl bg-gradient-to-br ${colors[color].gradient} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+            {icon}
+          </div>
+          <div className={`flex items-center gap-1 ${trendColor}`}>
+            <TrendIcon className="h-4 w-4" />
+            <span className="text-xs font-medium">
+              {trend === 'up' ? 'متزايد' : trend === 'down' ? 'متناقص' : 'ثابت'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl sm:text-3xl font-bold text-gray-800">{value}</span>
+            {subtitle && <span className="text-xs text-gray-500">{subtitle}</span>}
+          </div>
+          
+          {/* Progress Bar */}
+          {progress !== undefined && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>التقدم</span>
+                <span>{progress.toFixed(0)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div 
+                  className={`h-full bg-gradient-to-r ${colors[color].gradient} rounded-full transition-all duration-1000 ease-out`}
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+      
+      {/* Glow Effect */}
+      <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 bg-gradient-to-br ${colors[color].gradient} blur-xl`}></div>
     </div>
   );
 }
 
 const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({ wallet, onTopUp }) => {
+  const [showTopUpForm, setShowTopUpForm] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   if (!wallet) return null;
+  
+  const balance = Number(wallet.balance);
+  
+  const handleTopUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!topUpAmount || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/wallet/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: parseFloat(topUpAmount) })
+      });
+      
+      if (response.ok) {
+        setTopUpAmount('');
+        setShowTopUpForm(false);
+        onTopUp(); // Refresh wallet data
+      }
+    } catch (error) {
+      console.error('Top-up failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 mt-8">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <div className="p-3 rounded-lg bg-gradient-to-br from-green-400 to-green-600 text-white">
-            <Wallet className="h-6 w-6" />
+    <div className="group relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 p-8 rounded-3xl text-white shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-[1.02] mt-8">
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16 group-hover:scale-150 transition-transform duration-1000"></div>
+        <div className="absolute bottom-0 right-0 w-24 h-24 bg-white rounded-full translate-x-12 translate-y-12 group-hover:scale-125 transition-transform duration-1000 delay-200"></div>
+        <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white rounded-full group-hover:scale-110 transition-transform duration-1000 delay-100"></div>
+      </div>
+      
+      {/* Glowing Border Effect */}
+      <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm group-hover:bg-white/30 transition-colors duration-300">
+              <Wallet className="h-8 w-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold mb-1">المحفظة الإلكترونية</h3>
+              <p className="text-white/80 text-sm">الرصيد المتاح للاستخدام</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">المحفظة الإلكترونية</h2>
-            <p className="text-sm text-gray-600">إدارة رصيدك المالي</p>
+          
+          <div className="flex items-center gap-2 text-white/60">
+            <Activity className="h-4 w-4 animate-pulse" />
+            <span className="text-xs font-medium">نشط</span>
           </div>
         </div>
-        <button
-          onClick={onTopUp}
-          className="flex items-center space-x-2 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-px text-sm font-medium"
-        >
-          <CreditCard className="h-4 w-4" />
-          <span>شحن الرصيد</span>
-        </button>
-      </div>
-      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4">
-        <div className="text-center">
-          <p className="text-sm text-gray-600 mb-1">الرصيد الحالي</p>
-          <p className="text-3xl font-bold text-gray-800"> {Number(wallet.balance).toFixed(2)} جنية</p>
+        
+        <div className="flex items-end justify-between">
+          <div className="space-y-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl sm:text-5xl font-bold tracking-tight">{balance.toLocaleString()}</span>
+              <span className="text-lg font-medium text-white/80">جنية</span>
+            </div>
+            <div className="flex items-center gap-2 text-white/70">
+              <TrendingUp className="h-4 w-4" />
+              <span className="text-sm">متاح للاستخدام الفوري</span>
+            </div>
+          </div>
+          
+          <button
+            onClick={() => setShowTopUpForm(!showTopUpForm)}
+            className="group/btn relative overflow-hidden bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg border border-white/30 hover:border-white/50"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-center gap-2">
+              <Zap className="h-4 w-4 group-hover/btn:rotate-12 transition-transform duration-300" />
+              <span>{showTopUpForm ? 'إخفاء الشحن' : 'شحن الرصيد'}</span>
+            </div>
+          </button>
+        </div>
+        
+        {/* Top-up Form */}
+        {showTopUpForm && (
+          <div className="mt-6 pt-6 border-t border-white/20 animate-fade-in-up">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+              <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                شحن الرصيد
+              </h4>
+              
+              <div className="space-y-4 mb-6">
+                <div className="bg-white/10 rounded-xl p-4">
+                  <p className="text-sm text-white/80 mb-2">رقم المحفظة للتحويل إليها:</p>
+                  <p className="text-xl font-bold font-mono">01026454497</p>
+                  <p className="text-xs text-white/70 mt-1">قم بتحويل المبلغ من رقمك المسجل إلى هذا الرقم</p>
+                </div>
+                
+                <div className="bg-white/10 rounded-xl p-4">
+                  <p className="text-sm text-white/80 mb-2">رقمك المسجل:</p>
+                  <p className="text-lg font-bold font-mono">01026454443</p>
+                  <p className="text-xs text-white/70 mt-1">تأكد من التحويل من هذا الرقم</p>
+                </div>
+              </div>
+              
+              <form onSubmit={handleTopUpSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-white/90 mb-2">
+                    المبلغ (جنيه مصري)
+                  </label>
+                  <input
+                    type="number"
+                    value={topUpAmount}
+                    onChange={(e) => setTopUpAmount(e.target.value)}
+                    placeholder="أدخل المبلغ"
+                    className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition-all duration-300"
+                    required
+                    min="1"
+                    step="0.01"
+                  />
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !topUpAmount}
+                    className="flex-1 bg-white/20 hover:bg-white/30 disabled:bg-white/10 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 hover:scale-105 disabled:hover:scale-100 border border-white/30 hover:border-white/50"
+                  >
+                    {isSubmitting ? 'جاري الإرسال...' : 'تأكيد الشحن'}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTopUpForm(false);
+                      setTopUpAmount('');
+                    }}
+                    className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all duration-300 border border-white/20 hover:border-white/30"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        
+        {/* Balance Status Indicator */}
+        <div className="mt-4 pt-4 border-t border-white/20">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-white/70">
+              <div className={`w-2 h-2 rounded-full ${balance > 100 ? 'bg-green-400' : balance > 50 ? 'bg-yellow-400' : 'bg-red-400'} animate-pulse`}></div>
+              <span>
+                {balance > 100 ? 'رصيد ممتاز' : balance > 50 ? 'رصيد جيد' : 'رصيد منخفض'}
+              </span>
+            </div>
+            <div className="text-white/60">
+              آخر تحديث: الآن
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -398,50 +789,86 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl">
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-        <div className="flex justify-between items-start">
+    <div className="group relative bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-2 border border-gray-100">
+      {/* Animated Background Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      
+      {/* Status Indicator Bar */}
+      <div className={`h-1 w-full ${
+        !isEnrolled ? 'bg-gray-300' :
+        enrollment?.status === 'expired' ? 'bg-gradient-to-r from-red-400 to-red-600' :
+        enrollment?.status === 'expiring_soon' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+        'bg-gradient-to-r from-green-400 to-emerald-500'
+      }`}></div>
+      
+      <div className="relative z-10 p-8">
+        <div className="flex justify-between items-start mb-6">
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-800">{platform.name}</h2>
-            <p className="text-sm text-gray-600 mt-1">{platform.description}</p>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`p-3 rounded-2xl shadow-lg ${
+                !isEnrolled ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
+                enrollment?.status === 'expired' ? 'bg-gradient-to-br from-red-400 to-red-600' :
+                enrollment?.status === 'expiring_soon' ? 'bg-gradient-to-br from-yellow-400 to-orange-500' :
+                'bg-gradient-to-br from-green-400 to-emerald-600'
+              } text-white group-hover:scale-110 transition-transform duration-300`}>
+                <GraduationCap className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 group-hover:text-gray-900 transition-colors">{platform.name}</h2>
+                <p className="text-gray-600 text-sm mt-1">{platform.description}</p>
+              </div>
+            </div>
             
             {/* Enrollment Details */}
             {isEnrolled && enrollment && (
-              <div className="mt-3 space-y-2">
+              <div className="mt-4 space-y-3">
                 {/* Expiration Date */}
                 {enrollment.expiresAt && (
-                  <div className="flex items-center space-x-2 space-x-reverse text-sm">
+                  <div className="flex items-center gap-2 text-sm bg-gray-50 rounded-xl p-3">
                     <Clock className="h-4 w-4 text-gray-500" />
                     <span className="text-gray-600">تاريخ الانتهاء:</span>
-                    <span className="font-medium text-gray-800">{formatDate(enrollment.expiresAt)}</span>
+                    <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
                   </div>
                 )}
                 
-                {/* Days Remaining */}
-                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  enrollment.status === 'expired' ? 'bg-red-100 text-red-800' :
-                  enrollment.status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
-                  <Clock className="h-4 w-4 ml-1" />
-                  {enrollment.status === 'expired' ? 'منتهي الصلاحية' :
-                   enrollment.status === 'expiring_soon' ? `${enrollment.daysRemaining} أيام متبقية` :
-                   `${enrollment.daysRemaining} يوم متبقي`}
+                {/* Days Remaining with Progress */}
+                <div className="space-y-2">
+                  <div className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-semibold shadow-sm ${
+                    enrollment.status === 'expired' ? 'bg-red-100 text-red-800 border border-red-200' :
+                    enrollment.status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                    'bg-green-100 text-green-800 border border-green-200'
+                  }`}>
+                    <Activity className="h-4 w-4 ml-2" />
+                    {enrollment.status === 'expired' ? 'منتهي الصلاحية' :
+                     enrollment.status === 'expiring_soon' ? `${enrollment.daysRemaining} أيام متبقية` :
+                     `${enrollment.daysRemaining} يوم متبقي`}
+                  </div>
+                  
+                  {/* Progress Bar for Days Remaining */}
+                  {enrollment.status !== 'expired' && enrollment.daysRemaining !== undefined && (
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          enrollment.status === 'expiring_soon' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                          'bg-gradient-to-r from-green-400 to-emerald-500'
+                        }`}
+                        style={{ width: `${Math.min((enrollment.daysRemaining / 30) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Platform URL for active enrollments */}
                 {enrollment.status !== 'expired' && platform.url && (
-                  <div className="mt-2">
+                  <div className="mt-3">
                     <a
                       href={platform.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
+                      className="group/link inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-semibold bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105"
                     >
                       <span>زيارة المنصة</span>
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
+                      <ArrowUp className="h-4 w-4 rotate-45 group-hover/link:rotate-12 transition-transform duration-300" />
                     </a>
                   </div>
                 )}
@@ -449,46 +876,62 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
             )}
           </div>
           
-          <div className="flex flex-col items-end space-y-2">
-            {/* Price */}
+          <div className="flex flex-col items-end space-y-3">
+            {/* Price with Enhanced Design */}
             {platform.isPaid && (
-              <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
-                {platform.price} جنية
-              </span>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl blur opacity-30"></div>
+                <span className="relative bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 px-4 py-2 rounded-2xl text-sm font-bold border border-yellow-200 shadow-sm">
+                  {platform.price} جنية
+                </span>
+              </div>
             )}
             
-            {/* Enrollment Status and Actions */}
+            {/* Enhanced Enrollment Status and Actions */}
             {!isEnrolled ? (
               <button
                 onClick={handleEnroll}
                 disabled={isEnrolling}
-                className="flex items-center space-x-2 space-x-reverse bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400"
+                className="group/btn relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed"
               >
-                <ShoppingCart className="h-4 w-4" />
-                <span>{isEnrolling ? 'جاري الاشتراك...' : 'اشترك الآن'}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative flex items-center gap-2">
+                  <ShoppingCart className={`h-4 w-4 ${isEnrolling ? 'animate-bounce' : 'group-hover/btn:scale-110'} transition-transform duration-300`} />
+                  <span>{isEnrolling ? 'جاري الاشتراك...' : 'اشترك الآن'}</span>
+                </div>
               </button>
             ) : enrollment?.status === 'expired' ? (
               <button
                 onClick={handleRenewEnrollment}
                 disabled={isRenewing}
-                className="flex items-center space-x-2 space-x-reverse bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400"
+                className="group/btn relative overflow-hidden bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500"
               >
-                <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : ''}`} />
-                <span>{isRenewing ? 'جاري التجديد...' : 'تجديد الاشتراك'}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative flex items-center gap-2">
+                  <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : 'group-hover/btn:rotate-180'} transition-transform duration-500`} />
+                  <span>{isRenewing ? 'جاري التجديد...' : 'تجديد الاشتراك'}</span>
+                </div>
               </button>
             ) : enrollment?.status === 'expiring_soon' ? (
               <button
                 onClick={handleRenewEnrollment}
                 disabled={isRenewing}
-                className="flex items-center space-x-2 space-x-reverse bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-400"
+                className="group/btn relative overflow-hidden bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500"
               >
-                <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : ''}`} />
-                <span>{isRenewing ? 'جاري التجديد...' : 'تجديد مبكر'}</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative flex items-center gap-2">
+                  <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : 'group-hover/btn:rotate-180'} transition-transform duration-500`} />
+                  <span>{isRenewing ? 'جاري التجديد...' : 'تجديد مبكر'}</span>
+                </div>
               </button>
             ) : (
-              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                مشترك ونشط
-              </span>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-2xl blur opacity-30"></div>
+                <span className="relative bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-2xl text-sm font-bold border border-green-200 shadow-sm flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  مشترك ونشط
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -525,48 +968,133 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
   const submission = task.submissions?.[0];
   const difficultyMap = { EASY: 'سهل', MEDIUM: 'متوسط', HARD: 'صعب' };
   const difficultyColors = {
-    EASY: 'bg-green-100 text-green-800',
-    MEDIUM: 'bg-yellow-100 text-yellow-800',
-    HARD: 'bg-red-100 text-red-800',
+    EASY: {
+      bg: 'bg-gradient-to-r from-green-100 to-emerald-100',
+      text: 'text-green-800',
+      border: 'border-green-200',
+      icon: 'text-green-600'
+    },
+    MEDIUM: {
+      bg: 'bg-gradient-to-r from-yellow-100 to-orange-100',
+      text: 'text-yellow-800',
+      border: 'border-yellow-200',
+      icon: 'text-yellow-600'
+    },
+    HARD: {
+      bg: 'bg-gradient-to-r from-red-100 to-pink-100',
+      text: 'text-red-800',
+      border: 'border-red-200',
+      icon: 'text-red-600'
+    },
+  };
+
+  // Fallback for undefined difficulty
+  const difficulty = task.difficulty || 'MEDIUM';
+  const currentDifficultyColors = difficultyColors[difficulty as keyof typeof difficultyColors] || difficultyColors.MEDIUM;
+
+  const scorePercentage = submission?.score ? (submission.score / 100) * 100 : 0;
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'from-green-400 to-emerald-500';
+    if (score >= 60) return 'from-blue-400 to-blue-500';
+    if (score >= 40) return 'from-yellow-400 to-orange-500';
+    return 'from-red-400 to-red-500';
   };
 
   return (
-    <div onClick={onClick} className="bg-gray-50 border border-gray-200/80 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:border-blue-400 hover:scale-105 cursor-pointer group">
-      <div className="flex justify-between items-start mb-3">
-        <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{task.title}</h3>
-        <StatusIcon className={`h-5 w-5 transition-colors ${taskStatus.color}`} />
-      </div>
-      <p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10">{task.description}</p>
+    <div 
+      onClick={onClick} 
+      className="group relative bg-white/95 backdrop-blur-sm border border-gray-200/60 rounded-2xl p-6 transition-all duration-500 hover:shadow-2xl hover:border-blue-300 hover:scale-[1.03] hover:-translate-y-1 cursor-pointer overflow-hidden"
+    >
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-pink-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       
-      {/* Score Display */}
-      {submission?.score !== null && submission?.score !== undefined && (
-        <div className="mb-3 flex items-center space-x-2 space-x-reverse">
-          <Trophy className="w-4 h-4 text-yellow-500" />
-          <span className="text-sm font-medium text-gray-700">
-            الدرجة: <span className={`font-bold ${submission.score >= 70 ? 'text-green-600' : submission.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-              {submission.score}/100
-            </span>
-          </span>
-        </div>
-      )}
+      {/* Status Indicator */}
+      <div className={`absolute top-0 right-0 w-3 h-3 rounded-full m-3 ${taskStatus.color.includes('green') ? 'bg-green-400' : taskStatus.color.includes('yellow') ? 'bg-yellow-400' : taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-gray-400'} animate-pulse`}></div>
       
-      {/* Feedback Display */}
-      {submission?.feedback && (submission.status === 'APPROVED' || submission.status === 'REJECTED') && (
-        <div className="mb-3 p-3 bg-white rounded-lg border border-gray-200">
-          <div className="flex items-center space-x-2 space-x-reverse mb-2">
-            <FileText className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-semibold text-gray-700">ملاحظات المدرب:</span>
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1 pr-4">
+            <h3 className="font-bold text-lg text-gray-800 group-hover:text-blue-600 transition-colors duration-300 leading-tight">{task.title}</h3>
+            <p className="text-sm text-gray-600 mt-2 line-clamp-2 leading-relaxed">{task.description}</p>
           </div>
-          <p className="text-sm text-gray-600 leading-relaxed">{submission.feedback}</p>
+          <div className={`p-3 rounded-2xl shadow-lg ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border group-hover:scale-110 transition-transform duration-300`}>
+            <StatusIcon className={`h-6 w-6 transition-colors duration-300 ${taskStatus.color}`} />
+          </div>
         </div>
-      )}
-      
-      <div className="flex justify-between items-center text-xs pt-3 border-t border-gray-200">
-        <span className={`px-2.5 py-1 rounded-full font-medium ${difficultyColors[task.difficulty]}`}>
-          {difficultyMap[task.difficulty]}
-        </span>
-        <span className={`font-medium ${taskStatus.color}`}>{taskStatus.text}</span>
+        
+        {/* Score Display with Progress */}
+        {submission?.score !== null && submission?.score !== undefined && (
+          <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl border border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-yellow-100 rounded-xl">
+                  <Trophy className="w-4 h-4 text-yellow-600" />
+                </div>
+                <span className="text-sm font-semibold text-gray-700">النتيجة</span>
+              </div>
+              <span className={`text-lg font-bold ${
+                submission.score >= 80 ? 'text-green-600' : 
+                submission.score >= 60 ? 'text-blue-600' : 
+                submission.score >= 40 ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {submission.score}/100
+              </span>
+            </div>
+            {/* Score Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div 
+                className={`h-full bg-gradient-to-r ${getScoreColor(submission.score)} rounded-full transition-all duration-1000 ease-out`}
+                style={{ width: `${scorePercentage}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+        
+        {/* Enhanced Feedback Display */}
+        {submission?.feedback && (submission.status === 'APPROVED' || submission.status === 'REJECTED') && (
+          <div className="mb-4 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-2 bg-blue-100 rounded-xl">
+                <FileText className="w-4 h-4 text-blue-600" />
+              </div>
+              <span className="text-sm font-semibold text-gray-700">ملاحظات المدرب</span>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-xl">{submission.feedback}</p>
+          </div>
+        )}
+        
+        {/* Enhanced Footer */}
+        <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2">
+             <div className={`p-2 rounded-xl ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border`}>
+               <Target className={`h-4 w-4 ${currentDifficultyColors.icon}`} />
+             </div>
+             <span className={`text-sm font-semibold ${currentDifficultyColors.text}`}>
+               {difficultyMap[difficulty as keyof typeof difficultyMap] || 'متوسط'}
+             </span>
+           </div>
+          
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              taskStatus.color.includes('green') ? 'bg-green-400' : 
+              taskStatus.color.includes('yellow') ? 'bg-yellow-400' : 
+              taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-gray-400'
+            } animate-pulse`}></div>
+            <span className={`text-sm font-semibold ${taskStatus.color}`}>{taskStatus.text}</span>
+          </div>
+        </div>
+        
+        {/* Hover Effect Indicator */}
+        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="flex items-center gap-1 text-xs text-blue-600 font-medium">
+            <Play className="h-3 w-3" />
+            <span>انقر للتفاصيل</span>
+          </div>
+        </div>
       </div>
+      
+      {/* Glow Effect */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-gradient-to-br from-blue-400 to-purple-500 blur-xl"></div>
     </div>
   );
 };
@@ -645,103 +1173,7 @@ const SubmissionModal: FC<SubmissionModalProps> = ({ task, onClose, onSuccess })
   );
 };
 
-const TopUpModal: FC<{ isOpen: boolean; onClose: () => void; onSuccess: () => void }> = ({ isOpen, onClose, onSuccess }) => {
-  const [amount, setAmount] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { data: session } = useSession();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!amount || parseFloat(amount) <= 0) {
-      alert('يرجى إدخال مبلغ صحيح');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const response = await fetch('/api/wallet/topup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          amount: parseFloat(amount)
-        }),
-      });
-      if (response.ok) {
-        onSuccess();
-        onClose();
-        setAmount('');
-        alert('تم إرسال طلب الشحن بنجاح. سيتم مراجعته من قبل الإدارة.');
-      } else {
-        const error = await response.json();
-        alert(`فشل في إرسال الطلب: ${error.error}`);
-      }
-    } catch (error) {
-      console.error('Top-up error:', error);
-      alert('حدث خطأ أثناء إرسال الطلب.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" dir="rtl">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-800">شحن الرصيد</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-            <label className="block text-sm font-medium text-gray-700 mb-1">رقم المحفظة للتحويل إليها:</label>
-            <div className="text-lg font-bold text-blue-600">01026454497</div>
-            <p className="text-xs text-gray-600 mt-1">قم بتحويل المبلغ من رقمك المسجل إلى هذا الرقم</p>
-          </div>
-          {session?.user?.phoneNumber && (
-            <div className="mb-4 p-3 bg-green-50 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 mb-1">رقمك المسجل:</label>
-              <div className="text-lg font-bold text-green-600">{session.user.phoneNumber}</div>
-              <p className="text-xs text-gray-600 mt-1">تأكد من التحويل من هذا الرقم</p>
-            </div>
-          )}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">المبلغ (جنيه مصري)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="1"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="أدخل المبلغ المحول"
-              required
-            />
-          </div>
-
-          <div className="flex space-x-3 space-x-reverse">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400"
-            >
-              {isSubmitting ? 'جاري الإرسال...' : 'إرسال الطلب'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
 
   const MentorshipModal: FC<{ isOpen: boolean; userBalance: number; onClose: () => void; onSuccess: () => void }> = ({ isOpen, userBalance, onClose, onSuccess }) => {
   const [sessionType, setSessionType] = useState<'RECORDED' | 'FACE_TO_FACE'>('RECORDED');
