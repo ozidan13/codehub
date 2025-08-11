@@ -793,7 +793,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
   };
 
   return (
-    <div className="group relative bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-2 border border-gray-100">
+    <div className="group relative bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl border border-gray-100">
       {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       
@@ -1103,7 +1103,7 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
       </div>
       
       {/* Glow Effect */}
-      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-gradient-to-br from-blue-400 to-purple-500 blur-xl"></div>
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-xl"></div>
     </div>
   );
 };
