@@ -575,13 +575,13 @@ const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({
           </div>
         </div>
         
-        <div className="flex items-end justify-between">
-          <div className="space-y-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl sm:text-5xl font-bold tracking-tight">{balance.toLocaleString()}</span>
-              <span className="text-lg font-medium text-white/80">جنية</span>
+        <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4 sm:gap-0">
+          <div className="space-y-2 text-center sm:text-right w-full sm:w-auto">
+            <div className="flex items-baseline gap-2 justify-center sm:justify-start">
+              <span className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">{balance.toLocaleString()}</span>
+              <span className="text-base sm:text-lg font-medium text-white/80">جنية</span>
             </div>
-            <div className="flex items-center gap-2 text-white/70">
+            <div className="flex items-center gap-2 text-white/70 justify-center sm:justify-start">
               <TrendingUp className="h-4 w-4" />
               <span className="text-sm">متاح للاستخدام الفوري</span>
             </div>
@@ -589,12 +589,12 @@ const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({
           
           <button
             onClick={() => setShowTopUpForm(!showTopUpForm)}
-            className="group/btn relative overflow-hidden bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg border border-white/30 hover:border-white/50"
+            className="group/btn relative overflow-hidden bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg border border-white/30 hover:border-white/50 w-full sm:w-auto min-h-[48px]"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
-            <div className="relative flex items-center gap-2">
+            <div className="relative flex items-center gap-2 justify-center">
               <Zap className="h-4 w-4 group-hover/btn:rotate-12 transition-transform duration-300" />
-              <span>{showTopUpForm ? 'إخفاء الشحن' : 'شحن الرصيد'}</span>
+              <span className="text-sm sm:text-base">{showTopUpForm ? 'إخفاء الشحن' : 'شحن الرصيد'}</span>
             </div>
           </button>
         </div>
