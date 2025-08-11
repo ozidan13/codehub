@@ -509,6 +509,7 @@ const EnhancedStatCard: FC<{
 }
 
 const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({ wallet, onTopUp }) => {
+  const { data: session } = useSession();
   const [showTopUpForm, setShowTopUpForm] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -613,7 +614,7 @@ const WalletSection: FC<{ wallet: WalletData | null; onTopUp: () => void }> = ({
                 
                 <div className="bg-white/10 rounded-xl p-4">
                   <p className="text-sm text-white/80 mb-2">رقمك المسجل:</p>
-                  <p className="text-lg font-bold font-mono">01026454443</p>
+                  <p className="text-lg font-bold font-mono">{session?.user?.phoneNumber || 'غير محدد'}</p>
                   <p className="text-xs text-white/70 mt-1">تأكد من التحويل من هذا الرقم</p>
                 </div>
               </div>
