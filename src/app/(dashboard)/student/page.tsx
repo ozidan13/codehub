@@ -159,39 +159,39 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100" dir="rtl">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+      <div className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 lg:space-y-8">
         {/* Enhanced Header */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-white/20 p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-4 space-x-reverse">
+            <div className="flex items-center space-x-3 sm:space-x-4 space-x-reverse">
               <div className="relative">
-                <div className="h-16 w-16 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg">
-                  <BookOpen className="h-8 w-8 text-white" />
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
+                  <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
-                <div className="absolute -top-1 -right-1 h-6 w-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                  <Sparkles className="h-3 w-3 text-white" />
+                <div className="absolute -top-1 -right-1 h-4 w-4 sm:h-6 sm:w-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                  <Sparkles className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                   لوحة التعلم الذكية
                 </h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">
                   أهلاً بك مجدداً، <span className="font-bold text-blue-600">{session?.user?.name || 'الطالب'}</span>! 🎯
                 </p>
-                <div className="flex items-center space-x-2 space-x-reverse mt-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="flex items-center space-x-2 space-x-reverse mt-1 sm:mt-2">
+                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-xs text-green-600 font-medium">متصل الآن</span>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-3 space-x-reverse">
+            <div className="flex items-center space-x-2 sm:space-x-3 space-x-reverse">
               <button 
                 onClick={handleRefresh} 
-                className="group relative p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="group relative p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
-                <RefreshCw className={`h-5 w-5 transition-transform duration-300 ${isContentLoading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-                <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isContentLoading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
+                <div className="absolute inset-0 bg-white/20 rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
             </div>
           </div>
@@ -217,27 +217,29 @@ export default function DashboardPage() {
             <WalletSection wallet={wallet} onTopUp={handleTopUpSuccess} />
             
             {/* Enhanced Platforms Section */}
-            <div className="space-y-8">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
+            <div className="space-y-6">
+              <div className="text-center mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
                   منصات التعلم المتاحة
                 </h2>
-                <p className="text-gray-600">اختر المنصة التي تريد التعلم منها وابدأ رحلتك التعليمية</p>
+                <p className="text-gray-600 text-sm sm:text-base">اختر المنصة التي تريد التعلم منها وابدأ رحلتك التعليمية</p>
               </div>
-              {platforms.map((platform, index) => (
-                <div 
-                  key={platform.id} 
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <PlatformCard 
-                    platform={platform} 
-                    enrollments={enrollments} 
-                    onTaskClick={handleTaskClick} 
-                    onEnrollmentSuccess={handleEnrollmentSuccess} 
-                  />
-                </div>
-              ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 lg:gap-6">
+                {platforms.map((platform, index) => (
+                  <div 
+                    key={platform.id} 
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <PlatformCard 
+                      platform={platform} 
+                      enrollments={enrollments} 
+                      onTaskClick={handleTaskClick} 
+                      onEnrollmentSuccess={handleEnrollmentSuccess} 
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         )}
@@ -284,7 +286,7 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
   return (
     <div className="space-y-6">
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         <EnhancedStatCard 
           icon={<FileText />} 
           title="إجمالي التسليمات" 
@@ -322,23 +324,24 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
       </div>
       
       {/* Progress Overview */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-blue-600" />
-            نظرة عامة على الأداء
+      <div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h3 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+            <span className="hidden sm:inline">نظرة عامة على الأداء</span>
+            <span className="sm:hidden">الأداء</span>
           </h3>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Activity className="h-4 w-4" />
-            تحديث مباشر
+          <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
+            <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">تحديث مباشر</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {/* Completion Rate */}
           <div className="text-center">
-            <div className="relative w-20 h-20 mx-auto mb-3">
-              <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3">
+              <svg className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90" viewBox="0 0 36 36">
                 <path
                   className="text-gray-200"
                   stroke="currentColor"
@@ -357,17 +360,17 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-800">{completionRate.toFixed(0)}%</span>
+                <span className="text-sm sm:text-lg font-bold text-gray-800">{completionRate.toFixed(0)}%</span>
               </div>
             </div>
-            <p className="text-sm font-medium text-gray-700">معدل الإنجاز</p>
-            <p className="text-xs text-gray-500">من المهام المقبولة</p>
+            <p className="text-xs sm:text-sm font-medium text-gray-700">معدل الإنجاز</p>
+            <p className="text-xs text-gray-500 hidden sm:block">من المهام المقبولة</p>
           </div>
           
           {/* Average Score */}
           <div className="text-center">
-            <div className="relative w-20 h-20 mx-auto mb-3">
-              <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3">
+              <svg className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90" viewBox="0 0 36 36">
                 <path
                   className="text-gray-200"
                   stroke="currentColor"
@@ -386,33 +389,33 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-800">{averageScore.toFixed(0)}</span>
+                <span className="text-sm sm:text-lg font-bold text-gray-800">{averageScore.toFixed(0)}</span>
               </div>
             </div>
-            <p className="text-sm font-medium text-gray-700">متوسط الدرجات</p>
-            <p className="text-xs text-gray-500">من 100 درجة</p>
+            <p className="text-xs sm:text-sm font-medium text-gray-700">متوسط الدرجات</p>
+            <p className="text-xs text-gray-500 hidden sm:block">من 100 درجة</p>
           </div>
           
           {/* Performance Level */}
           <div className="text-center">
-            <div className="w-20 h-20 mx-auto mb-3 flex items-center justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 flex items-center justify-center">
               {averageScore >= 90 ? (
                 <div className="relative">
-                  <Medal className="h-12 w-12 text-yellow-500" />
-                  <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-400 animate-pulse" />
+                  <Medal className="h-8 w-8 sm:h-12 sm:w-12 text-yellow-500" />
+                  <Sparkles className="absolute -top-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 animate-pulse" />
                 </div>
               ) : averageScore >= 70 ? (
-                <Award className="h-12 w-12 text-green-500" />
+                <Award className="h-8 w-8 sm:h-12 sm:w-12 text-green-500" />
               ) : averageScore >= 50 ? (
-                <Target className="h-12 w-12 text-yellow-500" />
+                <Target className="h-8 w-8 sm:h-12 sm:w-12 text-yellow-500" />
               ) : (
-                <TrendingUp className="h-12 w-12 text-blue-500" />
+                <TrendingUp className="h-8 w-8 sm:h-12 sm:w-12 text-blue-500" />
               )}
             </div>
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-xs sm:text-sm font-medium text-gray-700">
               {averageScore >= 90 ? 'ممتاز' : averageScore >= 70 ? 'جيد جداً' : averageScore >= 50 ? 'جيد' : 'يحتاج تحسين'}
             </p>
-            <p className="text-xs text-gray-500">مستوى الأداء</p>
+            <p className="text-xs text-gray-500 hidden sm:block">مستوى الأداء</p>
           </div>
         </div>
       </div>
@@ -460,38 +463,38 @@ const EnhancedStatCard: FC<{
   const trendColor = trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
 
   return (
-    <div className={`group relative bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border ${colors[color].border} transition-all duration-300 hover:shadow-xl hover:scale-105 hover:-translate-y-1`}>
+    <div className={`group relative bg-white/80 backdrop-blur-sm p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl shadow-lg border ${colors[color].border} transition-all duration-300 hover:shadow-xl hover:scale-105 hover:-translate-y-1`}>
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       
       <div className="relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <div className={`p-3 rounded-xl bg-gradient-to-br ${colors[color].gradient} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-            {icon}
+        <div className="flex items-start justify-between mb-2 sm:mb-3 lg:mb-4">
+          <div className={`p-2 sm:p-2.5 lg:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br ${colors[color].gradient} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+            <div className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6">{icon}</div>
           </div>
           <div className={`flex items-center gap-1 ${trendColor}`}>
-            <TrendIcon className="h-4 w-4" />
-            <span className="text-xs font-medium">
+            <TrendIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="text-xs font-medium hidden sm:inline">
               {trend === 'up' ? 'متزايد' : trend === 'down' ? 'متناقص' : 'ثابت'}
             </span>
           </div>
         </div>
         
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-600">{title}</h3>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-gray-800">{value}</span>
-            {subtitle && <span className="text-xs text-gray-500">{subtitle}</span>}
+        <div className="space-y-1 sm:space-y-2">
+          <h3 className="text-xs sm:text-sm font-medium text-gray-600 leading-tight">{title}</h3>
+          <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
+            <span className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-800">{value}</span>
+            {subtitle && <span className="text-xs text-gray-500 hidden sm:inline">{subtitle}</span>}
           </div>
           
           {/* Progress Bar */}
           {progress !== undefined && (
-            <div className="mt-3">
+            <div className="mt-2 sm:mt-3">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <span>التقدم</span>
+                <span className="hidden sm:inline">التقدم</span>
                 <span>{progress.toFixed(0)}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 overflow-hidden">
                 <div 
                   className={`h-full bg-gradient-to-r ${colors[color].gradient} rounded-full transition-all duration-1000 ease-out`}
                   style={{ width: `${Math.min(progress, 100)}%` }}
@@ -790,7 +793,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
   };
 
   return (
-    <div className="group relative bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-2 border border-gray-100">
+    <div className="group relative bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-2 border border-gray-100">
       {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       
@@ -802,44 +805,44 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
         'bg-gradient-to-r from-green-400 to-emerald-500'
       }`}></div>
       
-      <div className="relative z-10 p-8">
-        <div className="flex justify-between items-start mb-6">
+      <div className="relative z-10 p-3 sm:p-4 lg:p-8">
+        <div className="flex justify-between items-start mb-3 sm:mb-4 lg:mb-6">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`p-3 rounded-2xl shadow-lg ${
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+              <div className={`p-2 sm:p-2.5 lg:p-3 rounded-lg sm:rounded-xl lg:rounded-2xl shadow-lg ${
                 !isEnrolled ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
                 enrollment?.status === 'expired' ? 'bg-gradient-to-br from-red-400 to-red-600' :
                 enrollment?.status === 'expiring_soon' ? 'bg-gradient-to-br from-yellow-400 to-orange-500' :
                 'bg-gradient-to-br from-green-400 to-emerald-600'
               } text-white group-hover:scale-110 transition-transform duration-300`}>
-                <GraduationCap className="h-6 w-6" />
+                <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 group-hover:text-gray-900 transition-colors">{platform.name}</h2>
-                <p className="text-gray-600 text-sm mt-1">{platform.description}</p>
+                <h2 className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-800 group-hover:text-gray-900 transition-colors">{platform.name}</h2>
+                <p className="text-gray-600 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">{platform.description}</p>
               </div>
             </div>
             
             {/* Enrollment Details */}
             {isEnrolled && enrollment && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-2 sm:mt-3 lg:mt-4 space-y-2 sm:space-y-3">
                 {/* Expiration Date */}
                 {enrollment.expiresAt && (
-                  <div className="flex items-center gap-2 text-sm bg-gray-50 rounded-xl p-3">
-                    <Clock className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-600">تاريخ الانتهاء:</span>
+                  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm bg-gray-50 rounded-lg sm:rounded-xl p-2 sm:p-3">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                    <span className="text-gray-600 hidden sm:inline">تاريخ الانتهاء:</span>
                     <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
                   </div>
                 )}
                 
                 {/* Days Remaining with Progress */}
-                <div className="space-y-2">
-                  <div className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-semibold shadow-sm ${
+                <div className="space-y-1 sm:space-y-2">
+                  <div className={`inline-flex items-center px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-semibold shadow-sm ${
                     enrollment.status === 'expired' ? 'bg-red-100 text-red-800 border border-red-200' :
                     enrollment.status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
                     'bg-green-100 text-green-800 border border-green-200'
                   }`}>
-                    <Activity className="h-4 w-4 ml-2" />
+                    <Activity className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
                     {enrollment.status === 'expired' ? 'منتهي الصلاحية' :
                      enrollment.status === 'expiring_soon' ? `${enrollment.daysRemaining} أيام متبقية` :
                      `${enrollment.daysRemaining} يوم متبقي`}
@@ -847,7 +850,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
                   
                   {/* Progress Bar for Days Remaining */}
                   {enrollment.status !== 'expired' && enrollment.daysRemaining !== undefined && (
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all duration-1000 ${
                           enrollment.status === 'expiring_soon' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
@@ -861,15 +864,16 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
                 
                 {/* Platform URL for active enrollments */}
                 {enrollment.status !== 'expired' && platform.url && (
-                  <div className="mt-3">
+                  <div className="mt-2 sm:mt-3">
                     <a
                       href={platform.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group/link inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-semibold bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all duration-300 hover:scale-105"
+                      className="group/link inline-flex items-center gap-1 sm:gap-2 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold bg-blue-50 hover:bg-blue-100 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105"
                     >
-                      <span>زيارة المنصة</span>
-                      <ArrowUp className="h-4 w-4 rotate-45 group-hover/link:rotate-12 transition-transform duration-300" />
+                      <span className="hidden sm:inline">زيارة المنصة</span>
+                      <span className="sm:hidden">زيارة</span>
+                      <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 group-hover/link:rotate-12 transition-transform duration-300" />
                     </a>
                   </div>
                 )}
@@ -877,12 +881,12 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
             )}
           </div>
           
-          <div className="flex flex-col items-end space-y-3">
+          <div className="flex flex-col items-end space-y-2 sm:space-y-3">
             {/* Price with Enhanced Design */}
             {platform.isPaid && (
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl blur opacity-30"></div>
-                <span className="relative bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 px-4 py-2 rounded-2xl text-sm font-bold border border-yellow-200 shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg sm:rounded-xl lg:rounded-2xl blur opacity-30"></div>
+                <span className="relative bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-bold border border-yellow-200 shadow-sm">
                   {platform.price} جنية
                 </span>
               </div>
@@ -893,51 +897,55 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
               <button
                 onClick={handleEnroll}
                 disabled={isEnrolling}
-                className="group/btn relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed"
+                className="group/btn relative overflow-hidden bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm lg:text-base font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative flex items-center gap-2">
-                  <ShoppingCart className={`h-4 w-4 ${isEnrolling ? 'animate-bounce' : 'group-hover/btn:scale-110'} transition-transform duration-300`} />
-                  <span>{isEnrolling ? 'جاري الاشتراك...' : 'اشترك الآن'}</span>
+                  <ShoppingCart className={`h-3 w-3 sm:h-4 sm:w-4 ${isEnrolling ? 'animate-bounce' : 'group-hover/btn:scale-110'} transition-transform duration-300`} />
+                  <span className="hidden sm:inline">{isEnrolling ? 'جاري الاشتراك...' : 'اشترك الآن'}</span>
+                  <span className="sm:hidden">{isEnrolling ? '...' : 'اشترك'}</span>
                 </div>
               </button>
             ) : enrollment?.status === 'expired' ? (
               <button
                 onClick={handleRenewEnrollment}
                 disabled={isRenewing}
-                className="group/btn relative overflow-hidden bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500"
+                className="group/btn relative overflow-hidden bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm lg:text-base font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative flex items-center gap-2">
-                  <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : 'group-hover/btn:rotate-180'} transition-transform duration-500`} />
-                  <span>{isRenewing ? 'جاري التجديد...' : 'تجديد الاشتراك'}</span>
+                  <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${isRenewing ? 'animate-spin' : 'group-hover/btn:rotate-180'} transition-transform duration-500`} />
+                  <span className="hidden sm:inline">{isRenewing ? 'جاري التجديد...' : 'تجديد الاشتراك'}</span>
+                  <span className="sm:hidden">{isRenewing ? '...' : 'تجديد'}</span>
                 </div>
               </button>
             ) : enrollment?.status === 'expiring_soon' ? (
               <button
                 onClick={handleRenewEnrollment}
                 disabled={isRenewing}
-                className="group/btn relative overflow-hidden bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500"
+                className="group/btn relative overflow-hidden bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm lg:text-base font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:from-gray-400 disabled:to-gray-500"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative flex items-center gap-2">
-                  <RefreshCw className={`h-4 w-4 ${isRenewing ? 'animate-spin' : 'group-hover/btn:rotate-180'} transition-transform duration-500`} />
-                  <span>{isRenewing ? 'جاري التجديد...' : 'تجديد مبكر'}</span>
+                  <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${isRenewing ? 'animate-spin' : 'group-hover/btn:rotate-180'} transition-transform duration-500`} />
+                  <span className="hidden sm:inline">{isRenewing ? 'جاري التجديد...' : 'تجديد مبكر'}</span>
+                  <span className="sm:hidden">{isRenewing ? '...' : 'تجديد مبكر'}</span>
                 </div>
               </button>
             ) : (
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-2xl blur opacity-30"></div>
-                <span className="relative bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-4 py-2 rounded-2xl text-sm font-bold border border-green-200 shadow-sm flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  مشترك ونشط
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-lg sm:rounded-xl lg:rounded-2xl blur opacity-30"></div>
+                <span className="relative bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-bold border border-green-200 shadow-sm flex items-center gap-1 sm:gap-2">
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">مشترك ونشط</span>
+                  <span className="sm:hidden">نشط</span>
                 </span>
               </div>
             )}
           </div>
         </div>
       </div>
-      <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="p-3 sm:p-4 lg:p-6 grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5">
         {isActive ? (
           platform.tasks.map((task) => (
             <TaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
@@ -1004,36 +1012,36 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
   return (
     <div 
       onClick={onClick} 
-      className="group relative bg-white/95 backdrop-blur-sm border border-gray-200/60 rounded-2xl p-6 transition-all duration-500 hover:shadow-2xl hover:border-blue-300 hover:scale-[1.03] hover:-translate-y-1 cursor-pointer overflow-hidden"
+      className="group relative bg-white/95 backdrop-blur-sm border border-gray-200/60 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 transition-all duration-500 hover:shadow-2xl hover:border-blue-300 hover:scale-[1.03] hover:-translate-y-1 cursor-pointer overflow-hidden"
     >
       {/* Animated Background Pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-pink-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
       
       {/* Status Indicator */}
-      <div className={`absolute top-0 right-0 w-3 h-3 rounded-full m-3 ${taskStatus.color.includes('green') ? 'bg-green-400' : taskStatus.color.includes('yellow') ? 'bg-yellow-400' : taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-gray-400'} animate-pulse`}></div>
+      <div className={`absolute top-0 right-0 w-2 h-2 sm:w-3 sm:h-3 rounded-full m-2 sm:m-3 ${taskStatus.color.includes('green') ? 'bg-green-400' : taskStatus.color.includes('yellow') ? 'bg-yellow-400' : taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-gray-400'} animate-pulse`}></div>
       
       <div className="relative z-10">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1 pr-4">
-            <h3 className="font-bold text-lg text-gray-800 group-hover:text-blue-600 transition-colors duration-300 leading-tight">{task.title}</h3>
-            <p className="text-sm text-gray-600 mt-2 line-clamp-2 leading-relaxed">{task.description}</p>
+        <div className="flex justify-between items-start mb-2 sm:mb-3 lg:mb-4">
+          <div className="flex-1 pr-2 sm:pr-3 lg:pr-4">
+            <h3 className="font-bold text-sm sm:text-base lg:text-lg text-gray-800 group-hover:text-blue-600 transition-colors duration-300 leading-tight">{task.title}</h3>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2 line-clamp-2 leading-relaxed hidden sm:block">{task.description}</p>
           </div>
-          <div className={`p-3 rounded-2xl shadow-lg ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border group-hover:scale-110 transition-transform duration-300`}>
-            <StatusIcon className={`h-6 w-6 transition-colors duration-300 ${taskStatus.color}`} />
+          <div className={`p-1.5 sm:p-2 lg:p-3 rounded-lg sm:rounded-xl lg:rounded-2xl shadow-lg ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border group-hover:scale-110 transition-transform duration-300`}>
+            <StatusIcon className={`h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 transition-colors duration-300 ${taskStatus.color}`} />
           </div>
         </div>
         
         {/* Score Display with Progress */}
         {submission?.score !== null && submission?.score !== undefined && (
-          <div className="mb-4 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl border border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-yellow-100 rounded-xl">
-                  <Trophy className="w-4 h-4 text-yellow-600" />
+          <div className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg sm:rounded-xl lg:rounded-2xl border border-gray-100">
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <div className="p-1 sm:p-1.5 lg:p-2 bg-yellow-100 rounded-lg sm:rounded-xl">
+                  <Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">النتيجة</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-700 hidden sm:inline">النتيجة</span>
               </div>
-              <span className={`text-lg font-bold ${
+              <span className={`text-sm sm:text-base lg:text-lg font-bold ${
                 submission.score >= 80 ? 'text-green-600' : 
                 submission.score >= 60 ? 'text-blue-600' : 
                 submission.score >= 40 ? 'text-yellow-600' : 'text-red-600'
@@ -1042,7 +1050,7 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
               </span>
             </div>
             {/* Score Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 overflow-hidden">
               <div 
                 className={`h-full bg-gradient-to-r ${getScoreColor(submission.score)} rounded-full transition-all duration-1000 ease-out`}
                 style={{ width: `${scorePercentage}%` }}
@@ -1053,40 +1061,40 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
         
         {/* Enhanced Feedback Display */}
         {submission?.feedback && (submission.status === 'APPROVED' || submission.status === 'REJECTED') && (
-          <div className="mb-4 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 bg-blue-100 rounded-xl">
-                <FileText className="w-4 h-4 text-blue-600" />
+          <div className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-white rounded-lg sm:rounded-xl lg:rounded-2xl border border-gray-200 shadow-sm hidden sm:block">
+            <div className="flex items-center gap-2 mb-2 sm:mb-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg sm:rounded-xl">
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
               </div>
-              <span className="text-sm font-semibold text-gray-700">ملاحظات المدرب</span>
+              <span className="text-xs sm:text-sm font-semibold text-gray-700">ملاحظات المدرب</span>
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-xl">{submission.feedback}</p>
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed bg-gray-50 p-2 sm:p-3 rounded-lg sm:rounded-xl">{submission.feedback}</p>
           </div>
         )}
         
         {/* Enhanced Footer */}
-        <div className="flex justify-between items-center pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-2">
-             <div className={`p-2 rounded-xl ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border`}>
-               <Target className={`h-4 w-4 ${currentDifficultyColors.icon}`} />
+        <div className="flex justify-between items-center pt-2 sm:pt-3 lg:pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-1 sm:gap-2">
+             <div className={`p-1 sm:p-1.5 lg:p-2 rounded-lg sm:rounded-xl ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border`}>
+               <Target className={`h-3 w-3 sm:h-4 sm:w-4 ${currentDifficultyColors.icon}`} />
              </div>
-             <span className={`text-sm font-semibold ${currentDifficultyColors.text}`}>
+             <span className={`text-xs sm:text-sm font-semibold ${currentDifficultyColors.text} hidden sm:inline`}>
                {difficultyMap[difficulty as keyof typeof difficultyMap] || 'متوسط'}
              </span>
            </div>
           
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${
+          <div className="flex items-center gap-1 sm:gap-2">
+            <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
               taskStatus.color.includes('green') ? 'bg-green-400' : 
               taskStatus.color.includes('yellow') ? 'bg-yellow-400' : 
               taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-gray-400'
             } animate-pulse`}></div>
-            <span className={`text-sm font-semibold ${taskStatus.color}`}>{taskStatus.text}</span>
+            <span className={`text-xs sm:text-sm font-semibold ${taskStatus.color} hidden sm:inline`}>{taskStatus.text}</span>
           </div>
         </div>
         
         {/* Hover Effect Indicator */}
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute bottom-1 sm:bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden sm:block">
           <div className="flex items-center gap-1 text-xs text-blue-600 font-medium">
             <Play className="h-3 w-3" />
             <span>انقر للتفاصيل</span>
