@@ -283,88 +283,131 @@ export const CalendlyAdminCalendar: React.FC<CalendlyAdminCalendarProps> = ({
   }, [onBulkCreate, onBulkDateRangeCreate, onRefresh]);
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <Calendar className="w-8 h-8 text-blue-600" />
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">إدارة الأوقات المتاحة</h2>
-            <p className="text-gray-600">اختر التواريخ والأوقات المتاحة للحجز</p>
+    <div className={`space-y-8 ${className}`}>
+      {/* Enhanced Header */}
+      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg border border-blue-100/50 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4 space-x-reverse">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+              <Calendar className="w-8 w-8" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-1">إدارة الأوقات المتاحة</h2>
+              <p className="text-blue-600 font-medium flex items-center space-x-2 space-x-reverse">
+                <Settings className="h-4 w-4" />
+                <span>اختر التواريخ والأوقات المتاحة للحجز</span>
+              </p>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-3 space-x-reverse">
-          <button
-            onClick={() => setShowBulkModal(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 space-x-reverse"
-          >
-            <Plus className="w-4 h-4" />
-            <span>إضافة بالجملة</span>
-          </button>
           
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="p-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
-            title="تحديث"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center space-x-3 space-x-reverse">
+            <button
+              onClick={() => setShowBulkModal(true)}
+              className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 flex items-center space-x-2 space-x-reverse shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium">إضافة بالجملة</span>
+            </button>
+            
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 disabled:opacity-50 transform hover:scale-105"
+              title="تحديث"
+            >
+              <RefreshCw className={`w-6 h-6 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Calendar */}
-        <CalendarBase
-          currentDate={currentDate}
-          onDateChange={setCurrentDate}
-          availableDates={availableDates}
-          onDateSelect={setSelectedDate}
-          selectedDate={selectedDate || undefined}
-          className="h-fit"
-        />
+      {/* Enhanced Main Content */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* Enhanced Calendar */}
+        <div className="bg-gradient-to-br from-white to-gray-50/30 rounded-2xl shadow-lg border border-gray-100/50 p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center space-x-2 space-x-reverse">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <span>التقويم</span>
+            </h3>
+            <p className="text-gray-600 text-sm">اختر التاريخ لإدارة الأوقات المتاحة</p>
+          </div>
+          <CalendarBase
+            currentDate={currentDate}
+            onDateChange={setCurrentDate}
+            availableDates={availableDates}
+            onDateSelect={setSelectedDate}
+            selectedDate={selectedDate || undefined}
+            className="h-fit bg-transparent shadow-none"
+          />
+        </div>
         
-        {/* Time Slot Grid */}
-        <TimeSlotGrid
-          selectedDate={selectedDate}
-          availableDates={availableDates}
-          onTimeSlotToggle={handleTimeSlotToggle}
-          onBulkSelect={handleBulkSelect}
-          className="h-fit"
-        />
+        {/* Enhanced Time Slot Grid */}
+        <div className="bg-gradient-to-br from-white to-green-50/30 rounded-2xl shadow-lg border border-green-100/50 p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center space-x-2 space-x-reverse">
+              <Settings className="h-5 w-5 text-green-600" />
+              <span>إدارة الأوقات</span>
+            </h3>
+            <p className="text-gray-600 text-sm">أضف أو احذف الأوقات المتاحة للتاريخ المحدد</p>
+          </div>
+          <TimeSlotGrid
+            selectedDate={selectedDate}
+            availableDates={availableDates}
+            onTimeSlotToggle={handleTimeSlotToggle}
+            onBulkSelect={handleBulkSelect}
+            className="h-fit"
+          />
+        </div>
       </div>
       
-      {/* Selected Date Info */}
+      {/* Enhanced Selected Date Info */}
       {selectedDate && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 border border-blue-200 rounded-lg p-4"
+          className="bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200 rounded-2xl p-6 shadow-md"
         >
           <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-blue-800">التاريخ المحدد</h4>
-              <p className="text-blue-600">{formatDateArabic(selectedDate)}</p>
+            <div className="flex items-center space-x-4 space-x-reverse">
+              <div className="p-3 bg-blue-500 rounded-xl text-white">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-blue-800 text-lg">التاريخ المحدد</h4>
+                <p className="text-blue-600 font-medium">{formatDateArabic(selectedDate)}</p>
+              </div>
             </div>
-            <div className="text-sm text-blue-600">
-              {availableDates.filter(date => {
-                const dateObj = new Date(date.date);
-                return dateObj.toDateString() === selectedDate.toDateString() && !date.isRecurring;
-              }).length} وقت متاح
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-700">
+                {availableDates.filter(date => {
+                  const dateObj = new Date(date.date);
+                  return dateObj.toDateString() === selectedDate.toDateString() && !date.isRecurring;
+                }).length}
+              </div>
+              <div className="text-sm text-blue-600 font-medium">وقت متاح</div>
             </div>
           </div>
         </motion.div>
       )}
       
-      {/* Loading Overlay */}
+      {/* Enhanced Loading Overlay */}
       {(loading || isCreating) && (
-        <div className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-40">
-          <div className="bg-white rounded-lg p-6 flex items-center space-x-3 space-x-reverse">
-            <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
-            <span className="text-gray-700">{isCreating ? 'جاري الحفظ...' : 'جاري التحميل...'}</span>
-          </div>
+        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-8 flex flex-col items-center space-y-4 shadow-2xl border border-blue-100"
+          >
+            <div className="relative">
+              <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <div className="absolute inset-0 w-8 h-8 border-3 border-transparent border-r-blue-400 rounded-full animate-spin animation-delay-150" />
+            </div>
+            <div className="text-center">
+              <span className="text-gray-800 font-semibold text-lg">{isCreating ? 'جاري الحفظ...' : 'جاري التحميل...'}</span>
+              <p className="text-gray-600 text-sm mt-1">{isCreating ? 'يتم حفظ التغييرات' : 'يتم تحضير البيانات'}</p>
+            </div>
+          </motion.div>
         </div>
       )}
       

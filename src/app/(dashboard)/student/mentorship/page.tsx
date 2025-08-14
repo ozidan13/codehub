@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, FC } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Clock, CheckCircle, Trophy, RefreshCw, Users, CreditCard, XCircle, Play, Video, ChevronDown } from 'lucide-react'
+import { BookOpen, Clock, CheckCircle, Trophy, RefreshCw, Users, CreditCard, XCircle, Play, Video, ChevronDown, Calendar, Star } from 'lucide-react'
 import { CalendlyStudentCalendar } from '@/components/calendar'
-import RecordedSessionsList from '@/components/mentorship/RecordedSessionsList'
 import LiveSessionBooking from '@/components/mentorship/LiveSessionBooking'
 import { formatDate, formatDateTime, formatTimeRange } from '@/lib/dateUtils'
 import { MentorshipData, Transaction } from '@/types'
@@ -133,10 +132,7 @@ export default function MentorshipPage() {
         <>
           <MentorshipSection 
             mentorshipData={mentorshipData} 
-            onRefresh={handleRefresh} 
-            purchasedRecordedSessionIds={mentorshipData?.bookedSessions
-              ?.filter(s => s.sessionType === 'RECORDED' && s.recordedSessionId)
-              .map(s => s.recordedSessionId!) ?? []}
+            onRefresh={handleRefresh}
           />
           <BookedSessionsSection mentorshipData={mentorshipData} transactions={transactions} />
         </>
@@ -357,58 +353,89 @@ const BookedSessionsSection: FC<{ mentorshipData: MentorshipData | null; transac
   );
 };
 
-const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onRefresh: () => void; purchasedRecordedSessionIds: string[]; }> = ({ mentorshipData, onRefresh, purchasedRecordedSessionIds }) => {
-  const [activeTab, setActiveTab] = useState('live');
+const MentorshipSection: FC<{ mentorshipData: MentorshipData | null; onRefresh: () => void; }> = ({ mentorshipData, onRefresh }) => {
   if (!mentorshipData) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-8 mt-8">
-      <div className="flex items-center space-x-3 space-x-reverse mb-6">
-        <div className="p-3 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white">
-          <Users className="h-6 w-6" />
+    <div className="bg-gradient-to-br from-white to-orange-50/30 rounded-3xl shadow-xl border border-orange-100/50 p-8 mt-8">
+      {/* Enhanced Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center space-x-4 space-x-reverse">
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg">
+            <Calendar className="h-8 w-8" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">حجز جلسة إرشاد مباشرة</h2>
+            <p className="text-sm text-orange-600 font-medium flex items-center space-x-2 space-x-reverse">
+              <Video className="h-4 w-4" />
+              <span>جلسة مباشرة وجهاً لوجه مع المرشد</span>
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-gray-800">حجز جلسات الإرشاد</h2>
-          <p className="text-sm text-gray-600">احجز جلسة إرشاد مع المرشد</p>
+        <div className="flex items-center space-x-2 space-x-reverse bg-orange-100 px-4 py-2 rounded-full">
+          <Star className="h-4 w-4 text-orange-600" />
+          <span className="text-sm font-medium text-orange-700">جلسة حصرية</span>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Left Column: Mentor Info */}
-        <div className="md:col-span-1">
-          <div className="flex items-center space-x-4 space-x-reverse mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-4xl font-bold">
-              {mentorshipData.mentor.name.charAt(0)}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Enhanced Mentor Info */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg mb-4">
+                {mentorshipData.mentor.name.charAt(0)}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800 mb-1">{mentorshipData.mentor.name}</h3>
+                <div className="flex items-center justify-center space-x-2 space-x-reverse text-orange-600">
+                  <Users className="h-4 w-4" />
+                  <span className="text-sm font-medium">مرشد معتمد</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">{mentorshipData.mentor.name}</h2>
-              <p className="text-md text-gray-600">Mentor</p>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-orange-50 rounded-xl border border-orange-100">
+                <h4 className="font-semibold text-gray-800 mb-2 flex items-center space-x-2 space-x-reverse">
+                  <BookOpen className="h-4 w-4 text-orange-600" />
+                  <span>نبذة عن المرشد</span>
+                </h4>
+                <p className="text-gray-700 text-sm leading-relaxed">{mentorshipData.mentor.mentorBio}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 p-3 rounded-xl text-center border border-green-100">
+                  <div className="text-green-600 font-bold text-lg">متاح</div>
+                  <div className="text-green-700 text-xs">للحجز الآن</div>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-xl text-center border border-blue-100">
+                  <div className="text-blue-600 font-bold text-lg">مباشر</div>
+                  <div className="text-blue-700 text-xs">جلسة تفاعلية</div>
+                </div>
+              </div>
             </div>
           </div>
-          <p className="text-gray-700 mb-6">{mentorshipData.mentor.mentorBio}</p>
-          
         </div>
 
-        {/* Right Column: Booking Options */}
-        <div className="md:col-span-2">
-            <div className="flex border-b border-gray-200">
-              <button onClick={() => setActiveTab('live')} className={`px-6 py-3 font-semibold ${activeTab === 'live' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500'}`}>سيشن Live انا وانت</button>
-              <button onClick={() => setActiveTab('recorded')} className={`px-6 py-3 font-semibold ${activeTab === 'recorded' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500'}`}>سيشن مسجلة</button>
+        {/* Enhanced Booking Section */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-100">
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center space-x-2 space-x-reverse">
+                <Calendar className="h-5 w-5 text-orange-600" />
+                <span>اختر الوقت المناسب لك</span>
+              </h3>
+              <p className="text-gray-600 text-sm">حدد التاريخ والوقت المناسب لجلسة الإرشاد المباشرة</p>
             </div>
-
-            <div className="py-6">
-              {activeTab === 'live' && (
+            
+            <div className="bg-gradient-to-r from-orange-50 to-orange-100/50 rounded-xl p-1">
+              <div className="bg-white rounded-lg p-4">
                 <LiveSessionBooking availableDates={mentorshipData.availableDates} onBookingSuccess={onRefresh} />
-              )}
-              {activeTab === 'recorded' && (
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-4">Available for Purchase</h3>
-                  <RecordedSessionsList sessions={mentorshipData.recordedSessions.filter(s => !purchasedRecordedSessionIds.includes(s.id))} onPurchaseSuccess={onRefresh} />
-
-                </div>
-              )}
+              </div>
             </div>
           </div>
+        </div>
       </div>
     </div>
   );
