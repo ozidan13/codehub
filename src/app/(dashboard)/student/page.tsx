@@ -225,7 +225,17 @@ export default function DashboardPage() {
                 <p className="text-gray-600 text-sm sm:text-base">اختر المنصة التي تريد التعلم منها وابدأ رحلتك التعليمية</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 lg:gap-6">
-                {platforms.map((platform, index) => (
+                {platforms
+                  .sort((a, b) => {
+                    // Put JavaScript platform first
+                    const isJavaScriptA = a.name.includes('JavaScript Tasks') || a.name.includes('مهام JavaScript');
+                    const isJavaScriptB = b.name.includes('JavaScript Tasks') || b.name.includes('مهام JavaScript');
+                    
+                    if (isJavaScriptA && !isJavaScriptB) return -1;
+                    if (!isJavaScriptA && isJavaScriptB) return 1;
+                    return 0; // Keep original order for other platforms
+                  })
+                  .map((platform, index) => (
                   <div 
                     key={platform.id} 
                     className="animate-fade-in-up"

@@ -159,12 +159,15 @@ export default function StudentLayout({
             active={activeTab === 'dashboard'} 
             onClick={() => handleTabChange('dashboard')} 
           />
+          {
+            /*
           <TabButton 
             icon={<Wallet className="w-4 h-4 sm:w-5 sm:h-5" />} 
             label="المعاملات المالية" 
             active={activeTab === 'transactions'} 
             onClick={() => handleTabChange('transactions')} 
-          />
+          /> 
+          *}
           {
             /*
             <TabButton 

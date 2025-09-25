@@ -72,6 +72,51 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      // Auto-enroll new user in JavaScript Tasks platform
+      try {
+        // Find or create the JavaScript Tasks platform
+        let jsPlatform = await tx.platform.findFirst({
+          where: {
+            OR: [
+              { name: 'مهام JavaScript العملية' },
+              { name: 'JavaScript Tasks' },
+              { url: 'https://ozidan13.github.io/js-tasks/' }
+            ]
+          }
+        })
+
+        // If platform doesn't exist, create it
+        if (!jsPlatform) {
+          jsPlatform = await tx.platform.create({
+            data: {
+              name: 'مهام JavaScript العملية',
+              description: 'برمجة JavaScript العملية والتطبيقية - مهام تفاعلية لتطوير مهارات البرمجة',
+              url: 'https://ozidan13.github.io/js-tasks/',
+              price: 0.00, // Free platform
+              isPaid: false
+            }
+          })
+        }
+
+        // Auto-enroll the new user with 365-day access
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + 365)
+
+        await tx.enrollment.create({
+          data: {
+            userId: user.id,
+            platformId: jsPlatform.id,
+            expiresAt,
+            isActive: true
+          }
+        })
+
+        console.log(`✅ Auto-enrolled new user ${user.name} in JavaScript Tasks platform`)
+      } catch (enrollmentError) {
+        // Log the error but don't fail the user creation
+        console.error('❌ Failed to auto-enroll user in JavaScript Tasks:', enrollmentError)
+      }
+
       return user
     })
 
