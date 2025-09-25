@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
           name,
           phoneNumber,
           role: 'STUDENT', // Default role
-          balance: 1000.00 // Starting balance of 1000 EGP
+          balance: 0.00 // Starting balance of 1000 EGP
         },
         select: {
           id: true,
