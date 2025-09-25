@@ -7,7 +7,8 @@ import { z } from 'zod'
 const updatePlatformSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   description: z.string().optional(),
-  url: z.string().url('Invalid URL format').optional()
+  url: z.string().url('Invalid URL format').optional(),
+  courseLink: z.string().url('Invalid course link format').optional().nullable()
 })
 
 // GET /api/platforms/[id] - Get single platform

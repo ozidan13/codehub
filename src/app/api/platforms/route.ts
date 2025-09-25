@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { name, description, url } = await request.json()
+    const { name, description, url, courseLink } = await request.json()
 
     if (!name || !url) {
       return NextResponse.json(
@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         description,
-        url
+        url,
+        courseLink
       }
     })
 

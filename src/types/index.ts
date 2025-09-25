@@ -2,6 +2,8 @@ export interface Platform {
   id: string
   name: string
   description: string
+  url?: string
+  courseLink?: string
   price?: number
   isPaid: boolean
   tasks: Task[]

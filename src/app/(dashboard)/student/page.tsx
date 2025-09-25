@@ -7,7 +7,7 @@ import {
   BookOpen, Clock, CheckCircle, X, FileText, Trophy, RefreshCw, Star, 
   Wallet, CreditCard, ShoppingCart, TrendingUp, Award, Target, 
   BarChart3, Activity, Zap, Calendar, Users, Play, XCircle,
-  ArrowUp, ArrowDown, Sparkles, GraduationCap, Medal
+  ArrowUp, ArrowDown, Sparkles, GraduationCap, Medal, ExternalLink
 } from 'lucide-react'
 
 import { formatDate, formatDateTime, formatTimeRange } from '@/lib/dateUtils';
@@ -884,6 +884,22 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
                       <span className="hidden sm:inline">زيارة المنصة</span>
                       <span className="sm:hidden">زيارة</span>
                       <ArrowUp className="h-3 w-3 sm:h-4 sm:w-4 rotate-45 group-hover/link:rotate-12 transition-transform duration-300" />
+                    </a>
+                  </div>
+                )}
+
+                {/* Course Link for active enrollments */}
+                {enrollment.status !== 'expired' && platform.courseLink && (
+                  <div className="mt-2 sm:mt-3">
+                    <a
+                      href={platform.courseLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group/link inline-flex items-center gap-1 sm:gap-2 text-green-600 hover:text-green-800 text-xs sm:text-sm font-semibold bg-green-50 hover:bg-green-100 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105"
+                    >
+                      <span className="hidden sm:inline">رابط الكورس</span>
+                      <span className="sm:hidden">كورس</span>
+                      <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 group-hover/link:scale-110 transition-transform duration-300" />
                     </a>
                   </div>
                 )}
