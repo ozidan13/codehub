@@ -19,12 +19,15 @@ import { Platform, Task, Submission, StudentStats, WalletData, Enrollment, Trans
 // --- CACHE IMPLEMENTATION ---
 class DataCache {
   private cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>()
+  private isClient = typeof window !== 'undefined'
   
   set(key: string, data: unknown, ttl: number = 5 * 60 * 1000) { // 5 minutes default
+    if (!this.isClient) return // Skip caching on server
     this.cache.set(key, { data, timestamp: Date.now(), ttl })
   }
   
   get(key: string) {
+    if (!this.isClient) return null // Always return null on server
     const item = this.cache.get(key)
     if (!item || Date.now() - item.timestamp > item.ttl) {
       if (item) this.cache.delete(key)
@@ -34,7 +37,9 @@ class DataCache {
   }
   
   clear() {
-    this.cache.clear()
+    if (this.isClient) {
+      this.cache.clear()
+    }
   }
 }
 
@@ -158,44 +163,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100" dir="rtl">
-      <div className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 lg:space-y-8">
-        {/* Enhanced Header */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-white/20 p-4 sm:p-6 lg:p-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-3 sm:space-x-4 space-x-reverse">
-              <div className="relative">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
-                  <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 h-4 w-4 sm:h-6 sm:w-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                  <Sparkles className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  لوحة التعلم الذكية
-                </h1>
-                <p className="text-xs sm:text-sm lg:text-base text-gray-600 mt-1">
-                  أهلاً بك مجدداً، <span className="font-bold text-blue-600">{session?.user?.name || 'الطالب'}</span>! 🎯
-                </p>
-                <div className="flex items-center space-x-2 space-x-reverse mt-1 sm:mt-2">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-600 font-medium">متصل الآن</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-3 space-x-reverse">
-              <button 
-                onClick={handleRefresh} 
-                className="group relative p-2 sm:p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-              >
-                <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isContentLoading ? 'animate-spin' : 'group-hover:rotate-180'}`} />
-                <div className="absolute inset-0 bg-white/20 rounded-lg sm:rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen w-full" dir="rtl">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+        
         
         {isContentLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -212,43 +182,47 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
-            <StatsSection stats={stats} />
-            <ExpirationNotifications enrollments={enrollments} />
-            <WalletSection wallet={wallet} onTopUp={handleTopUpSuccess} />
-            
-            {/* Enhanced Platforms Section */}
-            <div className="space-y-6">
-              <div className="text-center mb-6 sm:mb-8">
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">
-                  منصات التعلم المتاحة
-                </h2>
-                <p className="text-gray-600 text-sm sm:text-base">اختر المنصة التي تريد التعلم منها وابدأ رحلتك التعليمية</p>
+            {/* Full-Width Two-Column Layout */}
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 xl:gap-8 max-w-none">
+              {/* Left Column - Stats & Wallet (25% width on xl screens) */}
+              <div className="xl:col-span-1 space-y-6">
+                <StatsSection stats={stats} />
+                <WalletSection wallet={wallet} onTopUp={handleTopUpSuccess} />
+                <ExpirationNotifications enrollments={enrollments} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-4 lg:gap-6">
-                {platforms
-                  .sort((a, b) => {
-                    // Put JavaScript platform first
-                    const isJavaScriptA = a.name.includes('JavaScript Tasks') || a.name.includes('مهام JavaScript');
-                    const isJavaScriptB = b.name.includes('JavaScript Tasks') || b.name.includes('مهام JavaScript');
-                    
-                    if (isJavaScriptA && !isJavaScriptB) return -1;
-                    if (!isJavaScriptA && isJavaScriptB) return 1;
-                    return 0; // Keep original order for other platforms
-                  })
-                  .map((platform, index) => (
-                  <div 
-                    key={platform.id} 
-                    className="animate-fade-in-up"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <PlatformCard 
-                      platform={platform} 
-                      enrollments={enrollments} 
-                      onTaskClick={handleTaskClick} 
-                      onEnrollmentSuccess={handleEnrollmentSuccess} 
-                    />
+
+              {/* Right Column - Platform Content (75% width on xl screens) */}
+              <div className="xl:col-span-3">
+                {/* Enhanced Platforms Section */}
+                <div className="space-y-6">
+                  
+                  <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                    {platforms
+                      .sort((a, b) => {
+                        // Put JavaScript platform first
+                        const isJavaScriptA = a.name.includes('JavaScript Tasks') || a.name.includes('مهام JavaScript');
+                        const isJavaScriptB = b.name.includes('JavaScript Tasks') || b.name.includes('مهام JavaScript');
+                        
+                        if (isJavaScriptA && !isJavaScriptB) return -1;
+                        if (!isJavaScriptA && isJavaScriptB) return 1;
+                        return 0; // Keep original order for other platforms
+                      })
+                      .map((platform, index) => (
+                      <div 
+                        key={platform.id} 
+                        className="animate-fade-in-up"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <PlatformCard 
+                          platform={platform} 
+                          enrollments={enrollments} 
+                          onTaskClick={handleTaskClick} 
+                          onEnrollmentSuccess={handleEnrollmentSuccess} 
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
             </div>
           </>
@@ -295,8 +269,8 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
   
   return (
     <div className="space-y-6">
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+      {/* Main Stats Grid - Minimalist Design */}
+      <div className="grid grid-cols-2 gap-4">
         <EnhancedStatCard 
           icon={<FileText />} 
           title="إجمالي التسليمات" 
@@ -333,19 +307,18 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
         />
       </div>
       
-      {/* Progress Overview */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-lg border border-white/20 p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h3 className="text-base sm:text-lg font-bold text-gray-800 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-            <span className="hidden sm:inline">نظرة عامة على الأداء</span>
-            <span className="sm:hidden">الأداء</span>
+      {/* Minimalist Progress Overview */}
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-600" />
+            نظرة عامة على الأداء
           </h3>
-          <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
-            <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">تحديث مباشر</span>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Activity className="h-4 w-4" />
+            تحديث مباشر
           </div>
-        </div>
+      </div>
         
         <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {/* Completion Rate */}
@@ -447,25 +420,25 @@ const EnhancedStatCard: FC<{
       gradient: 'from-blue-500 to-blue-600',
       bg: 'bg-blue-50',
       text: 'text-blue-600',
-      border: 'border-blue-200'
+      border: 'border-blue-100'
     },
     green: {
       gradient: 'from-green-500 to-green-600',
       bg: 'bg-green-50',
       text: 'text-green-600',
-      border: 'border-green-200'
+      border: 'border-green-100'
     },
     yellow: {
       gradient: 'from-yellow-500 to-yellow-600',
       bg: 'bg-yellow-50',
       text: 'text-yellow-600',
-      border: 'border-yellow-200'
+      border: 'border-yellow-100'
     },
     purple: {
       gradient: 'from-purple-500 to-purple-600',
       bg: 'bg-purple-50',
       text: 'text-purple-600',
-      border: 'border-purple-200'
+      border: 'border-purple-100'
     },
   };
 
@@ -473,50 +446,39 @@ const EnhancedStatCard: FC<{
   const trendColor = trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
 
   return (
-    <div className={`group relative bg-white/80 backdrop-blur-sm p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl shadow-lg border ${colors[color].border} transition-all duration-300 hover:shadow-xl hover:scale-105 hover:-translate-y-1`}>
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-      
-      <div className="relative z-10">
-        <div className="flex items-start justify-between mb-2 sm:mb-3 lg:mb-4">
-          <div className={`p-2 sm:p-2.5 lg:p-3 rounded-lg sm:rounded-xl bg-gradient-to-br ${colors[color].gradient} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-            <div className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6">{icon}</div>
-          </div>
-          <div className={`flex items-center gap-1 ${trendColor}`}>
-            <TrendIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="text-xs font-medium hidden sm:inline">
-              {trend === 'up' ? 'متزايد' : trend === 'down' ? 'متناقص' : 'ثابت'}
-            </span>
-          </div>
+    <div className={`bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-sm border ${colors[color].border} transition-all duration-200 hover:shadow-md`}>
+      <div className="flex items-start justify-between mb-4">
+        <div className={`p-3 rounded-xl bg-gradient-to-br ${colors[color].gradient} text-white shadow-sm`}>
+          <div className="h-5 w-5">{icon}</div>
         </div>
-        
-        <div className="space-y-1 sm:space-y-2">
-          <h3 className="text-xs sm:text-sm font-medium text-gray-600 leading-tight">{title}</h3>
-          <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2">
-            <span className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-800">{value}</span>
-            {subtitle && <span className="text-xs text-gray-500 hidden sm:inline">{subtitle}</span>}
-          </div>
-          
-          {/* Progress Bar */}
-          {progress !== undefined && (
-            <div className="mt-2 sm:mt-3">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                <span className="hidden sm:inline">التقدم</span>
-                <span>{progress.toFixed(0)}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 overflow-hidden">
-                <div 
-                  className={`h-full bg-gradient-to-r ${colors[color].gradient} rounded-full transition-all duration-1000 ease-out`}
-                  style={{ width: `${Math.min(progress, 100)}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
+        <div className={`flex items-center gap-1 ${trendColor}`}>
+          <TrendIcon className="h-4 w-4" />
         </div>
       </div>
       
-      {/* Glow Effect */}
-      <div className={`absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300 bg-gradient-to-br ${colors[color].gradient} blur-xl`}></div>
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-semibold text-gray-800">{value}</span>
+          {subtitle && <span className="text-xs text-gray-500">{subtitle}</span>}
+        </div>
+        
+        {/* Minimalist Progress Bar */}
+        {progress !== undefined && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+              <span>التقدم</span>
+              <span>{progress.toFixed(0)}%</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-2">
+              <div 
+                className={`h-full bg-gradient-to-r ${colors[color].gradient} rounded-full transition-all duration-500`}
+                style={{ width: `${Math.min(progress, 100)}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

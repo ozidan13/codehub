@@ -35,9 +35,11 @@ interface ToastProviderProps {
 
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [idCounter, setIdCounter] = useState(0)
 
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
-    const id = Math.random().toString(36).substr(2, 9)
+    const id = `toast-${idCounter}`
+    setIdCounter(prev => prev + 1)
     const newToast = { ...toast, id }
     
     setToasts(prev => [...prev, newToast])

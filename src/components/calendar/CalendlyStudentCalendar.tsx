@@ -28,7 +28,7 @@ export const CalendlyStudentCalendar: React.FC<CalendlyStudentCalendarProps> = (
   maxDate,
   disabled = false,
 }) => {
-  const [currentDate, setCurrentDate] = useState(selectedDate || new Date());
+  const [currentDate, setCurrentDate] = useState(() => selectedDate || new Date());
 
   // Transform available dates to the expected AvailableDate format
   const transformedAvailableDates: AvailableDate[] = useMemo(() => {

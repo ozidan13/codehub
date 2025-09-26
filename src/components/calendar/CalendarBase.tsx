@@ -56,6 +56,7 @@ export const CalendarBase: React.FC<CalendarBaseProps> = ({
   };
 
   const isDateInPast = (date: Date): boolean => {
+    if (typeof window === 'undefined') return false; // Skip on server
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const checkDate = new Date(date);
@@ -80,7 +81,7 @@ export const CalendarBase: React.FC<CalendarBaseProps> = ({
 
   const defaultRenderDateCell = (date: Date, isCurrentMonth: boolean, isAvailable: boolean, isSelected: boolean) => {
     const isPast = isDateInPast(date);
-    const isToday = new Date().toDateString() === date.toDateString();
+    const isToday = typeof window !== 'undefined' ? new Date().toDateString() === date.toDateString() : false;
     
     let cellClasses = 'w-12 h-12 flex items-center justify-center text-sm font-medium rounded-xl transition-all duration-300 transform hover:scale-105 relative';
     

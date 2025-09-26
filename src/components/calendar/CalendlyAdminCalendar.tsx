@@ -169,7 +169,7 @@ export const CalendlyAdminCalendar: React.FC<CalendlyAdminCalendarProps> = ({
   loading = false,
   className = ''
 }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);

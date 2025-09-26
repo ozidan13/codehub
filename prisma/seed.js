@@ -12,7 +12,7 @@ async function main() {
       name: 'Algorithms & Data Structures',
       description: 'Learn fundamental algorithms and data structures',
       url: 'https://ozidan13.github.io/algorithms/',
-      courseLink: 'https://www.youtube.com/playlist?list=PLDoPjvoNmBAx3kiplQR_oeDqLDBUDYwVv',
+      courseLink: 'https://youtu.be/ThdjqrB0J6w',
       price: 400.00,
       isPaid: true
     },
@@ -20,7 +20,7 @@ async function main() {
       name: 'Object-Oriented Programming (OOP)',
       description: 'Master object-oriented programming concepts',
       url: 'https://oop-pi.vercel.app/',
-      courseLink: 'https://www.youtube.com/playlist?list=PLDoPjvoNmBAzDuDhkL-mqob6PaN_uFqMx',
+      courseLink: 'https://youtu.be/ThdjqrB0J6w',
       price: 400.00,
       isPaid: true
     },
@@ -28,7 +28,7 @@ async function main() {
       name: 'SOLID & Design Patterns',
       description: 'Learn SOLID principles and design patterns',
       url: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/',
-      courseLink: 'https://www.youtube.com/playlist?list=PLDoPjvoNmBAzJeOr2N5ZiBEWVeKw7RvEv',
+      courseLink: 'https://youtu.be/ThdjqrB0J6w',
       price: 400.00,
       isPaid: true
     },
@@ -36,7 +36,7 @@ async function main() {
       name: 'JavaScript Interview Questions',
       description: 'Prepare for JavaScript technical interviews',
       url: 'https://javascriptinterview-kappa.vercel.app/',
-      courseLink: 'https://www.youtube.com/playlist?list=PLDoPjvoNmBAx9Db8HevkRkBz8CB7Ub7ER',
+      courseLink: 'https://youtu.be/ThdjqrB0J6w',
       price: 400.00,
       isPaid: true
     },
@@ -44,7 +44,7 @@ async function main() {
       name: 'JavaScript Tasks',
       description: 'Practice JavaScript programming tasks',
       url: 'https://ozidan13.github.io/js-tasks/',
-      courseLink: 'https://www.youtube.com/playlist?list=PLDoPjvoNmBAx3kiplQR_oeDqLDBUDYwVv',
+      courseLink: 'https://youtu.be/ThdjqrB0J6w',
       price: 400.00,
       isPaid: true
     }
