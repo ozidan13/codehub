@@ -1,173 +1,152 @@
 'use client';
 
 import Link from 'next/link'
-import { BookOpen, Users, Trophy, ArrowRight } from 'lucide-react'
-// This is a Client Component that uses client-side rendering
-// For server-side data fetching, you would typically use NextAuth session
+import { BookOpen, Code, Terminal, Cpu, Zap, Binary } from 'lucide-react'
+import TerminalDemo from '@/components/terminal-demo'
+import DigitalRain from '@/components/digital-rain'
+import MatrixParticles from '@/components/matrix-particles'
 
 export default function LandingPage() {
-  const platforms = [
-    {
-      name: 'الخوارزميات وهياكل البيانات',
-      description: 'أتقن الخوارزميات الأساسية وهياكل البيانات',
-      icon: '🧮',
-      url: 'https://ozidan13.github.io/algorithms/'
-    },
-    {
-      name: 'البرمجة الكائنية التوجه',
-      description: 'تعلم مفاهيم ومبادئ البرمجة الكائنية',
-      icon: '🏗️',
-      url: 'https://oop-pi.vercel.app/'
-    },
-    {
-      name: 'مبادئ SOLID وأنماط التصميم',
-      description: 'طبق مبادئ SOLID وأنماط التصميم',
-      icon: '🎯',
-      url: 'https://ozidan13.github.io/SOLID-Principles-Design-Patterns/'
-    },
-    {
-      name: 'التحضير لمقابلات JavaScript',
-      description: 'استعد للمقابلات التقنية',
-      icon: '💼',
-      url: 'https://javascriptinterview-kappa.vercel.app/'
-    },
-    {
-      name: 'مهام JavaScript العملية',
-      description: 'برمجة JavaScript العملية والتطبيقية',
-      icon: '⚡',
-      url: 'https://ozidan13.github.io/js-tasks/'
-    }
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2 space-x-reverse">
-              <BookOpen className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">كود هاب</h1>
-            </div>
-            <div className="flex items-center space-x-4 space-x-reverse">
-              <Link
-                href="/login"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                تسجيل الدخول
-              </Link>
-              <Link
-                href="/signup"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                ابدأ الآن
-              </Link>
-            </div>
+    <div className="min-h-screen bg-black relative overflow-hidden">
+      {/* Matrix Digital Rain Background */}
+      <DigitalRain />
+      
+      {/* Matrix Particles */}
+      <MatrixParticles />
+
+      {/* Floating Programming Shapes */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Floating Code Symbols */}
+        <div className="floating-shape absolute top-20 left-2 sm:left-10 text-green-400 opacity-30 animate-pulse">
+          <Code size={16} className="sm:w-6 sm:h-6" />
+        </div>
+        <div className="floating-shape absolute top-40 right-4 sm:right-20 text-green-300 opacity-40 animate-bounce">
+          <Terminal size={14} className="sm:w-5 sm:h-5" />
+        </div>
+        <div className="floating-shape absolute bottom-40 left-4 sm:left-20 text-green-500 opacity-25 animate-pulse">
+          <Cpu size={18} className="sm:w-7 sm:h-7" />
+        </div>
+        <div className="floating-shape absolute bottom-20 right-8 sm:right-40 text-green-400 opacity-35 animate-bounce">
+          <Binary size={16} className="sm:w-6 sm:h-6" />
+        </div>
+        <div className="floating-shape absolute top-60 left-1/3 text-green-300 opacity-30 animate-pulse">
+          <Zap size={18} className="sm:w-7 sm:h-7" />
+        </div>
+        
+        {/* Floating Code Snippets */}
+        <div className="absolute top-32 right-2 sm:right-10 text-green-400 opacity-20 font-mono text-xs sm:text-xs animate-pulse">
+          {'{ code: "life" }'}
+        </div>
+        <div className="absolute bottom-60 left-8 sm:left-40 text-green-300 opacity-25 font-mono text-xs sm:text-xs animate-bounce">
+          {'function() { learn(); }'}
+        </div>
+        <div className="absolute top-80 right-1/3 text-green-500 opacity-20 font-mono text-xs sm:text-xs animate-pulse">
+          {'while(true) { improve(); }'}
+        </div>
+      </div>
+
+      {/* Glassmorphism Header */}
+      <header className="relative z-10 backdrop-blur-md bg-black/30 border-b border-green-500/20">
+        <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center justify-center space-x-2 space-x-reverse">
+            <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 drop-shadow-lg" />
+            <h1 className="text-xl sm:text-2xl font-bold text-green-400 font-mono tracking-wider drop-shadow-lg">
+              codeHub
+            </h1>
+            <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-green-400 drop-shadow-lg" />
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-5xl font-bold text-gray-900 mb-6">
-            أتقن البرمجة
-            <span className="text-blue-600"> خطوة بخطوة</span>
-          </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            تتبع تقدمك في التعلم عبر خمس منصات برمجة شاملة. 
-            قدم ملخصات المهام، احصل على التغذية الراجعة، وطور مهاراتك بشكل منهجي.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/signup"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg text-lg font-medium transition-colors flex items-center justify-center"
-            >
-              ابدأ التعلم
-              <ArrowRight className="mr-2 h-5 w-5" />
-            </Link>
-            <Link
-              href="/student"
-              className="border border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-3 rounded-lg text-lg font-medium transition-colors"
-            >
-              عرض لوحة التحكم
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Main Content */}
+      <main className="relative z-10 flex-1 flex items-center justify-center px-2 sm:px-4 lg:px-8 py-10 sm:py-20">
+        <div className="max-w-5xl mx-auto text-center w-full">
+          
+           {/* Action Buttons with Glassmorphism */}
+           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-8 sm:mb-0">
+             <Link
+               href="/signup"
+               className="group relative backdrop-blur-xl bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 hover:border-green-400 text-green-400 hover:text-green-300 px-6 sm:px-10 py-3 sm:py-4 rounded-2xl text-lg sm:text-xl font-mono font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25 pulse-green matrix-glow"
+             >
+               <span className="relative z-10">إنشاء حساب</span>
+               <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-green-400/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+             </Link>
+             <Link
+               href="/login"
+               className="group relative backdrop-blur-xl bg-black/40 hover:bg-black/60 border border-green-500/30 hover:border-green-400/50 text-green-300 hover:text-green-200 px-6 sm:px-10 py-3 sm:py-4 rounded-2xl text-lg sm:text-xl font-mono font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-2xl hover:shadow-green-500/10 glass-effect"
+             >
+               <span className="relative z-10">تسجيل الدخول</span>
+               <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-green-400/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+             </Link>
+           </div>
 
-      {/* Features */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">لماذا تختار كود هاب؟</h3>
-            <p className="text-lg text-gray-600">كل ما تحتاجه لتتبع وتحسين مهاراتك في البرمجة</p>
+          {/* Terminal Demo with Enhanced Styling */}
+          <div className="mt-8 sm:mt-14">
+            
+            <TerminalDemo />
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="h-8 w-8 text-blue-600" />
-              </div>
-              <h4 className="text-xl font-semibold text-gray-900 mb-2">التعلم المنظم</h4>
-              <p className="text-gray-600">اتبع منهجاً مصمماً بعناية عبر خمسة مجالات برمجية أساسية</p>
-            </div>
-            <div className="text-center p-6">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trophy className="h-8 w-8 text-green-600" />
-              </div>
-              <h4 className="text-xl font-semibold text-gray-900 mb-2">تتبع التقدم</h4>
-              <p className="text-gray-600">راقب تقدمك من خلال تقارير مفصلة ونظام تقييم شامل</p>
-            </div>
-            <div className="text-center p-6">
-              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="h-8 w-8 text-purple-600" />
-              </div>
-              <h4 className="text-xl font-semibold text-gray-900 mb-2">تغذية راجعة من الخبراء</h4>
-              <p className="text-gray-600">احصل على تغذية راجعة شخصية من المدربين على مشاريعك</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Learning Platforms */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">منصات التعلم</h3>
-            <p className="text-lg text-gray-600">خمس منصات شاملة لإتقان أساسيات البرمجة</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {platforms.map((platform, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="text-4xl mb-4">{platform.icon}</div>
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">{platform.name}</h4>
-                <p className="text-gray-600 mb-4">{platform.description}</p>
-                <a
-                  href={platform.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
-                >
-                  استكشف المنصة
-                  <ArrowRight className="mr-1 h-4 w-4" />
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+         
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="flex items-center justify-center space-x-2 space-x-reverse mb-4">
-            <BookOpen className="h-8 w-8 text-blue-400" />
-            <h1 className="text-2xl font-bold">كود هاب</h1>
-          </div>
-          <p className="text-gray-400 mb-4">تمكين المطورين من خلال التعلم المنظم وتتبع التقدم</p>
-          <p className="text-gray-500 text-sm">© 2024 كود هاب. جميع الحقوق محفوظة.</p>
+          
         </div>
-      </footer>
+      </main>
+
+      
+
+      <style jsx>{`
+        .floating-shape {
+          animation-duration: 4s;
+          animation-iteration-count: infinite;
+          animation-timing-function: ease-in-out;
+        }
+        
+        .floating-shape:nth-child(odd) {
+          animation-name: float-up;
+        }
+        
+        .floating-shape:nth-child(even) {
+          animation-name: float-down;
+        }
+        
+        @keyframes float-up {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-30px) rotate(180deg); }
+        }
+        
+        @keyframes float-down {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(30px) rotate(-180deg); }
+        }
+        
+        /* Glassmorphism enhancement */
+        .glass-effect {
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          background: rgba(0, 0, 0, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Matrix glow effect */
+        .matrix-glow {
+          box-shadow: 
+            0 0 20px rgba(0, 255, 0, 0.3),
+            0 0 40px rgba(0, 255, 0, 0.2),
+            0 0 60px rgba(0, 255, 0, 0.1);
+        }
+        
+        /* Pulse animation for buttons */
+        .pulse-green {
+          animation: pulse-green 2s infinite;
+        }
+        
+        @keyframes pulse-green {
+          0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); }
+          70% { box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }
+        }
+      `}</style>
     </div>
   );
 }

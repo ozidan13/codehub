@@ -25,6 +25,12 @@ export const metadata: Metadata = {
   description: "تتبع تقدمك في التعلم عبر خمس منصات برمجة شاملة. قدم ملخصات المهام، احصل على التغذية الراجعة، وطور مهاراتك بشكل منهجي.",
   keywords: ["البرمجة", "التعلم", "الخوارزميات", "جافاسكريبت", "البرمجة الكائنية", "مبادئ SOLID", "أنماط التصميم"],
   authors: [{ name: "فريق كود هاب" }],
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
   openGraph: {
     title: "كود هاب - منصة تتبع التعلم",
     description: "أتقن البرمجة خطوة بخطوة مع التعلم المنظم وتتبع التقدم",
