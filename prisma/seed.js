@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
+const { newPlatforms, newPlatformTasks } = require('./new-learning-platforms')
 
 const prisma = new PrismaClient()
 
@@ -47,7 +48,8 @@ async function main() {
       courseLink: 'https://youtu.be/ThdjqrB0J6w',
       price: 400.00,
       isPaid: true
-    }
+    },
+    ...newPlatforms
   ]
 
   console.log('📚 Creating platforms...')
@@ -505,7 +507,8 @@ async function main() {
         link: 'https://ozidan13.github.io/js-tasks/#task22',
         order: 22
       }
-    ]
+    ],
+    ...newPlatformTasks
   }
 
   for (const platform of createdPlatforms) {

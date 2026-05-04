@@ -1,160 +1,151 @@
+require('dotenv').config()
+
 const { PrismaClient } = require('@prisma/client')
 
 const prisma = new PrismaClient()
 
-async function enrollExistingUsersInJavaScriptTasks() {
-  try {
-    console.log('🚀 Starting enrollment process for existing users...')
+const DEFAULT_ACCESS_DAYS = Number.parseInt(process.env.ENROLL_ALL_ACCESS_DAYS || '365', 10)
+const BATCH_SIZE = 100
 
-    // First, ensure the JavaScript Tasks platform exists
-    let jsPlatform = await prisma.platform.findFirst({
-      where: {
-        OR: [
-          { name: 'مهام JavaScript العملية' },
-          { name: 'JavaScript Tasks' },
-          { url: 'https://ozidan13.github.io/js-tasks/' }
-        ]
+function createExpiryDate(days) {
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + days)
+  return expiresAt
+}
+
+async function enrollAllStudentsInAllPlatforms(options = {}) {
+  const accessDays = options.accessDays || DEFAULT_ACCESS_DAYS
+  const renewExisting = options.renewExisting ?? true
+  const expiresAt = createExpiryDate(accessDays)
+
+  const [students, platforms] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: 'STUDENT' },
+      select: { id: true, name: true, email: true },
+      orderBy: { createdAt: 'asc' }
+    }),
+    prisma.platform.findMany({
+      select: { id: true, name: true },
+      orderBy: { createdAt: 'asc' }
+    })
+  ])
+
+  if (students.length === 0) {
+    console.log('No student users found.')
+    return { students: 0, platforms: platforms.length, created: 0, renewed: 0, unchanged: 0 }
+  }
+
+  if (platforms.length === 0) {
+    console.log('No platforms found.')
+    return { students: students.length, platforms: 0, created: 0, renewed: 0, unchanged: 0 }
+  }
+
+  const expectedPairs = students.length * platforms.length
+  console.log(`Found ${students.length} students and ${platforms.length} platforms.`)
+  console.log(`Processing ${expectedPairs} enrollment pairs.`)
+  console.log(`Access duration: ${accessDays} days. Renew existing: ${renewExisting}.`)
+
+  let created = 0
+  let renewed = 0
+  let unchanged = 0
+
+  const studentIds = students.map((student) => student.id)
+  const platformIds = platforms.map((platform) => platform.id)
+
+  const existingEnrollments = await prisma.enrollment.findMany({
+    where: {
+      userId: { in: studentIds },
+      platformId: { in: platformIds }
+    },
+    select: {
+      id: true,
+      userId: true,
+      platformId: true,
+      expiresAt: true,
+      isActive: true
+    }
+  })
+
+  const existingByPair = new Map(
+    existingEnrollments.map((enrollment) => [
+      `${enrollment.userId}:${enrollment.platformId}`,
+      enrollment
+    ])
+  )
+
+  const creates = []
+  const renewalIds = []
+  const now = new Date()
+
+  for (const student of students) {
+    for (const platform of platforms) {
+      const key = `${student.id}:${platform.id}`
+      const existing = existingByPair.get(key)
+
+      if (!existing) {
+        creates.push({
+          userId: student.id,
+          platformId: platform.id,
+          expiresAt,
+          isActive: true,
+          lastRenewalAt: now
+        })
+        continue
+      }
+
+      if (renewExisting && (!existing.isActive || existing.expiresAt < expiresAt)) {
+        renewalIds.push(existing.id)
+      } else {
+        unchanged += 1
+      }
+    }
+  }
+
+  for (let i = 0; i < creates.length; i += BATCH_SIZE) {
+    const batch = creates.slice(i, i + BATCH_SIZE)
+    const result = await prisma.enrollment.createMany({
+      data: batch,
+      skipDuplicates: true
+    })
+    created += result.count
+  }
+
+  for (let i = 0; i < renewalIds.length; i += BATCH_SIZE) {
+    const batchIds = renewalIds.slice(i, i + BATCH_SIZE)
+    const result = await prisma.enrollment.updateMany({
+      where: { id: { in: batchIds } },
+      data: {
+        expiresAt,
+        isActive: true,
+        lastRenewalAt: now
       }
     })
+    renewed += result.count
+  }
 
-    // If platform doesn't exist, create it
-    if (!jsPlatform) {
-      console.log('📝 Creating JavaScript Tasks platform...')
-      jsPlatform = await prisma.platform.create({
-        data: {
-          name: 'مهام JavaScript العملية',
-          description: 'برمجة JavaScript العملية والتطبيقية - مهام تفاعلية لتطوير مهارات البرمجة',
-          url: 'https://ozidan13.github.io/js-tasks/',
-          price: 0.00, // Free platform
-          isPaid: false
-        }
-      })
-      console.log('✅ JavaScript Tasks platform created successfully!')
-    } else {
-      console.log('✅ JavaScript Tasks platform found:', jsPlatform.name)
-    }
+  console.log('Enrollment complete.')
+  console.log(`Created: ${created}`)
+  console.log(`Renewed: ${renewed}`)
+  console.log(`Unchanged: ${unchanged}`)
 
-    // Get all existing users (students only)
-    const existingUsers = await prisma.user.findMany({
-      where: {
-        role: 'STUDENT'
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true
-      }
-    })
-
-    console.log(`👥 Found ${existingUsers.length} existing students`)
-
-    if (existingUsers.length === 0) {
-      console.log('ℹ️  No existing students found to enroll')
-      return
-    }
-
-    // Check which users are already enrolled
-    const existingEnrollments = await prisma.enrollment.findMany({
-      where: {
-        platformId: jsPlatform.id,
-        userId: {
-          in: existingUsers.map(user => user.id)
-        }
-      },
-      select: {
-        userId: true
-      }
-    })
-
-    const enrolledUserIds = new Set(existingEnrollments.map(e => e.userId))
-    const usersToEnroll = existingUsers.filter(user => !enrolledUserIds.has(user.id))
-
-    console.log(`📊 Users already enrolled: ${enrolledUserIds.size}`)
-    console.log(`📊 Users to enroll: ${usersToEnroll.length}`)
-
-    if (usersToEnroll.length === 0) {
-      console.log('✅ All existing users are already enrolled in JavaScript Tasks!')
-      return
-    }
-
-    // Enroll users in batches
-    const batchSize = 10
-    let enrolledCount = 0
-    let failedCount = 0
-    const failedUsers = []
-
-    for (let i = 0; i < usersToEnroll.length; i += batchSize) {
-      const batch = usersToEnroll.slice(i, i + batchSize)
-      
-      console.log(`📦 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(usersToEnroll.length / batchSize)}...`)
-
-      for (const user of batch) {
-        try {
-          // Set expiration to 365 days (1 year) for existing users as a bonus
-          const expiresAt = new Date()
-          expiresAt.setDate(expiresAt.getDate() + 365)
-
-          await prisma.enrollment.create({
-            data: {
-              userId: user.id,
-              platformId: jsPlatform.id,
-              expiresAt,
-              isActive: true
-            }
-          })
-
-          enrolledCount++
-          console.log(`  ✅ Enrolled: ${user.name} (${user.email})`)
-        } catch (error) {
-          failedCount++
-          failedUsers.push({ user, error: error.message })
-          console.log(`  ❌ Failed to enroll: ${user.name} (${user.email}) - ${error.message}`)
-        }
-      }
-
-      // Small delay between batches to avoid overwhelming the database
-      if (i + batchSize < usersToEnroll.length) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-    }
-
-    // Summary
-    console.log('\n📈 ENROLLMENT SUMMARY:')
-    console.log(`✅ Successfully enrolled: ${enrolledCount} users`)
-    console.log(`❌ Failed enrollments: ${failedCount} users`)
-    console.log(`📊 Total existing users: ${existingUsers.length}`)
-    console.log(`📊 Previously enrolled: ${enrolledUserIds.size}`)
-    console.log(`📊 Newly enrolled: ${enrolledCount}`)
-
-    if (failedUsers.length > 0) {
-      console.log('\n❌ FAILED ENROLLMENTS:')
-      failedUsers.forEach(({ user, error }) => {
-        console.log(`  - ${user.name} (${user.email}): ${error}`)
-      })
-    }
-
-    console.log('\n🎉 Enrollment process completed!')
-
-  } catch (error) {
-    console.error('💥 Fatal error during enrollment process:', error)
-    throw error
-  } finally {
-    await prisma.$disconnect()
+  return {
+    students: students.length,
+    platforms: platforms.length,
+    created,
+    renewed,
+    unchanged
   }
 }
 
-// Run the script
 if (require.main === module) {
-  enrollExistingUsersInJavaScriptTasks()
-    .then(() => {
-      console.log('✅ Script completed successfully')
-      process.exit(0)
-    })
+  enrollAllStudentsInAllPlatforms()
     .catch((error) => {
-      console.error('💥 Script failed:', error)
-      process.exit(1)
+      console.error('Failed to enroll students in platforms:', error)
+      process.exitCode = 1
+    })
+    .finally(async () => {
+      await prisma.$disconnect()
     })
 }
 
-module.exports = { enrollExistingUsersInJavaScriptTasks }
+module.exports = { enrollAllStudentsInAllPlatforms }
