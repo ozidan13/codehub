@@ -114,34 +114,34 @@ export async function POST(request: NextRequest) {
     // Create transaction and booking in a database transaction
     const result = await prisma.$transaction(async (tx) => {
       // Deduct balance
-        await tx.user.update({
-          where: { id: session.user.id },
-          data: {
-            balance: {
-              decrement: recordedSession.price.toNumber()
-            }
+      await tx.user.update({
+        where: { id: session.user.id },
+        data: {
+          balance: {
+            decrement: recordedSession.price
           }
-        })
+        }
+      })
 
-        // Create transaction record
-        await tx.transaction.create({
-          data: {
-            userId: session.user.id,
-            type: 'DEBIT',
-            amount: recordedSession.price.toNumber(),
-            status: 'COMPLETED',
-            description: `Purchase of recorded session: ${recordedSession.title}`
-          }
-        })
+      // Create transaction record
+      const transaction = await tx.transaction.create({
+        data: {
+          userId: session.user.id,
+          type: 'RECORDED_SESSION',
+          amount: recordedSession.price,
+          status: 'APPROVED',
+          description: `Purchase of recorded session: ${recordedSession.title}`
+        }
+      })
 
-        // Create mentorship booking
-        const booking = await tx.mentorshipBooking.create({
-          data: {
-            studentId: session.user.id,
-            mentorId: mentor.id,
-            sessionType: 'RECORDED',
-            duration: 0, // Not applicable for recorded sessions
-            amount: recordedSession.price.toNumber(),
+      // Create mentorship booking
+      const booking = await tx.mentorshipBooking.create({
+        data: {
+          studentId: session.user.id,
+          mentorId: adminUser.id,
+          sessionType: 'RECORDED',
+          duration: 0,
+          amount: recordedSession.price,
           status: 'CONFIRMED',
           sessionDate: new Date(),
           videoLink: recordedSession.videoLink,

@@ -100,6 +100,7 @@ interface FormData {
   name?: string
   email?: string
   password?: string
+  phoneNumber?: string
   role?: string
   description?: string
   url?: string
@@ -160,6 +161,7 @@ interface MentorshipBooking {
   id: string
   userId: string
   mentorId: string
+  availableDateId: string | null
   duration: number
   amount: number
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
@@ -641,28 +643,28 @@ function AdminPageContent() {
       if (method === 'POST') {
         const tempId = `temp-${Date.now()}`;
         const newEntity = { ...formData, id: tempId };
-        if (entityType === 'platforms') {
+        if (entityType === 'platform') {
           setPlatforms(prev => [...prev, newEntity as Platform]);
-        } else if (entityType === 'tasks') {
+        } else if (entityType === 'task') {
           setTasks(prev => [...prev, newEntity as Task]);
-        } else if (entityType === 'users') {
+        } else if (entityType === 'user') {
           setUsers(prev => [...prev, newEntity as User]);
         }
       } else if (method === 'PUT' && selectedEntity) {
         const updatedEntity = { ...selectedEntity, ...formData };
-        if (entityType === 'platforms') {
+        if (entityType === 'platform') {
           setPlatforms(prev => prev.map(p => p.id === selectedEntity.id ? updatedEntity as Platform : p));
-        } else if (entityType === 'tasks') {
+        } else if (entityType === 'task') {
           setTasks(prev => prev.map(t => t.id === selectedEntity.id ? updatedEntity as Task : t));
-        } else if (entityType === 'users') {
+        } else if (entityType === 'user') {
           setUsers(prev => prev.map(u => u.id === selectedEntity.id ? updatedEntity as User : u));
         }
       } else if (method === 'DELETE' && selectedEntity) {
-        if (entityType === 'platforms') {
+        if (entityType === 'platform') {
           setPlatforms(prev => prev.filter(p => p.id !== selectedEntity.id));
-        } else if (entityType === 'tasks') {
+        } else if (entityType === 'task') {
           setTasks(prev => prev.filter(t => t.id !== selectedEntity.id));
-        } else if (entityType === 'users') {
+        } else if (entityType === 'user') {
           setUsers(prev => prev.filter(u => u.id !== selectedEntity.id));
         }
       }
@@ -3597,7 +3599,7 @@ const DatesTab: FC<DatesTabProps> = ({ onTimeSlotDeleteConfirm }) => {
   }
 
   // Handle deleting a time slot with confirmation
-  const handleDeleteTimeSlot = (dateId: string, dateInfo?: string) => {
+  const handleDeleteTimeSlot = async (dateId: string, dateInfo?: string) => {
     onTimeSlotDeleteConfirm(dateId, dateInfo || 'حذف الفترة الزمنية المحددة');
   }
 

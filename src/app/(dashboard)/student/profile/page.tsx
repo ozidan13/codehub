@@ -38,7 +38,7 @@ export default function ProfilePage() {
             name: data.user.name || 'الطالب',
             email: data.user.email,
             phone: session.user.phoneNumber || undefined,
-            joinDate: new Date(session.user.createdAt || Date.now()).toISOString().split('T')[0],
+            joinDate: new Date(Date.now()).toISOString().split('T')[0],
             location: undefined, // Not available in current API
             bio: undefined, // Not available in current API
             totalCourses: data.stats.totalTasks || 0,

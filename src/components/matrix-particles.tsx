@@ -16,7 +16,7 @@ interface Particle {
 export default function MatrixParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | null>(null);
 
   const matrixChars = ['0', '1', '{', '}', '(', ')', '[', ']', '<', '>', '/', '\\', '|', '-', '+', '=', ';', ':', '.', ',', '?', '!', '@', '#', '$', '%', '^', '&', '*'];
   const colors = ['#00ff00', '#00cc00', '#009900', '#00ff66', '#00ff33'];
@@ -98,7 +98,7 @@ export default function MatrixParticles() {
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      if (animationRef.current) {
+      if (animationRef.current !== null) {
         cancelAnimationFrame(animationRef.current);
       }
     };
