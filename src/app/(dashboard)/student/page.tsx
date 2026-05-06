@@ -312,15 +312,15 @@ const PlatformHubCard: FC<{
   <button
     type="button"
     onClick={onClick}
-    className="group text-left"
+    className="group h-full text-left"
     style={{ animationDelay: `${delay}ms` }}
   >
-    <span className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#111628]/80 px-5 py-4 shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-300 hover:border-white/[0.12] hover:bg-[#161d35]/90 hover:scale-[1.02]">
-      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconMeta.bg}`}>
+    <span className="flex h-full items-start gap-4 rounded-2xl border border-white/[0.06] bg-[#111628]/80 px-5 py-4 shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-300 hover:border-white/[0.12] hover:bg-[#161d35]/90 hover:scale-[1.02]">
+      <span className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconMeta.bg}`}>
         <Icon className={`h-5 w-5 ${iconMeta.color}`} />
       </span>
       <span className="flex-1 min-w-0">
-        <span className="block truncate text-sm font-semibold text-slate-100 sm:text-base">
+        <span className="block break-words text-sm font-semibold leading-snug text-slate-100 sm:text-base">
           {platform.name}
         </span>
         <span className="mt-1 flex items-center gap-2 text-xs text-slate-400">
@@ -333,7 +333,7 @@ const PlatformHubCard: FC<{
           {platform.tasks?.length || 0} <span className="text-slate-600">Lessons</span>
         </span>
       </span>
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] text-slate-500 transition-colors duration-300 group-hover:bg-white/[0.08] group-hover:text-slate-300">
+      <span className="mt-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] text-slate-500 transition-colors duration-300 group-hover:bg-white/[0.08] group-hover:text-slate-300">
         <ChevronRight className="h-4 w-4" />
       </span>
     </span>
