@@ -17,9 +17,9 @@ const newPlatforms = [
   },
   {
     name: 'Networking Learning Platform',
-    description: 'Learn networking basics, APIs, protocols, load balancing, and messaging concepts used in distributed systems.',
-    url: 'https://systemdesign-one.vercel.app/',
-    courseLink: 'https://systemdesign-one.vercel.app/module02_networking_basics',
+    description: 'Learn computer networking from zero to hero — OSI, TCP/IP, routing, switching, security, packet analysis, and CCNA prep.',
+    url: 'https://ozidan13.github.io/network/',
+    courseLink: 'https://ozidan13.github.io/network/',
     price: 400.00,
     isPaid: true
   }
@@ -392,28 +392,298 @@ const newPlatformTasks = {
   ],
   'Networking Learning Platform': [
     {
-      title: 'Networking Basics',
-      description: 'Understand core networking concepts used in web and distributed systems.',
-      link: 'https://systemdesign-one.vercel.app/module02_networking_basics',
+      title: 'Why Networks?',
+      description: 'Understand why we need computer networks and how they enable modern communication.',
+      link: 'https://ozidan13.github.io/network/Unit1/why_networks.html',
       order: 1
     },
     {
-      title: 'APIs And Protocols',
-      description: 'Learn HTTP, APIs, and service communication protocols.',
-      link: 'https://systemdesign-one.vercel.app/module03_apis_protocols',
+      title: 'Network Types',
+      description: 'Compare PAN, LAN, MAN, and WAN network types and their use cases.',
+      link: 'https://ozidan13.github.io/network/Unit1/network_types.html',
       order: 2
     },
     {
-      title: 'Load Balancing',
-      description: 'Learn how load balancers route and distribute network traffic.',
-      link: 'https://systemdesign-one.vercel.app/module06_load_balancing',
+      title: 'Topologies',
+      description: 'Learn network topologies including bus, star, ring, mesh, and hybrid layouts.',
+      link: 'https://ozidan13.github.io/network/Unit1/network_topologies.html',
       order: 3
     },
     {
-      title: 'Message Queues',
-      description: 'Understand asynchronous networked communication with message queues.',
-      link: 'https://systemdesign-one.vercel.app/module07_message_queues',
+      title: 'Network Hardware',
+      description: 'Study routers, switches, hubs, NICs, and other network hardware devices.',
+      link: 'https://ozidan13.github.io/network/Unit1/network_hardware.html',
       order: 4
+    },
+    {
+      title: 'Network History',
+      description: 'Review the evolution of networks from ARPANET to modern 5G infrastructure.',
+      link: 'https://ozidan13.github.io/network/Unit1/network_history.html',
+      order: 5
+    },
+    {
+      title: 'OSI Model',
+      description: 'Understand the seven layers of the OSI reference model and their functions.',
+      link: 'https://ozidan13.github.io/network/Unit2/osi_model.html',
+      order: 6
+    },
+    {
+      title: 'TCP/IP Model',
+      description: 'Learn the practical TCP/IP four-layer model and how it maps to OSI.',
+      link: 'https://ozidan13.github.io/network/Unit2/tcp_ip_model.html',
+      order: 7
+    },
+    {
+      title: 'Encapsulation',
+      description: 'Study how data is encapsulated and decapsulated as it traverses the network stack.',
+      link: 'https://ozidan13.github.io/network/Unit2/encapsulation.html',
+      order: 8
+    },
+    {
+      title: 'Protocols Intro',
+      description: 'Get an introduction to network protocols and how they enable communication.',
+      link: 'https://ozidan13.github.io/network/Unit2/protocols_intro.html',
+      order: 9
+    },
+    {
+      title: 'Addressing Basics',
+      description: 'Learn the fundamentals of network addressing including MAC and IP addresses.',
+      link: 'https://ozidan13.github.io/network/Unit2/addressing_basics.html',
+      order: 10
+    },
+    {
+      title: 'Transmission Media',
+      description: 'Compare wired and wireless transmission media used in networking.',
+      link: 'https://ozidan13.github.io/network/Unit3/transmission_media.html',
+      order: 11
+    },
+    {
+      title: 'Signal Encoding',
+      description: 'Understand signals, encoding techniques, and how data is represented on the wire.',
+      link: 'https://ozidan13.github.io/network/Unit3/signal_encoding.html',
+      order: 12
+    },
+    {
+      title: 'Multiplexing',
+      description: 'Learn how multiplexing enables multiple signals to share a single channel.',
+      link: 'https://ozidan13.github.io/network/Unit3/multiplexing.html',
+      order: 13
+    },
+    {
+      title: 'Switching Types',
+      description: 'Compare circuit switching and packet switching in network communication.',
+      link: 'https://ozidan13.github.io/network/Unit3/switching_transmission.html',
+      order: 14
+    },
+    {
+      title: 'Framing & Error',
+      description: 'Study data link layer framing and error detection techniques.',
+      link: 'https://ozidan13.github.io/network/Unit4/framing_error.html',
+      order: 15
+    },
+    {
+      title: 'MAC & Ethernet',
+      description: 'Learn MAC addresses and how Ethernet operates at the data link layer.',
+      link: 'https://ozidan13.github.io/network/Unit4/mac_addresses.html',
+      order: 16
+    },
+    {
+      title: 'Switching & VLANs',
+      description: 'Configure switches and understand VLAN segmentation in local networks.',
+      link: 'https://ozidan13.github.io/network/Unit4/switching_vlans.html',
+      order: 17
+    },
+    {
+      title: 'Spanning Tree',
+      description: 'Understand the Spanning Tree Protocol and how it prevents Layer 2 loops.',
+      link: 'https://ozidan13.github.io/network/Unit4/spanning_tree.html',
+      order: 18
+    },
+    {
+      title: 'WiFi & Wireless',
+      description: 'Study wireless networking standards, WiFi operation, and security.',
+      link: 'https://ozidan13.github.io/network/Unit4/wifi_wireless.html',
+      order: 19
+    },
+    {
+      title: 'IP Addressing',
+      description: 'Master IPv4 addressing, classes, private ranges, and CIDR notation.',
+      link: 'https://ozidan13.github.io/network/Unit5/ip_addressing.html',
+      order: 20
+    },
+    {
+      title: 'Subnetting',
+      description: 'Practice subnetting IPv4 networks and calculating hosts per subnet.',
+      link: 'https://ozidan13.github.io/network/Unit5/subnetting.html',
+      order: 21
+    },
+    {
+      title: 'IPv6',
+      description: 'Learn IPv6 addressing, notation, and coexistence strategies with IPv4.',
+      link: 'https://ozidan13.github.io/network/Unit5/ipv6.html',
+      order: 22
+    },
+    {
+      title: 'Routing Basics',
+      description: 'Understand routing fundamentals and how packets are forwarded between networks.',
+      link: 'https://ozidan13.github.io/network/Unit5/routing_basics.html',
+      order: 23
+    },
+    {
+      title: 'Routing Protocols',
+      description: 'Compare distance-vector and link-state protocols including RIP, OSPF, and BGP.',
+      link: 'https://ozidan13.github.io/network/Unit5/routing_protocols.html',
+      order: 24
+    },
+    {
+      title: 'NAT & DHCP',
+      description: 'Learn Network Address Translation and Dynamic Host Configuration Protocol.',
+      link: 'https://ozidan13.github.io/network/Unit5/nat_dhcp.html',
+      order: 25
+    },
+    {
+      title: 'ICMP & ARP',
+      description: 'Study ICMP for diagnostics and ARP for address resolution on local networks.',
+      link: 'https://ozidan13.github.io/network/Unit5/icmp_arp.html',
+      order: 26
+    },
+    {
+      title: 'TCP vs UDP',
+      description: 'Compare TCP and UDP transport protocols and when to use each.',
+      link: 'https://ozidan13.github.io/network/Unit6/tcp_udp.html',
+      order: 27
+    },
+    {
+      title: 'TCP Connection',
+      description: 'Study the three-way handshake, connection teardown, and TCP state machine.',
+      link: 'https://ozidan13.github.io/network/Unit6/tcp_connection.html',
+      order: 28
+    },
+    {
+      title: 'Flow Control',
+      description: 'Understand TCP flow control and congestion avoidance mechanisms.',
+      link: 'https://ozidan13.github.io/network/Unit6/flow_congestion.html',
+      order: 29
+    },
+    {
+      title: 'Ports & Sockets',
+      description: 'Learn about port numbers and how sockets enable application communication.',
+      link: 'https://ozidan13.github.io/network/Unit6/ports_sockets.html',
+      order: 30
+    },
+    {
+      title: 'HTTP & HTTPS',
+      description: 'Study web protocols including HTTP methods, status codes, and TLS encryption.',
+      link: 'https://ozidan13.github.io/network/Unit7/http_https.html',
+      order: 31
+    },
+    {
+      title: 'DNS',
+      description: 'Understand how the Domain Name System resolves hostnames to IP addresses.',
+      link: 'https://ozidan13.github.io/network/Unit7/dns.html',
+      order: 32
+    },
+    {
+      title: 'Email Protocols',
+      description: 'Compare SMTP, POP3, and IMAP protocols used for email communication.',
+      link: 'https://ozidan13.github.io/network/Unit7/email_protocols.html',
+      order: 33
+    },
+    {
+      title: 'FTP & SSH',
+      description: 'Learn file transfer with FTP and secure remote access with SSH.',
+      link: 'https://ozidan13.github.io/network/Unit7/ftp_ssh.html',
+      order: 34
+    },
+    {
+      title: 'DHCP & SNMP',
+      description: 'Study network management protocols including DHCP and SNMP.',
+      link: 'https://ozidan13.github.io/network/Unit7/dhcp_snmp.html',
+      order: 35
+    },
+    {
+      title: 'Security Concepts',
+      description: 'Learn the CIA triad and foundational network security concepts.',
+      link: 'https://ozidan13.github.io/network/Unit8/security_concepts.html',
+      order: 36
+    },
+    {
+      title: 'Cryptography',
+      description: 'Study symmetric and asymmetric encryption including AES and RSA.',
+      link: 'https://ozidan13.github.io/network/Unit8/cryptography.html',
+      order: 37
+    },
+    {
+      title: 'Firewalls & IDS',
+      description: 'Configure firewalls and understand Intrusion Detection Systems.',
+      link: 'https://ozidan13.github.io/network/Unit8/firewalls_ids.html',
+      order: 38
+    },
+    {
+      title: 'VPN & Tunneling',
+      description: 'Learn how VPNs and tunneling protocols secure remote network access.',
+      link: 'https://ozidan13.github.io/network/Unit8/vpn_tunneling.html',
+      order: 39
+    },
+    {
+      title: 'Ethical Hacking',
+      description: 'Get an introduction to ethical hacking and penetration testing basics.',
+      link: 'https://ozidan13.github.io/network/Unit8/ethical_hacking.html',
+      order: 40
+    },
+    {
+      title: 'Cisco IOS CLI',
+      description: 'Practice Cisco router and switch configuration using the IOS command line.',
+      link: 'https://ozidan13.github.io/network/Unit9/cisco_cli.html',
+      order: 41
+    },
+    {
+      title: 'Packet Analysis',
+      description: 'Use Wireshark to capture and analyze network traffic packets.',
+      link: 'https://ozidan13.github.io/network/Unit9/packet_analysis.html',
+      order: 42
+    },
+    {
+      title: 'Troubleshooting',
+      description: 'Apply systematic troubleshooting methods to diagnose network issues.',
+      link: 'https://ozidan13.github.io/network/Unit9/network_troubleshooting.html',
+      order: 43
+    },
+    {
+      title: 'Network Design',
+      description: 'Design scalable and reliable network architectures for real scenarios.',
+      link: 'https://ozidan13.github.io/network/Unit9/network_design.html',
+      order: 44
+    },
+    {
+      title: 'Cloud Networking',
+      description: 'Study virtual networks, subnets, and cloud provider networking services.',
+      link: 'https://ozidan13.github.io/network/Unit9/cloud_networking.html',
+      order: 45
+    },
+    {
+      title: 'Capstone: Network Design',
+      description: 'Complete a full network design project from requirements to topology.',
+      link: 'https://ozidan13.github.io/network/Unit10/capstone_design.html',
+      order: 46
+    },
+    {
+      title: 'Capstone: Traffic Analysis',
+      description: 'Perform real-world traffic analysis and document findings.',
+      link: 'https://ozidan13.github.io/network/Unit10/capstone_analysis.html',
+      order: 47
+    },
+    {
+      title: 'Certifications',
+      description: 'Prepare for CCNA, Network+, and cloud networking certifications.',
+      link: 'https://ozidan13.github.io/network/Unit10/certifications.html',
+      order: 48
+    },
+    {
+      title: 'Career Guide',
+      description: 'Plan next steps for a career in networking and network engineering.',
+      link: 'https://ozidan13.github.io/network/Unit10/career_guide.html',
+      order: 49
     }
   ]
 }
