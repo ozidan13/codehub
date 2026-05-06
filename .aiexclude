@@ -1,0 +1,9 @@
+test-log/
+scratch/
+*.log
+*.gz
+tmp_*
+uploads/
+.env
+.git/
+node_modules/

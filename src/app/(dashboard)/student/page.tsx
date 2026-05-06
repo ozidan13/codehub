@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, FC, ReactNode } from 'react'
+import { useState, useEffect, useCallback, FC, ReactNode, CSSProperties } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { 
   BookOpen, Clock, CheckCircle, X, FileText, Trophy, RefreshCw, Star, 
   Wallet, CreditCard, ShoppingCart, TrendingUp, Award, Target, 
   BarChart3, Activity, Zap, Calendar, Users, Play, XCircle,
-  ArrowUp, ArrowDown, Sparkles, GraduationCap, Medal, ExternalLink
+  ArrowUp, ArrowDown, Sparkles, GraduationCap, Medal, ExternalLink,
+  Box, Code2, Database, Layers, Wifi, Palette, FileCode, Cpu, Globe, Terminal, Braces, CircuitBoard, GitBranch, FolderOpen, ChevronRight, CheckCircle2, Hexagon, Brain, PenTool, Codepen, Server
 } from 'lucide-react'
 
 import { formatDate, formatDateTime, formatTimeRange } from '@/lib/dateUtils';
@@ -153,7 +154,14 @@ export default function DashboardPage() {
     handleRefresh();
   }
 
-  
+  const orderedPlatforms = [...platforms].sort((a, b) => {
+    const isJavaScriptA = a.name.includes('JavaScript Tasks');
+    const isJavaScriptB = b.name.includes('JavaScript Tasks');
+
+    if (isJavaScriptA && !isJavaScriptB) return -1;
+    if (!isJavaScriptA && isJavaScriptB) return 1;
+    return 0;
+  });
 
 
 
@@ -163,26 +171,30 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen w-full" dir="rtl">
+    <div className="min-h-screen w-full bg-[#0B0F1E]" dir="rtl">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        
-        
+
         {isContentLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <div className="relative">
                 <div className="h-16 w-16 mx-auto mb-4">
-                  <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-pulse"></div>
-                  <div className="absolute inset-0 border-4 border-blue-600 rounded-full animate-spin border-t-transparent"></div>
+                  <div className="absolute inset-0 border-4 border-blue-500/30 rounded-full animate-pulse"></div>
+                  <div className="absolute inset-0 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">جاري تحميل البيانات...</h3>
-              <p className="text-gray-500">يتم تجهيز المحتوى الخاص بك</p>
+              <h3 className="text-lg font-semibold text-slate-200 mb-2">جاري تحميل البيانات...</h3>
+              <p className="text-slate-500">يتم تجهيز المحتوى الخاص بك</p>
             </div>
           </div>
         ) : (
           <>
-            {/* Full-Width Two-Column Layout */}
+            {/* Full-Width Platform Hub */}
+            <div className="mb-8">
+              <PlatformHub platforms={orderedPlatforms} enrollments={enrollments} />
+            </div>
+
+            {/* Two-Column Content Layout */}
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 xl:gap-8 max-w-none">
               {/* Left Column - Stats & Wallet (25% width on xl screens) */}
               <div className="xl:col-span-1 space-y-6">
@@ -191,37 +203,24 @@ export default function DashboardPage() {
                 <ExpirationNotifications enrollments={enrollments} />
               </div>
 
-              {/* Right Column - Platform Content (75% width on xl screens) */}
+              {/* Right Column - Platform Cards (75% width on xl screens) */}
               <div className="xl:col-span-3">
-                {/* Enhanced Platforms Section */}
-                <div className="space-y-6">
-                  
-                  <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                    {platforms
-                      .sort((a, b) => {
-                        // Put JavaScript platform first
-                        const isJavaScriptA = a.name.includes('JavaScript Tasks') || a.name.includes('مهام JavaScript');
-                        const isJavaScriptB = b.name.includes('JavaScript Tasks') || b.name.includes('مهام JavaScript');
-                        
-                        if (isJavaScriptA && !isJavaScriptB) return -1;
-                        if (!isJavaScriptA && isJavaScriptB) return 1;
-                        return 0; // Keep original order for other platforms
-                      })
-                      .map((platform, index) => (
-                      <div 
-                        key={platform.id} 
-                        className="animate-fade-in-up"
-                        style={{ animationDelay: `${index * 100}ms` }}
-                      >
-                        <PlatformCard 
-                          platform={platform} 
-                          enrollments={enrollments} 
-                          onTaskClick={handleTaskClick} 
-                          onEnrollmentSuccess={handleEnrollmentSuccess} 
-                        />
-                      </div>
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                  {orderedPlatforms.map((platform, index) => (
+                    <div 
+                      key={platform.id} 
+                      id={`platform-${platform.id}`}
+                      className="animate-fade-in-up"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <PlatformCard 
+                        platform={platform} 
+                        enrollments={enrollments} 
+                        onTaskClick={handleTaskClick} 
+                        onEnrollmentSuccess={handleEnrollmentSuccess} 
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -249,16 +248,292 @@ export default function DashboardPage() {
 // --- CHILD COMPONENTS ---
 
 const PageLoader: FC = () => (
-  <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-blue-100">
+  <div className="flex items-center justify-center min-h-screen bg-[#0B0F1E]">
     <div className="text-center">
-      <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32 mb-4 mx-auto"></div>
-      <h2 className="text-2xl font-semibold text-gray-700">جاري التحميل...</h2>
-      <p className="text-gray-500">يتم تجهيز لوحة التحكم الخاصة بك.</p>
+      <div className="relative h-32 w-32 mb-4 mx-auto">
+        <div className="absolute inset-0 rounded-full border-8 border-slate-800"></div>
+        <div className="absolute inset-0 rounded-full border-8 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+      </div>
+      <h2 className="text-2xl font-semibold text-slate-200">جاري التحميل...</h2>
+      <p className="text-slate-500 mt-2">يتم تجهيز لوحة التحكم الخاصة بك.</p>
     </div>
   </div>
 );
 
 // DashboardHeader component removed - now handled by layout.tsx
+
+const PLATFORM_ICON_MAP: Record<string, { icon: typeof Box; color: string; bg: string }> = {
+  'system design': { icon: Box, color: 'text-violet-400', bg: 'bg-violet-500/15' },
+  'oop': { icon: Code2, color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
+  'object oriented': { icon: Code2, color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
+  'database': { icon: Database, color: 'text-blue-400', bg: 'bg-blue-500/15' },
+  'solid': { icon: Layers, color: 'text-amber-400', bg: 'bg-amber-500/15' },
+  'design pattern': { icon: Layers, color: 'text-amber-400', bg: 'bg-amber-500/15' },
+  'network': { icon: Wifi, color: 'text-purple-400', bg: 'bg-purple-500/15' },
+  'ui/ux': { icon: Palette, color: 'text-pink-400', bg: 'bg-pink-500/15' },
+  'ui ux': { icon: Palette, color: 'text-pink-400', bg: 'bg-pink-500/15' },
+  'javascript': { icon: FileCode, color: 'text-yellow-400', bg: 'bg-yellow-500/15' },
+  'js': { icon: FileCode, color: 'text-yellow-400', bg: 'bg-yellow-500/15' },
+  'interview': { icon: Terminal, color: 'text-yellow-400', bg: 'bg-yellow-500/15' },
+  'algorithm': { icon: Cpu, color: 'text-cyan-400', bg: 'bg-cyan-500/15' },
+  'data structure': { icon: GitBranch, color: 'text-rose-400', bg: 'bg-rose-500/15' },
+  'web': { icon: Globe, color: 'text-sky-400', bg: 'bg-sky-500/15' },
+  'frontend': { icon: Codepen, color: 'text-orange-400', bg: 'bg-orange-500/15' },
+  'backend': { icon: Server, color: 'text-indigo-400', bg: 'bg-indigo-500/15' },
+};
+
+const FALLBACK_ICONS = [
+  { icon: Box, color: 'text-violet-400', bg: 'bg-violet-500/15' },
+  { icon: Code2, color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
+  { icon: Database, color: 'text-blue-400', bg: 'bg-blue-500/15' },
+  { icon: Layers, color: 'text-amber-400', bg: 'bg-amber-500/15' },
+  { icon: Wifi, color: 'text-purple-400', bg: 'bg-purple-500/15' },
+  { icon: Palette, color: 'text-pink-400', bg: 'bg-pink-500/15' },
+  { icon: FileCode, color: 'text-yellow-400', bg: 'bg-yellow-500/15' },
+  { icon: Cpu, color: 'text-cyan-400', bg: 'bg-cyan-500/15' },
+];
+
+function getPlatformIcon(platformName: string, index: number) {
+  const lower = platformName.toLowerCase();
+  for (const [key, value] of Object.entries(PLATFORM_ICON_MAP)) {
+    if (lower.includes(key)) return value;
+  }
+  return FALLBACK_ICONS[index % FALLBACK_ICONS.length];
+}
+
+const PlatformHubCard: FC<{
+  platform: Platform;
+  isActive: boolean;
+  iconMeta: { icon: typeof Box; color: string; bg: string };
+  Icon: typeof Box;
+  onClick: () => void;
+  delay: number;
+}> = ({ platform, isActive, iconMeta, Icon, onClick, delay }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group text-left"
+    style={{ animationDelay: `${delay}ms` }}
+  >
+    <span className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#111628]/80 px-5 py-4 shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-300 hover:border-white/[0.12] hover:bg-[#161d35]/90 hover:scale-[1.02]">
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconMeta.bg}`}>
+        <Icon className={`h-5 w-5 ${iconMeta.color}`} />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block truncate text-sm font-semibold text-slate-100 sm:text-base">
+          {platform.name}
+        </span>
+        <span className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+            {isActive ? 'Active' : 'Locked'}
+          </span>
+        </span>
+        <span className="mt-1 block text-xs font-medium text-slate-500">
+          {platform.tasks?.length || 0} <span className="text-slate-600">Lessons</span>
+        </span>
+      </span>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] text-slate-500 transition-colors duration-300 group-hover:bg-white/[0.08] group-hover:text-slate-300">
+        <ChevronRight className="h-4 w-4" />
+      </span>
+    </span>
+  </button>
+);
+
+const PlatformHub: FC<{ platforms: Platform[]; enrollments: Enrollment[] }> = ({ platforms, enrollments }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const orbitPlatforms = platforms.slice(0, 8);
+  const totalTasks = orbitPlatforms.reduce((sum, platform) => sum + (platform.tasks?.length || 0), 0);
+  const activeCount = orbitPlatforms.filter((platform) => {
+    const enrollment = enrollments.find((item) => item.platform.id === platform.id);
+    return enrollment && enrollment.status !== 'expired';
+  }).length;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIsExpanded(true), 120);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const handlePlatformSelect = (platformId: string) => {
+    setIsExpanded(true);
+    document.getElementById(`platform-${platformId}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  };
+
+  if (orbitPlatforms.length === 0) return null;
+
+  return (
+    <section className="relative w-full rounded-3xl bg-[#0B0F1E] shadow-2xl shadow-black/40" aria-label="Coding platform hub">
+      {/* Ambient background */}
+      <div className="pointer-events-none absolute inset-0 rounded-3xl overflow-hidden">
+        <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/5 blur-3xl" />
+        <div className="absolute left-1/2 top-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-600/5 blur-2xl" />
+      </div>
+
+      <div className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+        {/* Desktop: 3x3 Grid with center node in middle */}
+        <div className="hidden lg:grid lg:grid-cols-3 lg:gap-5 lg:items-center">
+          {orbitPlatforms.slice(0, 4).map((platform, index) => {
+            const enrollment = enrollments.find((item) => item.platform.id === platform.id);
+            const isActive = enrollment && enrollment.status !== 'expired';
+            const iconMeta = getPlatformIcon(platform.name, index);
+            const Icon = iconMeta.icon;
+            return (
+              <PlatformHubCard
+                key={platform.id}
+                platform={platform}
+                isActive={isActive}
+                iconMeta={iconMeta}
+                Icon={Icon}
+                onClick={() => handlePlatformSelect(platform.id)}
+                delay={index * 80}
+              />
+            );
+          })}
+
+          {/* Center Node */}
+          <div className="flex items-center justify-center py-4">
+            <button
+              type="button"
+              onClick={() => setIsExpanded((v) => !v)}
+              className="group relative flex h-28 w-28 items-center justify-center rounded-full focus:outline-none"
+              aria-pressed={isExpanded}
+            >
+              <span className="absolute inset-0 rounded-full border border-cyan-400/40 shadow-[0_0_20px_rgba(6,182,212,0.25),inset_0_0_20px_rgba(6,182,212,0.1)]" />
+              <span className="absolute inset-[3px] rounded-full bg-[#0B0F1E]" />
+              <span className="absolute inset-[3px] rounded-full bg-gradient-to-br from-blue-600/20 via-indigo-600/20 to-cyan-500/20" />
+              <span className="relative font-black text-3xl tracking-wider text-white">
+                C<span className="text-cyan-400">/</span>
+              </span>
+            </button>
+          </div>
+
+          {orbitPlatforms.slice(4, 8).map((platform, index) => {
+            const enrollment = enrollments.find((item) => item.platform.id === platform.id);
+            const isActive = enrollment && enrollment.status !== 'expired';
+            const iconMeta = getPlatformIcon(platform.name, index + 4);
+            const Icon = iconMeta.icon;
+            return (
+              <PlatformHubCard
+                key={platform.id}
+                platform={platform}
+                isActive={isActive}
+                iconMeta={iconMeta}
+                Icon={Icon}
+                onClick={() => handlePlatformSelect(platform.id)}
+                delay={(index + 4) * 80}
+              />
+            );
+          })}
+        </div>
+
+        {/* Tablet: 2-column grid */}
+        <div className="hidden sm:grid sm:grid-cols-2 sm:gap-4 lg:hidden">
+          {/* Center node full width */}
+          <div className="col-span-2 flex justify-center py-6">
+            <button
+              type="button"
+              onClick={() => setIsExpanded((v) => !v)}
+              className="group relative flex h-24 w-24 items-center justify-center rounded-full focus:outline-none"
+            >
+              <span className="absolute inset-0 rounded-full border border-cyan-400/40 shadow-[0_0_20px_rgba(6,182,212,0.25)]" />
+              <span className="absolute inset-[3px] rounded-full bg-[#0B0F1E]" />
+              <span className="relative font-black text-2xl tracking-wider text-white">
+                C<span className="text-cyan-400">/</span>
+              </span>
+            </button>
+          </div>
+          {orbitPlatforms.map((platform, index) => {
+            const enrollment = enrollments.find((item) => item.platform.id === platform.id);
+            const isActive = enrollment && enrollment.status !== 'expired';
+            const iconMeta = getPlatformIcon(platform.name, index);
+            const Icon = iconMeta.icon;
+            return (
+              <PlatformHubCard
+                key={platform.id}
+                platform={platform}
+                isActive={isActive}
+                iconMeta={iconMeta}
+                Icon={Icon}
+                onClick={() => handlePlatformSelect(platform.id)}
+                delay={index * 60}
+              />
+            );
+          })}
+        </div>
+
+        {/* Mobile: stacked */}
+        <div className="flex flex-col gap-4 sm:hidden">
+          <div className="flex justify-center py-4">
+            <button
+              type="button"
+              onClick={() => setIsExpanded((v) => !v)}
+              className="group relative flex h-20 w-20 items-center justify-center rounded-full focus:outline-none"
+            >
+              <span className="absolute inset-0 rounded-full border border-cyan-400/40" />
+              <span className="absolute inset-[3px] rounded-full bg-[#0B0F1E]" />
+              <span className="relative font-black text-xl tracking-wider text-white">
+                C<span className="text-cyan-400">/</span>
+              </span>
+            </button>
+          </div>
+          {orbitPlatforms.map((platform, index) => {
+            const enrollment = enrollments.find((item) => item.platform.id === platform.id);
+            const isActive = enrollment && enrollment.status !== 'expired';
+            const iconMeta = getPlatformIcon(platform.name, index);
+            const Icon = iconMeta.icon;
+            return (
+              <PlatformHubCard
+                key={platform.id}
+                platform={platform}
+                isActive={isActive}
+                iconMeta={iconMeta}
+                Icon={Icon}
+                onClick={() => handlePlatformSelect(platform.id)}
+                delay={index * 60}
+              />
+            );
+          })}
+        </div>
+
+        {/* Bottom Stats Bar */}
+        <div className={`mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-6 rounded-2xl border border-white/[0.06] bg-[#111628]/80 px-6 py-4 shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-700 ${isExpanded ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15">
+              <Box className="h-5 w-5 text-emerald-400" />
+            </span>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold leading-none text-slate-100">{activeCount}</span>
+              <span className="mt-0.5 text-[11px] font-medium text-slate-500">Active Platforms</span>
+            </div>
+          </div>
+          <span className="hidden h-8 w-px bg-white/[0.08] sm:block" />
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15">
+              <CheckCircle2 className="h-5 w-5 text-violet-400" />
+            </span>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold leading-none text-slate-100">{totalTasks}</span>
+              <span className="mt-0.5 text-[11px] font-medium text-slate-500">Lessons Completed</span>
+            </div>
+          </div>
+          <span className="hidden h-8 w-px bg-white/[0.08] sm:block" />
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/15">
+              <Users className="h-5 w-5 text-blue-400" />
+            </span>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold leading-none text-slate-100">{orbitPlatforms.length}</span>
+              <span className="mt-0.5 text-[11px] font-medium text-slate-500">Platforms</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
   if (!stats) return null;
@@ -269,71 +544,71 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
   
   return (
     <div className="space-y-6">
-      {/* Main Stats Grid - Minimalist Design */}
+      {/* Main Stats Grid - Dark Mode */}
       <div className="grid grid-cols-2 gap-4">
-        <EnhancedStatCard 
-          icon={<FileText />} 
-          title="إجمالي التسليمات" 
-          value={stats.totalSubmissions} 
+        <EnhancedStatCard
+          icon={<FileText />}
+          title="إجمالي التسليمات"
+          value={stats.totalSubmissions}
           color="blue"
           trend={stats.totalSubmissions > 0 ? 'up' : 'neutral'}
           subtitle="مهمة مكتملة"
         />
-        <EnhancedStatCard 
-          icon={<CheckCircle />} 
-          title="المقبولة" 
-          value={stats.approvedSubmissions} 
+        <EnhancedStatCard
+          icon={<CheckCircle />}
+          title="المقبولة"
+          value={stats.approvedSubmissions}
           color="green"
           trend={stats.approvedSubmissions > 0 ? 'up' : 'neutral'}
           subtitle="تم قبولها"
           progress={completionRate}
         />
-        <EnhancedStatCard 
-          icon={<Clock />} 
-          title="قيد المراجعة" 
-          value={stats.pendingSubmissions} 
+        <EnhancedStatCard
+          icon={<Clock />}
+          title="قيد المراجعة"
+          value={stats.pendingSubmissions}
           color="yellow"
           trend={stats.pendingSubmissions > 0 ? 'up' : 'neutral'}
           subtitle="في انتظار المراجعة"
         />
-        <EnhancedStatCard 
-          icon={<Trophy />} 
-          title="متوسط الدرجات" 
-          value={averageScore > 0 ? `${averageScore.toFixed(1)}%` : 'لا يوجد'} 
+        <EnhancedStatCard
+          icon={<Trophy />}
+          title="متوسط الدرجات"
+          value={averageScore > 0 ? `${averageScore.toFixed(1)}%` : 'لا يوجد'}
           color="purple"
           trend={averageScore >= 70 ? 'up' : averageScore >= 50 ? 'neutral' : 'down'}
           subtitle="من إجمالي الدرجات"
           progress={averageScore}
         />
       </div>
-      
-      {/* Minimalist Progress Overview */}
-      <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm border border-gray-100 p-6">
+
+      {/* Progress Overview - Dark */}
+      <div className="rounded-2xl border border-white/[0.06] bg-[#111628]/80 p-6 shadow-lg shadow-black/20">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-slate-200 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-400" />
             نظرة عامة على الأداء
           </h3>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
             <Activity className="h-4 w-4" />
             تحديث مباشر
           </div>
-      </div>
-        
+        </div>
+
         <div className="grid grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {/* Completion Rate */}
           <div className="text-center">
             <div className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3">
               <svg className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-gray-200"
+                  className="text-slate-700"
                   stroke="currentColor"
                   strokeWidth="3"
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className="text-green-500"
+                  className="text-emerald-400"
                   stroke="currentColor"
                   strokeWidth="3"
                   strokeDasharray={`${completionRate}, 100`}
@@ -343,26 +618,26 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm sm:text-lg font-bold text-gray-800">{completionRate.toFixed(0)}%</span>
+                <span className="text-sm sm:text-lg font-bold text-slate-200">{completionRate.toFixed(0)}%</span>
               </div>
             </div>
-            <p className="text-xs sm:text-sm font-medium text-gray-700">معدل الإنجاز</p>
-            <p className="text-xs text-gray-500 hidden sm:block">من المهام المقبولة</p>
+            <p className="text-xs sm:text-sm font-medium text-slate-300">معدل الإنجاز</p>
+            <p className="text-xs text-slate-500 hidden sm:block">من المهام المقبولة</p>
           </div>
-          
+
           {/* Average Score */}
           <div className="text-center">
             <div className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3">
               <svg className="w-16 h-16 sm:w-20 sm:h-20 transform -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-gray-200"
+                  className="text-slate-700"
                   stroke="currentColor"
                   strokeWidth="3"
                   fill="none"
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className={`${averageScore >= 70 ? 'text-green-500' : averageScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
+                  className={`${averageScore >= 70 ? 'text-emerald-400' : averageScore >= 50 ? 'text-amber-400' : 'text-rose-400'}`}
                   stroke="currentColor"
                   strokeWidth="3"
                   strokeDasharray={`${averageScore}, 100`}
@@ -372,33 +647,33 @@ const StatsSection: FC<{ stats: StudentStats | null }> = ({ stats }) => {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm sm:text-lg font-bold text-gray-800">{averageScore.toFixed(0)}</span>
+                <span className="text-sm sm:text-lg font-bold text-slate-200">{averageScore.toFixed(0)}</span>
               </div>
             </div>
-            <p className="text-xs sm:text-sm font-medium text-gray-700">متوسط الدرجات</p>
-            <p className="text-xs text-gray-500 hidden sm:block">من 100 درجة</p>
+            <p className="text-xs sm:text-sm font-medium text-slate-300">متوسط الدرجات</p>
+            <p className="text-xs text-slate-500 hidden sm:block">من 100 درجة</p>
           </div>
-          
+
           {/* Performance Level */}
           <div className="text-center">
             <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-2 sm:mb-3 flex items-center justify-center">
               {averageScore >= 90 ? (
                 <div className="relative">
-                  <Medal className="h-8 w-8 sm:h-12 sm:w-12 text-yellow-500" />
-                  <Sparkles className="absolute -top-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 animate-pulse" />
+                  <Medal className="h-8 w-8 sm:h-12 sm:w-12 text-yellow-400" />
+                  <Sparkles className="absolute -top-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 text-yellow-300 animate-pulse" />
                 </div>
               ) : averageScore >= 70 ? (
-                <Award className="h-8 w-8 sm:h-12 sm:w-12 text-green-500" />
+                <Award className="h-8 w-8 sm:h-12 sm:w-12 text-emerald-400" />
               ) : averageScore >= 50 ? (
-                <Target className="h-8 w-8 sm:h-12 sm:w-12 text-yellow-500" />
+                <Target className="h-8 w-8 sm:h-12 sm:w-12 text-amber-400" />
               ) : (
-                <TrendingUp className="h-8 w-8 sm:h-12 sm:w-12 text-blue-500" />
+                <TrendingUp className="h-8 w-8 sm:h-12 sm:w-12 text-blue-400" />
               )}
             </div>
-            <p className="text-xs sm:text-sm font-medium text-gray-700">
+            <p className="text-xs sm:text-sm font-medium text-slate-300">
               {averageScore >= 90 ? 'ممتاز' : averageScore >= 70 ? 'جيد جداً' : averageScore >= 50 ? 'جيد' : 'يحتاج تحسين'}
             </p>
-            <p className="text-xs text-gray-500 hidden sm:block">مستوى الأداء</p>
+            <p className="text-xs text-slate-500 hidden sm:block">مستوى الأداء</p>
           </div>
         </div>
       </div>
@@ -418,35 +693,35 @@ const EnhancedStatCard: FC<{
   const colors = {
     blue: {
       gradient: 'from-blue-500 to-blue-600',
-      bg: 'bg-blue-50',
-      text: 'text-blue-600',
-      border: 'border-blue-100'
+      bg: 'bg-blue-500/10',
+      text: 'text-blue-400',
+      border: 'border-blue-500/20'
     },
     green: {
-      gradient: 'from-green-500 to-green-600',
-      bg: 'bg-green-50',
-      text: 'text-green-600',
-      border: 'border-green-100'
+      gradient: 'from-emerald-500 to-emerald-600',
+      bg: 'bg-emerald-500/10',
+      text: 'text-emerald-400',
+      border: 'border-emerald-500/20'
     },
     yellow: {
-      gradient: 'from-yellow-500 to-yellow-600',
-      bg: 'bg-yellow-50',
-      text: 'text-yellow-600',
-      border: 'border-yellow-100'
+      gradient: 'from-amber-500 to-amber-600',
+      bg: 'bg-amber-500/10',
+      text: 'text-amber-400',
+      border: 'border-amber-500/20'
     },
     purple: {
-      gradient: 'from-purple-500 to-purple-600',
-      bg: 'bg-purple-50',
-      text: 'text-purple-600',
-      border: 'border-purple-100'
+      gradient: 'from-violet-500 to-violet-600',
+      bg: 'bg-violet-500/10',
+      text: 'text-violet-400',
+      border: 'border-violet-500/20'
     },
   };
 
   const TrendIcon = trend === 'up' ? ArrowUp : trend === 'down' ? ArrowDown : Activity;
-  const trendColor = trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
+  const trendColor = trend === 'up' ? 'text-emerald-400' : trend === 'down' ? 'text-rose-400' : 'text-slate-500';
 
   return (
-    <div className={`bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-sm border ${colors[color].border} transition-all duration-200 hover:shadow-md`}>
+    <div className={`p-6 rounded-2xl border ${colors[color].border} bg-[#111628]/80 backdrop-blur-md transition-all duration-200 hover:shadow-lg hover:shadow-black/20`}>
       <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-xl bg-gradient-to-br ${colors[color].gradient} text-white shadow-sm`}>
           <div className="h-5 w-5">{icon}</div>
@@ -455,23 +730,23 @@ const EnhancedStatCard: FC<{
           <TrendIcon className="h-4 w-4" />
         </div>
       </div>
-      
+
       <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+        <h3 className="text-sm font-medium text-slate-400">{title}</h3>
         <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-semibold text-gray-800">{value}</span>
-          {subtitle && <span className="text-xs text-gray-500">{subtitle}</span>}
+          <span className="text-2xl font-semibold text-slate-100">{value}</span>
+          {subtitle && <span className="text-xs text-slate-500">{subtitle}</span>}
         </div>
-        
+
         {/* Minimalist Progress Bar */}
         {progress !== undefined && (
           <div className="mt-3">
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
               <span>التقدم</span>
               <span>{progress.toFixed(0)}%</span>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-2">
-              <div 
+            <div className="w-full bg-slate-700/50 rounded-full h-2">
+              <div
                 className={`h-full bg-gradient-to-r ${colors[color].gradient} rounded-full transition-all duration-500`}
                 style={{ width: `${Math.min(progress, 100)}%` }}
               ></div>
@@ -667,36 +942,36 @@ const ExpirationNotifications: FC<{ enrollments: Enrollment[] }> = ({ enrollment
   return (
     <div className="space-y-4 mb-8">
       {expiredEnrollments.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-4">
           <div className="flex items-center space-x-2 space-x-reverse mb-2">
-            <XCircle className="h-5 w-5 text-red-600" />
-            <h3 className="font-semibold text-red-800">اشتراكات منتهية الصلاحية</h3>
+            <XCircle className="h-5 w-5 text-rose-400" />
+            <h3 className="font-semibold text-rose-300">اشتراكات منتهية الصلاحية</h3>
           </div>
-          <p className="text-sm text-red-700 mb-3">
+          <p className="text-sm text-rose-400/80 mb-3">
             لديك {expiredEnrollments.length} اشتراك منتهي الصلاحية. يرجى التجديد للوصول إلى المحتوى.
           </p>
           <div className="flex flex-wrap gap-2">
             {expiredEnrollments.map(enrollment => (
-              <span key={enrollment.id} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <span key={enrollment.id} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-rose-500/15 text-rose-300 border border-rose-500/20">
                 {enrollment.platform.name}
               </span>
             ))}
           </div>
         </div>
       )}
-      
+
       {expiringSoonEnrollments.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
           <div className="flex items-center space-x-2 space-x-reverse mb-2">
-            <Clock className="h-5 w-5 text-yellow-600" />
-            <h3 className="font-semibold text-yellow-800">اشتراكات تنتهي قريباً</h3>
+            <Clock className="h-5 w-5 text-amber-400" />
+            <h3 className="font-semibold text-amber-300">اشتراكات تنتهي قريباً</h3>
           </div>
-          <p className="text-sm text-yellow-700 mb-3">
+          <p className="text-sm text-amber-400/80 mb-3">
             لديك {expiringSoonEnrollments.length} اشتراك ينتهي خلال 7 أيام. فكر في التجديد المبكر.
           </p>
           <div className="flex flex-wrap gap-2">
             {expiringSoonEnrollments.map(enrollment => (
-              <span key={enrollment.id} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              <span key={enrollment.id} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/20">
                 {enrollment.platform.name} - {enrollment.daysRemaining} أيام
               </span>
             ))}
@@ -765,16 +1040,16 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
   };
 
   return (
-    <div className="group relative bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl border border-gray-100">
+    <div className="group relative rounded-xl sm:rounded-2xl lg:rounded-3xl overflow-hidden transition-all duration-500 hover:shadow-2xl border border-white/[0.06] bg-[#111628]/80 shadow-lg shadow-black/20">
       {/* Animated Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-      
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
       {/* Status Indicator Bar */}
       <div className={`h-1 w-full ${
-        !isEnrolled ? 'bg-gray-300' :
-        enrollment?.status === 'expired' ? 'bg-gradient-to-r from-red-400 to-red-600' :
-        enrollment?.status === 'expiring_soon' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-        'bg-gradient-to-r from-green-400 to-emerald-500'
+        !isEnrolled ? 'bg-slate-600' :
+        enrollment?.status === 'expired' ? 'bg-gradient-to-r from-rose-400 to-rose-600' :
+        enrollment?.status === 'expiring_soon' ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
+        'bg-gradient-to-r from-emerald-400 to-emerald-500'
       }`}></div>
       
       <div className="relative z-10 p-3 sm:p-4 lg:p-8">
@@ -782,16 +1057,16 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
           <div className="flex-1">
             <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
               <div className={`p-2 sm:p-2.5 lg:p-3 rounded-lg sm:rounded-xl lg:rounded-2xl shadow-lg ${
-                !isEnrolled ? 'bg-gradient-to-br from-gray-400 to-gray-600' :
-                enrollment?.status === 'expired' ? 'bg-gradient-to-br from-red-400 to-red-600' :
-                enrollment?.status === 'expiring_soon' ? 'bg-gradient-to-br from-yellow-400 to-orange-500' :
-                'bg-gradient-to-br from-green-400 to-emerald-600'
+                !isEnrolled ? 'bg-gradient-to-br from-slate-500 to-slate-700' :
+                enrollment?.status === 'expired' ? 'bg-gradient-to-br from-rose-400 to-rose-600' :
+                enrollment?.status === 'expiring_soon' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
+                'bg-gradient-to-br from-emerald-400 to-emerald-600'
               } text-white group-hover:scale-110 transition-transform duration-300`}>
                 <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
               </div>
               <div>
-                <h2 className="text-sm sm:text-lg lg:text-2xl font-bold text-gray-800 group-hover:text-gray-900 transition-colors">{platform.name}</h2>
-                <p className="text-gray-600 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">{platform.description}</p>
+                <h2 className="text-sm sm:text-lg lg:text-2xl font-bold text-slate-200 group-hover:text-white transition-colors">{platform.name}</h2>
+                <p className="text-slate-400 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">{platform.description}</p>
               </div>
             </div>
             
@@ -800,19 +1075,19 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
               <div className="mt-2 sm:mt-3 lg:mt-4 space-y-2 sm:space-y-3">
                 {/* Expiration Date */}
                 {enrollment.expiresAt && (
-                  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm bg-gray-50 rounded-lg sm:rounded-xl p-2 sm:p-3">
-                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
-                    <span className="text-gray-600 hidden sm:inline">تاريخ الانتهاء:</span>
-                    <span className="font-semibold text-gray-800">{formatDate(enrollment.expiresAt)}</span>
+                  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm bg-white/[0.03] rounded-lg sm:rounded-xl p-2 sm:p-3 border border-white/[0.06]">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500" />
+                    <span className="text-slate-400 hidden sm:inline">تاريخ الانتهاء:</span>
+                    <span className="font-semibold text-slate-200">{formatDate(enrollment.expiresAt)}</span>
                   </div>
                 )}
                 
                 {/* Days Remaining with Progress */}
                 <div className="space-y-1 sm:space-y-2">
                   <div className={`inline-flex items-center px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-semibold shadow-sm ${
-                    enrollment.status === 'expired' ? 'bg-red-100 text-red-800 border border-red-200' :
-                    enrollment.status === 'expiring_soon' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                    'bg-green-100 text-green-800 border border-green-200'
+                    enrollment.status === 'expired' ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20' :
+                    enrollment.status === 'expiring_soon' ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' :
+                    'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
                   }`}>
                     <Activity className="h-3 w-3 sm:h-4 sm:w-4 ml-1 sm:ml-2" />
                     {enrollment.status === 'expired' ? 'منتهي الصلاحية' :
@@ -822,11 +1097,11 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
                   
                   {/* Progress Bar for Days Remaining */}
                   {enrollment.status !== 'expired' && enrollment.daysRemaining !== undefined && (
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 overflow-hidden">
-                      <div 
+                    <div className="w-full bg-slate-700/50 rounded-full h-1.5 sm:h-2 overflow-hidden">
+                      <div
                         className={`h-full rounded-full transition-all duration-1000 ${
-                          enrollment.status === 'expiring_soon' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                          'bg-gradient-to-r from-green-400 to-emerald-500'
+                          enrollment.status === 'expiring_soon' ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
+                          'bg-gradient-to-r from-emerald-400 to-emerald-500'
                         }`}
                         style={{ width: `${Math.min((enrollment.daysRemaining / 30) * 100, 100)}%` }}
                       ></div>
@@ -841,7 +1116,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
                       href={platform.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group/link inline-flex items-center gap-1 sm:gap-2 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-semibold bg-blue-50 hover:bg-blue-100 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105"
+                      className="group/link inline-flex items-center gap-1 sm:gap-2 text-blue-400 hover:text-blue-300 text-xs sm:text-sm font-semibold bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105"
                     >
                       <span className="hidden sm:inline">زيارة المنصة</span>
                       <span className="sm:hidden">زيارة</span>
@@ -857,7 +1132,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
                       href={platform.courseLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group/link inline-flex items-center gap-1 sm:gap-2 text-green-600 hover:text-green-800 text-xs sm:text-sm font-semibold bg-green-50 hover:bg-green-100 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105"
+                      className="group/link inline-flex items-center gap-1 sm:gap-2 text-emerald-400 hover:text-emerald-300 text-xs sm:text-sm font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105"
                     >
                       <span className="hidden sm:inline">رابط الكورس</span>
                       <span className="sm:hidden">كورس</span>
@@ -874,7 +1149,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
             {platform.isPaid && (
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg sm:rounded-xl lg:rounded-2xl blur opacity-30"></div>
-                <span className="relative bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-bold border border-yellow-200 shadow-sm">
+                <span className="relative bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-300 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-bold border border-amber-500/20 shadow-sm">
                   {platform.price} جنية
                 </span>
               </div>
@@ -923,7 +1198,7 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
             ) : (
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-lg sm:rounded-xl lg:rounded-2xl blur opacity-30"></div>
-                <span className="relative bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-bold border border-green-200 shadow-sm flex items-center gap-1 sm:gap-2">
+                <span className="relative bg-gradient-to-r from-emerald-500/10 to-emerald-500/10 text-emerald-300 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl text-xs sm:text-sm font-bold border border-emerald-500/20 shadow-sm flex items-center gap-1 sm:gap-2">
                   <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden sm:inline">مشترك ونشط</span>
                   <span className="sm:hidden">نشط</span>
@@ -940,18 +1215,18 @@ const PlatformCard: FC<{ platform: Platform; enrollments: Enrollment[]; onTaskCl
           ))
         ) : isEnrolled && enrollment?.status === 'expired' ? (
           <div className="col-span-full text-center py-8">
-            <div className="text-red-400 mb-2">
+            <div className="text-rose-400 mb-2">
               <XCircle className="h-12 w-12 mx-auto" />
             </div>
-            <p className="text-red-600 font-medium mb-2">انتهت صلاحية اشتراكك في هذه المنصة</p>
-            <p className="text-gray-600 text-sm">يرجى تجديد الاشتراك للوصول إلى المهام</p>
+            <p className="text-rose-400 font-medium mb-2">انتهت صلاحية اشتراكك في هذه المنصة</p>
+            <p className="text-slate-500 text-sm">يرجى تجديد الاشتراك للوصول إلى المهام</p>
           </div>
         ) : (
           <div className="col-span-full text-center py-8">
-            <div className="text-gray-400 mb-2">
+            <div className="text-slate-500 mb-2">
               <BookOpen className="h-12 w-12 mx-auto" />
             </div>
-            <p className="text-gray-600">يجب الاشتراك في المنصة لعرض المهام</p>
+            <p className="text-slate-400">يجب الاشتراك في المنصة لعرض المهام</p>
           </div>
         )}
       </div>
@@ -966,22 +1241,22 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
   const difficultyMap = { EASY: 'سهل', MEDIUM: 'متوسط', HARD: 'صعب' };
   const difficultyColors = {
     EASY: {
-      bg: 'bg-gradient-to-r from-green-100 to-emerald-100',
-      text: 'text-green-800',
-      border: 'border-green-200',
-      icon: 'text-green-600'
+      bg: 'bg-gradient-to-r from-emerald-500/10 to-emerald-500/10',
+      text: 'text-emerald-400',
+      border: 'border-emerald-500/20',
+      icon: 'text-emerald-400'
     },
     MEDIUM: {
-      bg: 'bg-gradient-to-r from-yellow-100 to-orange-100',
-      text: 'text-yellow-800',
-      border: 'border-yellow-200',
-      icon: 'text-yellow-600'
+      bg: 'bg-gradient-to-r from-amber-500/10 to-amber-500/10',
+      text: 'text-amber-400',
+      border: 'border-amber-500/20',
+      icon: 'text-amber-400'
     },
     HARD: {
-      bg: 'bg-gradient-to-r from-red-100 to-pink-100',
-      text: 'text-red-800',
-      border: 'border-red-200',
-      icon: 'text-red-600'
+      bg: 'bg-gradient-to-r from-rose-500/10 to-rose-500/10',
+      text: 'text-rose-400',
+      border: 'border-rose-500/20',
+      icon: 'text-rose-400'
     },
   };
 
@@ -998,70 +1273,70 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
   };
 
   return (
-    <div 
-      onClick={onClick} 
-      className="group relative bg-white/95 backdrop-blur-sm border border-gray-200/60 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 transition-all duration-500 hover:shadow-2xl hover:border-blue-300 hover:scale-[1.03] hover:-translate-y-1 cursor-pointer overflow-hidden"
+    <div
+      onClick={onClick}
+      className="group relative border border-white/[0.06] bg-[#111628]/80 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 transition-all duration-500 hover:shadow-2xl hover:border-blue-500/30 hover:scale-[1.03] hover:-translate-y-1 cursor-pointer overflow-hidden"
     >
       {/* Animated Background Pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-pink-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-      
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
       {/* Status Indicator */}
-      <div className={`absolute top-0 right-0 w-2 h-2 sm:w-3 sm:h-3 rounded-full m-2 sm:m-3 ${taskStatus.color.includes('green') ? 'bg-green-400' : taskStatus.color.includes('yellow') ? 'bg-yellow-400' : taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-gray-400'} animate-pulse`}></div>
-      
+      <div className={`absolute top-0 right-0 w-2 h-2 sm:w-3 sm:h-3 rounded-full m-2 sm:m-3 ${taskStatus.color.includes('green') ? 'bg-emerald-400' : taskStatus.color.includes('yellow') ? 'bg-amber-400' : taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-slate-500'} animate-pulse`}></div>
+
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-2 sm:mb-3 lg:mb-4">
           <div className="flex-1 pr-2 sm:pr-3 lg:pr-4">
-            <h3 className="font-bold text-sm sm:text-base lg:text-lg text-gray-800 group-hover:text-blue-600 transition-colors duration-300 leading-tight">{task.title}</h3>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2 line-clamp-2 leading-relaxed hidden sm:block">{task.description}</p>
+            <h3 className="font-bold text-sm sm:text-base lg:text-lg text-slate-200 group-hover:text-blue-400 transition-colors duration-300 leading-tight">{task.title}</h3>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 sm:mt-2 line-clamp-2 leading-relaxed hidden sm:block">{task.description}</p>
           </div>
           <div className={`p-1.5 sm:p-2 lg:p-3 rounded-lg sm:rounded-xl lg:rounded-2xl shadow-lg ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border group-hover:scale-110 transition-transform duration-300`}>
             <StatusIcon className={`h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 transition-colors duration-300 ${taskStatus.color}`} />
           </div>
         </div>
-        
+
         {/* Score Display with Progress */}
         {submission?.score !== null && submission?.score !== undefined && (
-          <div className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg sm:rounded-xl lg:rounded-2xl border border-gray-100">
+          <div className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-white/[0.03] rounded-lg sm:rounded-xl lg:rounded-2xl border border-white/[0.06]">
             <div className="flex items-center justify-between mb-1 sm:mb-2">
               <div className="flex items-center gap-1 sm:gap-2">
-                <div className="p-1 sm:p-1.5 lg:p-2 bg-yellow-100 rounded-lg sm:rounded-xl">
-                  <Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
+                <div className="p-1 sm:p-1.5 lg:p-2 bg-amber-500/10 rounded-lg sm:rounded-xl border border-amber-500/20">
+                  <Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-amber-400" />
                 </div>
-                <span className="text-xs sm:text-sm font-semibold text-gray-700 hidden sm:inline">النتيجة</span>
+                <span className="text-xs sm:text-sm font-semibold text-slate-300 hidden sm:inline">النتيجة</span>
               </div>
               <span className={`text-sm sm:text-base lg:text-lg font-bold ${
-                submission.score >= 80 ? 'text-green-600' : 
-                submission.score >= 60 ? 'text-blue-600' : 
-                submission.score >= 40 ? 'text-yellow-600' : 'text-red-600'
+                submission.score >= 80 ? 'text-emerald-400' :
+                submission.score >= 60 ? 'text-blue-400' :
+                submission.score >= 40 ? 'text-amber-400' : 'text-rose-400'
               }`}>
                 {submission.score}/100
               </span>
             </div>
             {/* Score Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2 overflow-hidden">
-              <div 
+            <div className="w-full bg-slate-700/50 rounded-full h-1.5 sm:h-2 overflow-hidden">
+              <div
                 className={`h-full bg-gradient-to-r ${getScoreColor(submission.score)} rounded-full transition-all duration-1000 ease-out`}
                 style={{ width: `${scorePercentage}%` }}
               ></div>
             </div>
           </div>
         )}
-        
+
         {/* Enhanced Feedback Display */}
         {submission?.feedback && (submission.status === 'APPROVED' || submission.status === 'REJECTED') && (
-          <div className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-white rounded-lg sm:rounded-xl lg:rounded-2xl border border-gray-200 shadow-sm hidden sm:block">
+          <div className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-white/[0.03] rounded-lg sm:rounded-xl lg:rounded-2xl border border-white/[0.06] shadow-sm hidden sm:block">
             <div className="flex items-center gap-2 mb-2 sm:mb-3">
-              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg sm:rounded-xl">
-                <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+              <div className="p-1.5 sm:p-2 bg-blue-500/10 rounded-lg sm:rounded-xl border border-blue-500/20">
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
               </div>
-              <span className="text-xs sm:text-sm font-semibold text-gray-700">ملاحظات المدرب</span>
+              <span className="text-xs sm:text-sm font-semibold text-slate-300">ملاحظات المدرب</span>
             </div>
-            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed bg-gray-50 p-2 sm:p-3 rounded-lg sm:rounded-xl">{submission.feedback}</p>
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed bg-white/[0.03] p-2 sm:p-3 rounded-lg sm:rounded-xl border border-white/[0.06]">{submission.feedback}</p>
           </div>
         )}
-        
+
         {/* Enhanced Footer */}
-        <div className="flex justify-between items-center pt-2 sm:pt-3 lg:pt-4 border-t border-gray-100">
+        <div className="flex justify-between items-center pt-2 sm:pt-3 lg:pt-4 border-t border-white/[0.06]">
           <div className="flex items-center gap-1 sm:gap-2">
              <div className={`p-1 sm:p-1.5 lg:p-2 rounded-lg sm:rounded-xl ${currentDifficultyColors.bg} ${currentDifficultyColors.border} border`}>
                <Target className={`h-3 w-3 sm:h-4 sm:w-4 ${currentDifficultyColors.icon}`} />
@@ -1070,26 +1345,26 @@ const TaskCard: FC<{ task: Task; onClick: () => void }> = ({ task, onClick }) =>
                {difficultyMap[difficulty as keyof typeof difficultyMap] || 'متوسط'}
              </span>
            </div>
-          
+
           <div className="flex items-center gap-1 sm:gap-2">
             <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
-              taskStatus.color.includes('green') ? 'bg-green-400' : 
-              taskStatus.color.includes('yellow') ? 'bg-yellow-400' : 
-              taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-gray-400'
+              taskStatus.color.includes('green') ? 'bg-emerald-400' :
+              taskStatus.color.includes('yellow') ? 'bg-amber-400' :
+              taskStatus.color.includes('blue') ? 'bg-blue-400' : 'bg-slate-500'
             } animate-pulse`}></div>
             <span className={`text-xs sm:text-sm font-semibold ${taskStatus.color} hidden sm:inline`}>{taskStatus.text}</span>
           </div>
         </div>
-        
+
         {/* Hover Effect Indicator */}
         <div className="absolute bottom-1 sm:bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden sm:block">
-          <div className="flex items-center gap-1 text-xs text-blue-600 font-medium">
+          <div className="flex items-center gap-1 text-xs text-blue-400 font-medium">
             <Play className="h-3 w-3" />
             <span>انقر للتفاصيل</span>
           </div>
         </div>
       </div>
-      
+
       {/* Glow Effect */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500 blur-xl"></div>
     </div>
@@ -1138,15 +1413,15 @@ const SubmissionModal: FC<SubmissionModalProps> = ({ task, onClose, onSuccess })
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-2xl p-7 w-full max-w-lg m-4 animate-scale-in">
-        <div className="flex justify-between items-center border-b border-gray-200 pb-4 mb-5">
-          <h2 className="text-2xl font-bold text-gray-800">تقديم الحل: <span className="text-blue-600">{task.title}</span></h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors"><X className="h-7 w-7" /></button>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in" dir="rtl">
+      <div className="bg-[#111628] border border-white/[0.08] rounded-2xl shadow-2xl p-7 w-full max-w-lg m-4 animate-scale-in">
+        <div className="flex justify-between items-center border-b border-white/[0.08] pb-4 mb-5">
+          <h2 className="text-2xl font-bold text-slate-100">تقديم الحل: <span className="text-blue-400">{task.title}</span></h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors"><X className="h-7 w-7" /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
-          {task.link && 
-            <a href={task.link} target="_blank" rel="noopener noreferrer" className="inline-block text-blue-600 hover:underline font-medium">
+          {task.link &&
+            <a href={task.link} target="_blank" rel="noopener noreferrer" className="inline-block text-blue-400 hover:text-blue-300 hover:underline font-medium">
               عرض رابط المهمة
             </a>
           }
@@ -1154,13 +1429,13 @@ const SubmissionModal: FC<SubmissionModalProps> = ({ task, onClose, onSuccess })
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             placeholder="اكتب ملخص الحل أو رابط المشروع هنا..."
-            className="w-full h-36 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-shadow"
+            className="w-full h-36 p-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/30 transition-shadow"
             rows={6}
             required
           />
-          <div className="flex justify-end space-x-4 pt-4 mt-4 border-t border-gray-200 space-x-reverse">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">إلغاء</button>
-            <button type="submit" disabled={isSubmitting || !summary} className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg hover:shadow-lg hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-300 disabled:from-gray-300 disabled:to-gray-400 transition-all transform hover:scale-105">
+          <div className="flex justify-end space-x-4 pt-4 mt-4 border-t border-white/[0.08] space-x-reverse">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-slate-300 bg-white/[0.05] rounded-lg hover:bg-white/[0.08] transition-colors border border-white/[0.08]">إلغاء</button>
+            <button type="submit" disabled={isSubmitting || !summary} className="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-violet-600 rounded-lg hover:shadow-lg hover:from-blue-600 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105">
               {isSubmitting ? 'جاري الإرسال...' : 'إرسال الحل'}
             </button>
           </div>
