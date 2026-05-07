@@ -17,6 +17,12 @@ class DataCache {
     return item.data;
   }
 
+  delete(key: string) {
+    if (this.isClient) {
+      this.cache.delete(key);
+    }
+  }
+
   clear() {
     if (this.isClient) {
       this.cache.clear();
