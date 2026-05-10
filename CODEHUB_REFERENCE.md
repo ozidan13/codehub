@@ -1,6 +1,6 @@
 # CodeHub Definitive Project Reference
 
-Last updated: 2026-05-04
+Last updated: 2026-05-09
 
 This document is the standalone technical reference for the CodeHub codebase. It is intended for engineers and AI coding tools that need to understand the project without rereading every source file.
 
@@ -1640,16 +1640,20 @@ Right column:
 
 ### Stats Section
 
+**Component**: `src/components/student-dashboard/StatsSection.tsx`
+
 Displays:
 
 - Total submissions.
 - Approved submissions.
 - Pending submissions.
 - Average score.
-- Progress rings:
+- **Progress rings** (SVG-based `stroke-dasharray` circular indicators):
   - completion rate based on approved/total submissions.
-  - average score.
+  - average score (color-coded: >=70 green, >=50 amber, <50 red).
   - performance level.
+- **Dark-themed cards** with gradient icon badges (blue/green/yellow/purple).
+- **Trend indicators**: up/down/neutral arrows based on values.
 
 Potential issue:
 
@@ -1657,16 +1661,20 @@ Potential issue:
 
 ### Wallet Section
 
+**Component**: `src/components/student-dashboard/WalletSection.tsx`
+
 Displays:
 
-- Current balance.
-- Top-up form.
-- Top-up flow posts to `/api/wallet/topup`.
-- On success, refreshes dashboard data.
+- Current balance in large typography (`text-3xl sm:text-4xl lg:text-5xl`).
+- **Gradient card**: `bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600` with animated white circle background patterns.
+- **Top-up form toggle**: Reveals form with admin wallet number `01026454497` and user's registered phone.
+- Top-up flow posts to `/api/wallet/topup` with amount (min 1).
+- On success, calls `onTopUp` callback -> refreshes dashboard data.
+- **Balance status indicator**: Excellent (>100), Good (>50), Low (<50) with colored pulse dot.
 
 Top-up requirements:
 
-- Amount numeric.
+- Amount numeric (min 1).
 - Server requires user phone number.
 
 ### Enrollment And Platform Cards
@@ -1693,6 +1701,15 @@ Tasks include:
 - Submission status from `/api/platforms?include_tasks=true`.
 - Task links.
 - Submission action opens `SubmissionModal`.
+
+**PlatformCard** (`src/components/student-dashboard/PlatformCard.tsx`) specifics:
+
+- **Task difficulty badges**: `EASY` (emerald), `MEDIUM` (amber), `HARD` (rose), with fallback to `MEDIUM`.
+- **Score display**: Animated progress bar with color coding (>=80 green, >=60 blue, >=40 amber, <40 red) showing `score/100`.
+- **Feedback display**: Shows admin feedback for approved/rejected submissions in a styled card.
+- **Status indicator**: Pulsing dot with color (green=pending, amber=waiting, blue=approved, slate=not started).
+- **Hover effects**: Scale, glow, and animated background gradient on hover.
+- **Enrollment actions**: Paid platforms show subscribe button (`POST /api/enrollments`). Expired enrollments show renew button (`PUT /api/enrollments`). Active enrollments show remaining days.
 
 Submission status lifecycle:
 
@@ -1879,23 +1896,29 @@ Callbacks:
 
 ### CalendlyAdminCalendar
 
+**Component**: `src/components/calendar/CalendlyAdminCalendar.tsx`
+
 Admin wrapper around `CalendarBase` and `TimeSlotGrid`.
 
 Responsibilities:
 
 - Selected date state.
-- Bulk operation modal.
+- Bulk operation modal with Framer Motion animations.
 - Single slot create/delete.
 - Bulk slot create for one day.
 - Date-range bulk create.
 - Refresh after changes.
+- Loading overlay during operations.
 
-Bulk creation:
+**Bulk Operation Modal** (`BulkOperationModal`):
 
-- Admin selects start/end dates.
-- Chooses time slots.
-- Chooses whether to exclude weekends.
-- Calls API through parent `DatesTab`.
+- **Date range mode**: Start date and end date pickers.
+- **Time slot selection**: Multi-select from predefined `TIME_SLOTS` (09:00-18:00 hourly).
+- **Weekend exclusion**: Checkbox to exclude weekends (Friday/Saturday per UI label).
+- **Bulk apply**: Calls `onBulkDateRangeCreate` with `{ dateRange, timeSlots, excludeWeekends }`.
+- **Single day bulk**: Can also bulk-create slots for the currently selected single day.
+
+**Props**: `availableDates`, `onRefresh`, `onCreateTimeSlot`, `onDeleteTimeSlot`, `onBulkCreate`, `onBulkDateRangeCreate?`, `loading?`
 
 ### CalendlyStudentCalendar
 
@@ -2037,9 +2060,11 @@ Component:
 Features:
 
 - Fetches page data from parent plus fetches `/api/admin/transactions?limit=1000` for stats/filtering.
-- Filters by status, type, search, date range, amount range.
-- Stats: total, pending, approved, rejected, total amount, approved amount.
-- Approve/reject buttons for pending transactions.
+- **Advanced Filters**: status, type, search, date range, amount range.
+- **Stats Cards**: total, pending, approved, rejected, total amount, approved amount.
+- **Transaction table**: Full table with user avatar (first letter gradient), name, email, type badge, amount with DollarSign icon, phone, admin wallet number, status badge, date, actions.
+- **Approve/reject buttons** for pending transactions in table row and detail modal.
+- **Transaction Details Modal**: Full transaction info with user details, wallet numbers (`senderWalletNumber`, `adminWalletNumber`), creation/update dates, description. Action buttons for pending transactions.
 - Uses confirmation modal before patching.
 
 Transaction update:
@@ -2056,12 +2081,13 @@ Component:
 
 Features:
 
-- List bookings.
-- Pagination.
+- List bookings with pagination.
 - Status actions for confirming/cancelling.
-- Update modal for selected booking.
-- Can set meeting/video/admin notes and session date.
-- Confirmation modal for confirm/cancel.
+- **Update Modal** (`BookingUpdateModal`): For selected booking, can set status dropdown (`PENDING`/`CONFIRMED`/`COMPLETED`/`CANCELLED`), meeting link, video link, admin notes, session date.
+  - For face-to-face: fetches available dates and allows rebooking via dropdown.
+  - Shows current session date if already set.
+  - Displays booking info: student name, session type, duration, WhatsApp, amount, booking date, student notes.
+- Confirmation modal for confirm/cancel actions.
 
 #### Available Dates
 
@@ -2499,6 +2525,10 @@ Low priority:
 3. Global transition on `*` can reduce UI performance.
 4. Some API errors return plain text while most return JSON.
 5. Zod validation is not consistently used across all routes.
+6. `CalendlyStudentCalendar` prop mismatch: some callers use `onDateSelect` but component expects `onDateChange`.
+7. Missing `apple-blue-hover` color referenced in Tailwind plugin but not defined in theme colors.
+8. Profile page reads `session.user.createdAt`, but NextAuth session callbacks do not provide it.
+9. Recorded session price mismatch: `/api/mentorship` GET returns fixed `recordedSession: 100` regardless of actual `RecordedSession` record prices.
 
 ## 17. Cleanup Performed
 
